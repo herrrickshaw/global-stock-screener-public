@@ -16,6 +16,11 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     BHAV_CACHE=/app/cache
 
+LABEL org.opencontainers.image.title="global-stock-screener" \
+      org.opencontainers.image.version="1.0.0" \
+      org.opencontainers.image.source="https://github.com/herrrickshaw/global-stock-screener" \
+      org.opencontainers.image.description="20-market screener with cached OHLCV, 11 strategies, liquidity tiers, CCC. Educational only."
+
 WORKDIR /app
 
 # deps first (better layer caching)

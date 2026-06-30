@@ -74,6 +74,7 @@ and the LMDB store (round-trip on a temp cache).
 
 | Doc | What's inside |
 |-----|---------------|
+| `HOW_IT_WORKS.md` | step-by-step walk-through (bootstrap → screen → refresh → outputs) |
 | `ARCHITECTURE.md` | layered diagram, request→result flow, data schemas |
 | `DATA_AND_MODULES.md` | every data source + a one-line purpose for each module |
 | `BLOOMBERG_SOURCES.md` | Bloomberg-terminal data categories → free/official equivalents |
@@ -85,6 +86,7 @@ and the LMDB store (round-trip on a temp cache).
 ```
 run.py                 one-command entry (auto-bootstraps, prints + saves results)
 screener_kit.py        facade: bootstrap / load / get / update / screen / custom_screen
+frames.py              shared OHLCV helpers (long↔dict, compact-parquet write) — DRY core
 strategies/            11 strategy modules (base.py + one file each)
 custom_screener.py     screen on your own metrics      liquidity.py   tiers + pre-filter
 bhavcopy_history.py    India EOD ingest + cache         bhavcopy_store.py  LMDB store

@@ -79,6 +79,12 @@ Plus `__meta__` = `"<n_symbols>|<latest_bar>"`.
 ### Result row (every screen)
 `Symbol · Strategy · Pass · Score · <strategy metrics> · Turnover_USD · Liquidity · Note`
 
+## Shared helpers (DRY)
+`frames.py` is the single home for the OHLCV conversions reused everywhere:
+`long_to_dict()` (long rows → {symbol: OHLCV}), `to_long()`/`write_seed()` (→ compact
+zstd parquet), `read_seed()`. Used by screener_kit, bhavcopy_store, bhavcopy_history,
+fetch_market_ohlc and build_market_seeds.
+
 ## Key design choices
 - **Ships with data** — committed LFS seeds mean clone-and-run, no downloads.
 - **Resilient sourcing** — India on official bhavcopy (no Yahoo); others fall back yahoo→stooq.
