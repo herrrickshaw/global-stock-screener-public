@@ -1,41 +1,62 @@
-# NSE Stock Screening Pipeline
+# 📈 Global Stock Screener
 
-This package converts the attached concept note and notebook into a practical Python workflow.
+A 20-market equity screener that **ships with ~1 year of cached price data** (≈40,000 symbols across the world's major exchanges), so you can clone and get results in minutes — no API keys, no LLM tokens.
 
-## Files
-- `data_fetch.py` — fetch NSE universe, price history, quote snapshot, and bulk deals CSV fallback.
-- `screening_engine.py` — compute technical/liquidity factors and rank stocks.
-- `report_generator.py` — export JSON, CSV, XLSX, and Markdown reports.
-- `run_pipeline.py` — main CLI entry point.
+> ⚠️ **Educational / research only. NOT investment advice.** Screener output is a mechanical filter, not a buy/sell signal. Past performance does not guarantee future returns. Consult a SEBI-registered (or your jurisdiction's) advisor.
 
-## Install
-```bash
-pip install nsepython pandas openpyxl requests tabulate
+---
+
+## ▶️ Run in Google Colab (no setup)
+
+```python
+!pip install -q lmdb xlrd yfinance nsepython bseindia nse feedparser vaderSentiment investpy
+!git lfs install && git clone --depth 1 https://github.com/herrrickshaw/global-stock-screener.git
+%cd global-stock-screener && git lfs pull
+!python run.py --strategy darvas --market IN          # → prints results + saves CSV
 ```
 
-## Run on full NSE universe
+Or open **`colab_quickstart.ipynb`** and Runtime → Run all.
+
+## ▶️ Run locally
+
 ```bash
-python run_pipeline.py
+git lfs install && git clone https://github.com/herrrickshaw/global-stock-screener.git
+cd global-stock-screener && git lfs pull
+pip install -r requirements.txt
+python run.py                         # global momentum leaderboard
+python run.py --strategy garp --market US --top 25
+python run.py --brief                 # full Daily Market Brief → results/daily_brief.html
+python run.py --list                  # all strategies & markets
 ```
 
-## Run on your own symbols file
-```bash
-python run_pipeline.py --symbols-file my_symbols.xlsx
+`run.py` auto-bootstraps the cached data into a fast local store on first use, then
+prints results and saves them to `results/`.
+
+---
+
+## What you get
+
+- **20 markets:** IN, US, JP, KR, CN, HK, TW, CA, AU, UK, DE, SA, BR, CH, ZA, SE, FI, DK, SG, Euronext
+- **11 strategies:** `piotroski, coffee_can, magic_formula, bluest_blue_chips, debt_reduction, dividend_yield, golden_crossover, loss_to_profit, garp, darvas, cash_conversion_cycle`
+- **Liquidity tiers** (High/Medium/Low) on every result + a fast liquidity pre-filter
+- **Cash Conversion Cycle** for India (screener.in) and US (SEC EDGAR)
+- **Custom screens** on your own parameters (returns, RSI, drawdown, volatility, CCC, …)
+- **Global momentum leaderboard** + **20-market 5-year scoreboard**
+- **Token-free daily mailer** (`send_mailer.py` + `daily_pipeline.sh`)
+
+```python
+import os; os.environ["BHAV_CACHE"] = "/content/cache"
+import screener_kit as kit
+kit.bootstrap()
+kit.screen("darvas", "IN", top=15, min_turnover_usd=1_000_000)
+kit.custom_screen({"ccc": ("<", 0), "above_200dma": ("==", True)}, "IN")
 ```
 
-## Run with bulk deals CSV fallback
-```bash
-python run_pipeline.py --bulk-deals-csv bulk_deals.csv
-```
+## Data sources (all free / official)
 
-## Output
-- `output/pipeline_results/nse_full_universe_ranked.csv`
-- `output/pipeline_results/nse_shortlist.csv`
-- `output/pipeline_results/nse_screening_report.xlsx`
-- `output/pipeline_results/screening_summary.md`
-- `output/pipeline_results/stock_reports/*.json`
+Exchange bhavcopy (NSE/BSE), SEC EDGAR (US fundamentals), JPX/KRX/SGX/Euronext/
+Eastmoney (universes), Yahoo→Stooq (prices, with fallback), Damodaran & Fama-French
+(reference), screener.in (India CCC), RSS + VADER (news sentiment — not an LLM).
 
-## Notes
-- This is the Phase-1 practical screener from the attached ML design: momentum, liquidity, 200-DMA strength, delivery %, and drawdown filters.
-- The attached document's later supervised, unsupervised, and RL layers can be added on top of this base.
-- The attached notebook's reporting idea is preserved through per-stock JSON exports and a bulk-deals CSV fallback.
+See **`DATA_AND_MODULES.md`** for the full module guide and **`BLOOMBERG_SOURCES.md`**
+for the Bloomberg-equivalent public-source map.

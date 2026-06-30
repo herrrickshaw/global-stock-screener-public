@@ -24,3 +24,5 @@ claude-lmstudio-router/
 cache_seed/*.tmp
 launchd_out.log
 launchd_err.log
+
+results/
