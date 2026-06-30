@@ -140,15 +140,11 @@ def fetch_history(
     # new trading dates to add, skip the whole pivot+clean (the ~30s cost) and
     # serve the cleaned long parquet directly.
     def _from_cleaned(min_bars):
+        from frames import long_to_dict
+
         cl = pd.read_parquet(CLEANED)
         cl["Date"] = pd.to_datetime(cl["Date"])
-        cl = cl[cl["Date"].isin(want_dates)]
-        res = {}
-        for sym, g in cl.groupby("Symbol"):
-            gg = g.set_index("Date").sort_index()[["Open", "High", "Low", "Close", "Volume"]]
-            if len(gg) >= min_bars:
-                res[str(sym)] = gg
-        return res
+        return long_to_dict(cl[cl["Date"].isin(want_dates)], min_bars)
 
     # ── load the assembled long-format cache (the speed layer) ─────────────────
     # ASSEMBLED holds every (Date, Symbol, OHLCV, _exch) row already collected, so

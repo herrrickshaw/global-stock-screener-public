@@ -23,6 +23,8 @@ import pandas as pd
 
 warnings.filterwarnings("ignore")
 
+from frames import write_seed
+
 try:
     from stock_utils import clean_ohlcv
 except ImportError:
@@ -79,7 +81,7 @@ def build(days: int = 400, out: Path = SEED_DIR, verbose: bool = True) -> dict:
 
     summary = {}
     for mkt, flist in sorted(by_market.items()):
-        rows = []
+        hist = {}
         for f in flist:
             try:
                 d = pd.read_parquet(f)
@@ -90,33 +92,17 @@ def build(days: int = 400, out: Path = SEED_DIR, verbose: bool = True) -> dict:
             d = d[d.index >= cutoff]
             if clean_ohlcv is not None:
                 d = clean_ohlcv(d, ticker=f.stem, min_bars=1)
-            if d is None or d.empty:
-                continue
-            sym = f.name[: -len(".parquet")]  # keep yfinance suffix in symbol
-            g = d.reset_index()
-            g.columns = ["Date", "Open", "High", "Low", "Close", "Volume"][: len(g.columns)]
-            for c in ("Open", "High", "Low", "Close"):
-                g[c] = g[c].astype("float32")
-            g["Volume"] = pd.to_numeric(g["Volume"], errors="coerce").fillna(0).astype("int64")
-            g["Symbol"] = sym
-            rows.append(g)
-        if not rows:
+            if d is not None and not d.empty:
+                hist[f.name[: -len(".parquet")]] = d  # keep yfinance suffix
+        if not hist:
             continue
-        long = pd.concat(rows, ignore_index=True).sort_values(["Symbol", "Date"])
         path = out / f"cleaned_long_{mkt}.parquet"
-        long.to_parquet(path, compression="zstd", compression_level=9, index=False)
+        n = write_seed(hist, path)
+        rows = int(sum(len(d) for d in hist.values()))
         mb = path.stat().st_size / 1e6
-        summary[mkt] = {
-            "symbols": long["Symbol"].nunique(),
-            "rows": len(long),
-            "MB": round(mb, 1),
-            "file": path.name,
-        }
+        summary[mkt] = {"symbols": n, "rows": rows, "MB": round(mb, 1), "file": path.name}
         if verbose:
-            print(
-                f"  {mkt}: {summary[mkt]['symbols']:>5} symbols, "
-                f"{len(long):>8,} rows → {path.name} ({mb:.1f} MB)"
-            )
+            print(f"  {mkt}: {n:>5} symbols, {rows:>8,} rows → {path.name} ({mb:.1f} MB)")
     return summary
 
 

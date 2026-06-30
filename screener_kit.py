@@ -30,6 +30,7 @@ warnings.filterwarnings("ignore")
 
 import custom_screener as cs
 import strategies as st
+from frames import long_to_dict, write_seed
 from strategies.base import StockData
 
 MARKETS = [
@@ -115,13 +116,9 @@ def load(market: str, min_turnover_usd: float = 0.0) -> Dict[str, pd.DataFrame]:
         except Exception:
             keep = None
     long = pd.read_parquet(p)
-    long["Date"] = pd.to_datetime(long["Date"])
     if keep is not None:
         long = long[long["Symbol"].isin(keep)]
-    out = {}
-    for sym, g in long.groupby("Symbol"):
-        out[str(sym)] = g.set_index("Date").sort_index()[["Open", "High", "Low", "Close", "Volume"]]
-    return out
+    return long_to_dict(long)
 
 
 def get(symbol: str) -> Optional[pd.DataFrame]:
@@ -172,7 +169,7 @@ def update(market: str, verbose: bool = True) -> dict:
         list(base.keys()), order=("yahoo", "stooq"), period=period, min_bars=1, verbose=verbose
     )
     # merge fresh bars into the baseline
-    merged_rows, updated = [], 0
+    merged, updated = {}, 0
     for sym, old in base.items():
         df = old
         if sym in fresh:
@@ -181,16 +178,8 @@ def update(market: str, verbose: bool = True) -> dict:
             df = clean_ohlcv(df, ticker=sym, min_bars=1) or df
             if len(df) > len(old):
                 updated += 1
-        g = df.reset_index()
-        g.columns = ["Date", "Open", "High", "Low", "Close", "Volume"]
-        for c in ("Open", "High", "Low", "Close"):
-            g[c] = g[c].astype("float32")
-        g["Volume"] = pd.to_numeric(g["Volume"], errors="coerce").fillna(0).astype("int64")
-        g["Symbol"] = sym
-        merged_rows.append(g)
-    pd.concat(merged_rows, ignore_index=True).to_parquet(
-        CACHE / _seed_name(market), compression="zstd", index=False
-    )
+        merged[sym] = df
+    write_seed(merged, CACHE / _seed_name(market))
     import bhavcopy_store as store
 
     store.build(verbose=False)

@@ -76,14 +76,11 @@ def build(hist: Optional[Dict[str, pd.DataFrame]] = None, verbose: bool = True) 
         )
         if not seeds:
             raise FileNotFoundError(f"no cleaned_long*.parquet in {CACHE}")
+        from frames import long_to_dict
+
         hist = {}
         for sd in seeds:
-            long = pd.read_parquet(sd)
-            long["Date"] = pd.to_datetime(long["Date"])
-            for sym, g in long.groupby("Symbol"):
-                hist[str(sym)] = g.set_index("Date").sort_index()[
-                    ["Open", "High", "Low", "Close", "Volume"]
-                ]
+            hist.update(long_to_dict(pd.read_parquet(sd)))
         if verbose:
             print(
                 f"  ingesting {len(seeds)} market seed(s): " f"{', '.join(s.name for s in seeds)}"

@@ -22,11 +22,10 @@ import sys
 import warnings
 from pathlib import Path
 
-import pandas as pd
-
 warnings.filterwarnings("ignore")
 
 from data_sources import fetch as multi_fetch
+from frames import write_seed
 from stock_utils import clean_ohlcv
 from universe_sources import PROVIDERS, get_universe
 
@@ -152,28 +151,19 @@ def _tickers(market: str) -> list[str]:
 
 
 def _write_seed(market: str, hist: dict) -> dict:
-    rows = []
-    for sym, d in hist.items():
-        d = clean_ohlcv(d, ticker=sym, min_bars=60)
-        if d is None or d.empty:
-            continue
-        g = d.reset_index()
-        g.columns = ["Date", "Open", "High", "Low", "Close", "Volume"][: len(g.columns)]
-        for c in ("Open", "High", "Low", "Close"):
-            g[c] = g[c].astype("float32")
-        g["Volume"] = pd.to_numeric(g["Volume"], errors="coerce").fillna(0).astype("int64")
-        g["Symbol"] = sym
-        rows.append(g)
-    if not rows:
+    cleaned = {
+        s: c
+        for s, d in hist.items()
+        if (c := clean_ohlcv(d, ticker=s, min_bars=60)) is not None and not c.empty
+    }
+    if not cleaned:
         return {"market": market, "symbols": 0}
-    long = pd.concat(rows, ignore_index=True).sort_values(["Symbol", "Date"])
-    SEED_DIR.mkdir(parents=True, exist_ok=True)
     path = SEED_DIR / f"cleaned_long_{market}.parquet"
-    long.to_parquet(path, compression="zstd", compression_level=9, index=False)
+    n = write_seed(cleaned, path)
     return {
         "market": market,
-        "symbols": long["Symbol"].nunique(),
-        "rows": len(long),
+        "symbols": n,
+        "rows": int(sum(len(c) for c in cleaned.values())),
         "MB": round(path.stat().st_size / 1e6, 1),
         "file": path.name,
     }
