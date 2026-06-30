@@ -4,6 +4,8 @@
 
 A 20-market equity screener that **ships with ~1 year of cached price data** (≈40,000 symbols across the world's major exchanges), so you can clone and get results in minutes — no API keys, no LLM tokens.
 
+![Architecture](architecture.svg)
+
 > ⚠️ **Educational / research only. NOT investment advice.** Screener output is a mechanical filter, not a buy/sell signal. Past performance does not guarantee future returns. Consult a SEBI-registered (or your jurisdiction's) advisor.
 
 ---
@@ -59,6 +61,34 @@ kit.custom_screen({"ccc": ("<", 0), "above_200dma": ("==", True)}, "IN")
 Exchange bhavcopy (NSE/BSE), SEC EDGAR (US fundamentals), JPX/KRX/SGX/Euronext/
 Eastmoney (universes), Yahoo→Stooq (prices, with fallback), Damodaran & Fama-French
 (reference), screener.in (India CCC), RSS + VADER (news sentiment — not an LLM).
+
+## Documentation
+
+| Doc | What's inside |
+|-----|---------------|
+| `ARCHITECTURE.md` | layered diagram, request→result flow, data schemas |
+| `DATA_AND_MODULES.md` | every data source + a one-line purpose for each module |
+| `BLOOMBERG_SOURCES.md` | Bloomberg-terminal data categories → free/official equivalents |
+| `EXCHANGE_COVERAGE.md` | the 20 markets validated vs Wikipedia's major exchanges |
+| `colab_quickstart.ipynb` | run-top-to-bottom Colab notebook |
+
+## Repo layout
+
+```
+run.py                 one-command entry (auto-bootstraps, prints + saves results)
+screener_kit.py        facade: bootstrap / load / get / update / screen / custom_screen
+strategies/            11 strategy modules (base.py + one file each)
+custom_screener.py     screen on your own metrics      liquidity.py   tiers + pre-filter
+bhavcopy_history.py    India EOD ingest + cache         bhavcopy_store.py  LMDB store
+data_sources.py        yahoo→stooq fallback            market_calendar.py trading days
+universe_sources.py    per-market listed universe       fetch_market_ohlc.py  seeds
+sec_fundamentals.py    US fundamentals (SEC EDGAR)      screener_in.py  India CCC
+reference_data.py      Damodaran / Fama-French          ipo_monitor.py  new listings
+run_global_analysis.py momentum leaderboard            market_performance.py 5y scoreboard
+build_mailer.py        Daily Market Brief HTML          send_mailer.py  SMTP send (token-free)
+daily_pipeline.sh      cron/launchd autonomous runner   *.plist  launchd schedule
+cache_seed/  reference_seed/   committed data (Git LFS) · architecture.svg
+```
 
 See **`DATA_AND_MODULES.md`** for the full module guide and **`BLOOMBERG_SOURCES.md`**
 for the Bloomberg-equivalent public-source map.
