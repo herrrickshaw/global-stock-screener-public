@@ -33,14 +33,28 @@ SEED_DIR = Path(__file__).parent / "cache_seed"
 
 # suffix → market code (None key = no suffix)
 SUFFIX_MARKET = {
-    None: "US", "NS": "IN", "BO": "IN", "L": "UK", "PA": "FR", "DE": "DE",
-    "T": "JP", "KS": "KR", "KQ": "KR", "SI": "SG", "HK": "HK", "AX": "AU",
-    "TO": "CA", "SW": "CH", "MI": "IT", "AS": "NL", "ST": "SE",
+    None: "US",
+    "NS": "IN",
+    "BO": "IN",
+    "L": "UK",
+    "PA": "FR",
+    "DE": "DE",
+    "T": "JP",
+    "KS": "KR",
+    "KQ": "KR",
+    "SI": "SG",
+    "HK": "HK",
+    "AX": "AU",
+    "TO": "CA",
+    "SW": "CH",
+    "MI": "IT",
+    "AS": "NL",
+    "ST": "SE",
 }
 
 
 def _market_of(fname: str) -> str | None:
-    base = fname[:-len(".parquet")] if fname.endswith(".parquet") else fname
+    base = fname[: -len(".parquet")] if fname.endswith(".parquet") else fname
     parts = base.split(".")
     suf = parts[-1] if len(parts) >= 2 else None
     return SUFFIX_MARKET.get(suf, SUFFIX_MARKET.get(None) if suf is None else None)
@@ -78,9 +92,9 @@ def build(days: int = 400, out: Path = SEED_DIR, verbose: bool = True) -> dict:
                 d = clean_ohlcv(d, ticker=f.stem, min_bars=1)
             if d is None or d.empty:
                 continue
-            sym = f.name[:-len(".parquet")]          # keep yfinance suffix in symbol
+            sym = f.name[: -len(".parquet")]  # keep yfinance suffix in symbol
             g = d.reset_index()
-            g.columns = ["Date", "Open", "High", "Low", "Close", "Volume"][:len(g.columns)]
+            g.columns = ["Date", "Open", "High", "Low", "Close", "Volume"][: len(g.columns)]
             for c in ("Open", "High", "Low", "Close"):
                 g[c] = g[c].astype("float32")
             g["Volume"] = pd.to_numeric(g["Volume"], errors="coerce").fillna(0).astype("int64")
@@ -92,11 +106,17 @@ def build(days: int = 400, out: Path = SEED_DIR, verbose: bool = True) -> dict:
         path = out / f"cleaned_long_{mkt}.parquet"
         long.to_parquet(path, compression="zstd", compression_level=9, index=False)
         mb = path.stat().st_size / 1e6
-        summary[mkt] = {"symbols": long["Symbol"].nunique(), "rows": len(long),
-                        "MB": round(mb, 1), "file": path.name}
+        summary[mkt] = {
+            "symbols": long["Symbol"].nunique(),
+            "rows": len(long),
+            "MB": round(mb, 1),
+            "file": path.name,
+        }
         if verbose:
-            print(f"  {mkt}: {summary[mkt]['symbols']:>5} symbols, "
-                  f"{len(long):>8,} rows → {path.name} ({mb:.1f} MB)")
+            print(
+                f"  {mkt}: {summary[mkt]['symbols']:>5} symbols, "
+                f"{len(long):>8,} rows → {path.name} ({mb:.1f} MB)"
+            )
     return summary
 
 

@@ -42,8 +42,23 @@ STALE_HOURS = 24
 # (Enterprises, Industries, Power, Ports …) are KEPT because they distinguish
 # group companies — "Adani Enterprises" vs "Adani Ports" vs "Adani Power".
 _CORP_TOKENS = {
-    "LIMITED","LTD","LTD.","LIMITED.","PVT","PRIVATE","CORP","CORP.",
-    "CO","CO.","INC","INC.","PLC","THE","OF","AND","&",
+    "LIMITED",
+    "LTD",
+    "LTD.",
+    "LIMITED.",
+    "PVT",
+    "PRIVATE",
+    "CORP",
+    "CORP.",
+    "CO",
+    "CO.",
+    "INC",
+    "INC.",
+    "PLC",
+    "THE",
+    "OF",
+    "AND",
+    "&",
 }
 
 
@@ -68,10 +83,12 @@ def clean_name(name: str) -> str:
 
 # ── Builders per exchange ─────────────────────────────────────────────────────
 
+
 def _nse_names() -> list:
     rows = []
     try:
         from nse import NSE
+
         with NSE(download_folder="/tmp", server=False) as n:
             for off in range(7):
                 d = datetime.today() - timedelta(days=off)
@@ -82,9 +99,10 @@ def _nse_names() -> list:
                         eq = df[df["SctySrs"] == "EQ"]
                         for _, x in eq.iterrows():
                             sym = str(x["TckrSymb"]).strip()
-                            nm  = str(x.get("FinInstrmNm","")).strip()
-                            rows.append({"symbol": sym, "name": nm,
-                                         "exchange": "NSE", "suffix": ".NS"})
+                            nm = str(x.get("FinInstrmNm", "")).strip()
+                            rows.append(
+                                {"symbol": sym, "name": nm, "exchange": "NSE", "suffix": ".NS"}
+                            )
                         break
                 except Exception:
                     continue
@@ -97,6 +115,7 @@ def _bse_names(nse_symbols: set) -> list:
     rows = []
     try:
         from bse import BSE
+
         b = BSE(download_folder="/tmp")
         for off in range(7):
             d = datetime.today() - timedelta(days=off)
@@ -104,16 +123,15 @@ def _bse_names(nse_symbols: set) -> list:
                 p = b.bhavcopyReport(d)
                 if hasattr(p, "exists") and p.exists():
                     df = pd.read_csv(p)
-                    eq_groups = {"A","B","T","X","XT","M","MT","E"}
+                    eq_groups = {"A", "B", "T", "X", "XT", "M", "MT", "E"}
                     if "SctySrs" in df.columns:
                         df = df[df["SctySrs"].isin(eq_groups)]
                     for _, x in df.iterrows():
                         sym = str(x["TckrSymb"]).strip()
-                        if sym in nse_symbols:   # dual-listed → use NSE
+                        if sym in nse_symbols:  # dual-listed → use NSE
                             continue
-                        nm = str(x.get("FinInstrmNm","")).strip()
-                        rows.append({"symbol": sym, "name": nm,
-                                     "exchange": "BSE", "suffix": ".BO"})
+                        nm = str(x.get("FinInstrmNm", "")).strip()
+                        rows.append({"symbol": sym, "name": nm, "exchange": "BSE", "suffix": ".BO"})
                     break
             except Exception:
                 continue
@@ -126,20 +144,23 @@ def _us_names() -> list:
     rows = []
     try:
         import requests
-        url  = "https://www.sec.gov/files/company_tickers_exchange.json"
+
+        url = "https://www.sec.gov/files/company_tickers_exchange.json"
         hdrs = {"User-Agent": "StockScanner umashankartd1991@gmail.com"}
         data = requests.get(url, timeout=30, headers=hdrs).json()
         for row in data.get("data", []):
             name = str(row[1]).strip() if len(row) > 1 else ""
-            tk   = str(row[2]).strip().upper() if len(row) > 2 else ""
+            tk = str(row[2]).strip().upper() if len(row) > 2 else ""
             exch = str(row[3]).strip().lower() if len(row) > 3 else ""
             if not tk or len(tk) > 5 or any(c in tk for c in " .,"):
                 continue
-            ex = ("NASDAQ" if "nasdaq" in exch else
-                  "NYSE" if ("nyse" in exch or "amex" in exch) else None)
+            ex = (
+                "NASDAQ"
+                if "nasdaq" in exch
+                else "NYSE" if ("nyse" in exch or "amex" in exch) else None
+            )
             if ex:
-                rows.append({"symbol": tk, "name": name,
-                             "exchange": ex, "suffix": ""})
+                rows.append({"symbol": tk, "name": name, "exchange": ex, "suffix": ""})
     except Exception:
         pass
     return rows
@@ -147,22 +168,24 @@ def _us_names() -> list:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
+
 def build_master(refresh: bool = False, include_us: bool = True) -> pd.DataFrame:
     """Build the full symbol master and persist it as Parquet."""
     print("Building symbol master (ticker ↔ company name) …")
     nse = _nse_names()
     nse_syms = {r["symbol"] for r in nse}
     bse = _bse_names(nse_syms)
-    us  = _us_names() if include_us else []
+    us = _us_names() if include_us else []
     print(f"  NSE: {len(nse)} | BSE-only: {len(bse)} | US: {len(us)}")
 
     df = pd.DataFrame(nse + bse + us)
     if df.empty:
-        print("  ⚠️  No symbols fetched."); return df
-    df = df.drop_duplicates(subset=["symbol","exchange"])
+        print("  ⚠️  No symbols fetched.")
+        return df
+    df = df.drop_duplicates(subset=["symbol", "exchange"])
     df["name_clean"] = df["name"].map(clean_name)
-    df["yf_symbol"]  = df["symbol"] + df["suffix"]
-    df = df[["symbol","name","name_clean","exchange","suffix","yf_symbol"]]
+    df["yf_symbol"] = df["symbol"] + df["suffix"]
+    df = df[["symbol", "name", "name_clean", "exchange", "suffix", "yf_symbol"]]
 
     df.to_parquet(MASTER, compression="snappy", index=False)
     print(f"  ✅ Symbol master saved: {len(df)} stocks → {MASTER}")
@@ -184,6 +207,7 @@ def load_master(auto_refresh: bool = True) -> pd.DataFrame:
 
 # Cached lookups (built once per process)
 _LOOKUP = {}
+
 
 def _ensure_lookup():
     global _LOOKUP
@@ -218,8 +242,8 @@ if __name__ == "__main__":
         print("\nSample:")
         print(df.head(8).to_string(index=False))
         # Show the key fix: ADANIENT now has a company name
-        for s in ["ADANIENT","RELIANCE","TCS","MARUTI"]:
-            row = df[df["symbol"]==s]
+        for s in ["ADANIENT", "RELIANCE", "TCS", "MARUTI"]:
+            row = df[df["symbol"] == s]
             if not row.empty:
                 r = row.iloc[0]
                 print(f"  {s:<12} name='{r['name']}' clean='{r['name_clean']}'")

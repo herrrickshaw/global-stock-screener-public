@@ -29,7 +29,8 @@ import requests
 warnings.filterwarnings("ignore")
 
 try:
-    from stock_utils import bulk_download as _yahoo_bulk, clean_ohlcv
+    from stock_utils import bulk_download as _yahoo_bulk
+    from stock_utils import clean_ohlcv
 except ImportError:
     _yahoo_bulk = None
     clean_ohlcv = None
@@ -40,21 +41,34 @@ _UA = {"User-Agent": "Mozilla/5.0 (market-research)"}
 # ── Stooq (free, no key) ───────────────────────────────────────────────────────
 def _stooq_symbol(t: str) -> str | None:
     """Map a yfinance ticker to a Stooq symbol (covers the markets Stooq carries)."""
-    suffix_map = {".T": ".jp", ".L": ".uk", ".DE": ".de", ".F": ".de", ".PA": ".fr",
-                  ".AS": ".nl", ".BR": ".be", ".MI": ".it", ".MC": ".es", ".HK": ".hk",
-                  ".SW": ".ch", ".ST": ".se"}
+    suffix_map = {
+        ".T": ".jp",
+        ".L": ".uk",
+        ".DE": ".de",
+        ".F": ".de",
+        ".PA": ".fr",
+        ".AS": ".nl",
+        ".BR": ".be",
+        ".MI": ".it",
+        ".MC": ".es",
+        ".HK": ".hk",
+        ".SW": ".ch",
+        ".ST": ".se",
+    }
     for yf_suf, st_suf in suffix_map.items():
         if t.endswith(yf_suf):
-            return t[:-len(yf_suf)].lower() + st_suf
-    if "." not in t:                       # bare ticker → US
+            return t[: -len(yf_suf)].lower() + st_suf
+    if "." not in t:  # bare ticker → US
         return t.lower() + ".us"
-    return None                            # unsupported on Stooq (e.g. .NS/.SI/.SS/.KS)
+    return None  # unsupported on Stooq (e.g. .NS/.SI/.SS/.KS)
 
 
-def stooq_fetch(tickers: List[str], min_bars: int = 60,
-                verbose: bool = True) -> Dict[str, pd.DataFrame]:
+def stooq_fetch(
+    tickers: List[str], min_bars: int = 60, verbose: bool = True
+) -> Dict[str, pd.DataFrame]:
     out: Dict[str, pd.DataFrame] = {}
-    sess = requests.Session(); sess.headers.update(_UA)
+    sess = requests.Session()
+    sess.headers.update(_UA)
     for t in tickers:
         s = _stooq_symbol(t)
         if not s:
@@ -62,7 +76,7 @@ def stooq_fetch(tickers: List[str], min_bars: int = 60,
         try:
             r = sess.get(f"https://stooq.com/q/d/l/?s={s}&i=d", timeout=20)
             if r.status_code != 200 or not r.text.startswith("Date"):
-                continue                   # HTML / limit page → treat as miss
+                continue  # HTML / limit page → treat as miss
             df = pd.read_csv(io.StringIO(r.text))
             if df.empty or "Close" not in df.columns:
                 continue
@@ -81,19 +95,24 @@ def stooq_fetch(tickers: List[str], min_bars: int = 60,
 
 
 # ── Yahoo ──────────────────────────────────────────────────────────────────────
-def yahoo_fetch(tickers: List[str], period: str = "1y", min_bars: int = 60,
-                verbose: bool = True) -> Dict[str, pd.DataFrame]:
+def yahoo_fetch(
+    tickers: List[str], period: str = "1y", min_bars: int = 60, verbose: bool = True
+) -> Dict[str, pd.DataFrame]:
     if _yahoo_bulk is None:
         return {}
-    return _yahoo_bulk(tickers, period=period, batch_size=80,
-                       min_bars=min_bars, verbose=verbose)
+    return _yahoo_bulk(tickers, period=period, batch_size=80, min_bars=min_bars, verbose=verbose)
 
 
 SOURCES = {"stooq": stooq_fetch, "yahoo": yahoo_fetch}
 
 
-def fetch(tickers: List[str], order=("yahoo", "stooq"), period: str = "1y",
-          min_bars: int = 60, verbose: bool = True) -> Dict[str, pd.DataFrame]:
+def fetch(
+    tickers: List[str],
+    order=("yahoo", "stooq"),
+    period: str = "1y",
+    min_bars: int = 60,
+    verbose: bool = True,
+) -> Dict[str, pd.DataFrame]:
     """Fetch OHLC with fallback. Tries sources in `order`; each source only
     handles the tickers still missing after the previous one."""
     result: Dict[str, pd.DataFrame] = {}
@@ -113,13 +132,13 @@ def fetch(tickers: List[str], order=("yahoo", "stooq"), period: str = "1y",
         result.update(got)
         pending = [t for t in pending if t not in result]
     if verbose:
-        print(f"  multi-source total: {len(result)}/{len(tickers)} "
-              f"({len(pending)} unresolved)")
+        print(f"  multi-source total: {len(result)}/{len(tickers)} " f"({len(pending)} unresolved)")
     return result
 
 
 if __name__ == "__main__":
     import sys
+
     ts = sys.argv[1:] or ["AAPL", "MSFT", "7203.T"]
     h = fetch(ts, order=("yahoo", "stooq"), period="6mo", min_bars=30)
     for t, d in h.items():

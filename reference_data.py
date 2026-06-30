@@ -33,17 +33,25 @@ import requests
 
 warnings.filterwarnings("ignore")
 
-CACHE = Path(os.environ.get("REF_DATA_CACHE",
-                            Path.home() / "Downloads" / "data" / "reference_data"))
+CACHE = Path(
+    os.environ.get("REF_DATA_CACHE", Path.home() / "Downloads" / "data" / "reference_data")
+)
 CACHE.mkdir(parents=True, exist_ok=True)
 _UA = {"User-Agent": "Mozilla/5.0 (academic-research)"}
 
 DAMODARAN = "https://pages.stern.nyu.edu/~adamodar/pc/datasets"
 # region suffix: "" = US, "Emerg" = emerging (incl. India), "Europe", "Japan", "China", "Global"
-DAMO_FILES = {"pe": "pedata{r}.xls", "roe": "roe{r}.xls", "beta": "beta{r}.xls",
-              "margin": "margin{r}.xls", "wacc": "wacc{r}.xls"}
-FRENCH_3F = ("https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/"
-             "F-F_Research_Data_Factors_CSV.zip")
+DAMO_FILES = {
+    "pe": "pedata{r}.xls",
+    "roe": "roe{r}.xls",
+    "beta": "beta{r}.xls",
+    "margin": "margin{r}.xls",
+    "wacc": "wacc{r}.xls",
+}
+FRENCH_3F = (
+    "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/"
+    "F-F_Research_Data_Factors_CSV.zip"
+)
 
 
 def _cached_get(url: str, fname: str) -> bytes:
@@ -73,7 +81,8 @@ def _read_damodaran(raw: bytes) -> Optional[pd.DataFrame]:
         for i in range(len(probe)):
             row = [str(x).strip().lower() for x in probe.iloc[i].tolist()]
             if any(c == "industry name" for c in row):
-                hdr = i; break
+                hdr = i
+                break
         if hdr is None:
             continue
         df = pd.read_excel(io.BytesIO(raw), sheet_name=sh, header=hdr)
@@ -109,20 +118,25 @@ def damodaran(metric: str = "pe", region: str = "emerg") -> Optional[pd.DataFram
     return None
 
 
-def industry_metric(industry: str, metric: str = "pe", region: str = "emerg",
-                    column_hint: Optional[str] = None) -> Optional[float]:
+def industry_metric(
+    industry: str, metric: str = "pe", region: str = "emerg", column_hint: Optional[str] = None
+) -> Optional[float]:
     """Look up a single industry's benchmark value (best-effort column match)."""
     df = damodaran(metric, region)
     if df is None or not industry:
         return None
     key = str(industry).strip().lower()
     row = df[df["_key"] == key]
-    if row.empty:                      # loose contains-match
+    if row.empty:  # loose contains-match
         row = df[df["_key"].str.contains(key[:8], na=False)]
     if row.empty:
         return None
-    hints = {"pe": ["current pe", "trailing pe", "pe"], "roe": ["roe"],
-             "beta": ["beta", "average levered beta"], "margin": ["net margin", "margin"]}
+    hints = {
+        "pe": ["current pe", "trailing pe", "pe"],
+        "roe": ["roe"],
+        "beta": ["beta", "average levered beta"],
+        "margin": ["net margin", "margin"],
+    }
     cands = [column_hint] if column_hint else []
     cands += hints.get(metric, [metric])
     for h in cands:
@@ -152,7 +166,7 @@ def french_factors() -> Optional[pd.DataFrame]:
             if len(parts) >= 5 and parts[0].isdigit() and len(parts[0]) == 6:
                 rows.append(parts[:5])
             elif rows and parts[0] and not parts[0].isdigit():
-                break          # reached the annual block / footer
+                break  # reached the annual block / footer
         if not rows:
             return None
         df = pd.DataFrame(rows, columns=["YYYYMM", "Mkt-RF", "SMB", "HML", "RF"])
@@ -176,7 +190,7 @@ def damodaran_companies(refresh: bool = False) -> Optional[pd.DataFrame]:
     except Exception:
         return None
     df.columns = [str(c).strip() for c in df.columns]
-    if "Exchange:Ticker" in df.columns:                      # split into exch + ticker
+    if "Exchange:Ticker" in df.columns:  # split into exch + ticker
         et = df["Exchange:Ticker"].astype(str).str.split(":", n=1, expand=True)
         df["Exchange"] = et[0].str.strip()
         df["Ticker"] = et[1].str.strip() if et.shape[1] > 1 else None
@@ -206,9 +220,9 @@ def aqr_links() -> list[str]:
     try:
         r = requests.get("https://www.aqr.com/Insights/Datasets", headers=_UA, timeout=30)
         import re
+
         links = re.findall(r'href="([^"]+\.xlsx?)"', r.text, flags=re.I)
-        return sorted({l if l.startswith("http") else "https://www.aqr.com" + l
-                       for l in links})
+        return sorted({l if l.startswith("http") else "https://www.aqr.com" + l for l in links})
     except Exception:
         return []
 

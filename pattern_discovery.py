@@ -37,38 +37,56 @@ import pandas as pd
 
 warnings.filterwarnings("ignore")
 
-from stock_utils import cagr, pct_change
+from stock_utils import pct_change
 
 try:
-    from sklearn.preprocessing import StandardScaler
-    from sklearn.cluster import KMeans, DBSCAN
+    from sklearn.cluster import DBSCAN, KMeans
     from sklearn.decomposition import PCA
     from sklearn.ensemble import GradientBoostingRegressor
+    from sklearn.metrics import mean_absolute_error, r2_score
     from sklearn.model_selection import train_test_split
-    from sklearn.metrics import r2_score, mean_absolute_error
+    from sklearn.preprocessing import StandardScaler
+
     _SK_OK = True
 except ImportError:
     _SK_OK = False
 
 CACHE_DIR = Path.home() / "Downloads" / "market_cache" / "ohlc"
-REF_DIR   = Path.home() / "nse_screener_reference" / "ohlc_cache"
-OUT_DIR   = Path("./pattern_results"); OUT_DIR.mkdir(exist_ok=True)
+REF_DIR = Path.home() / "nse_screener_reference" / "ohlc_cache"
+OUT_DIR = Path("./pattern_results")
+OUT_DIR.mkdir(exist_ok=True)
 
-DISCLAIMER = ("⚠️  Patterns are historical associations discovered by unsupervised/"
-              "supervised ML. They are NOT predictions and need not persist. "
-              "Educational/research use only. NOT investment advice.")
+DISCLAIMER = (
+    "⚠️  Patterns are historical associations discovered by unsupervised/"
+    "supervised ML. They are NOT predictions and need not persist. "
+    "Educational/research use only. NOT investment advice."
+)
 
 FEATURE_NAMES = [
-    "ret_1m", "ret_3m", "ret_6m", "ret_12m",        # momentum
-    "vol_20d", "vol_60d", "vol_ratio",               # volatility
-    "dist_52w_high", "dist_52w_low",                 # position in range
-    "dma50_gap", "dma200_gap", "dma_trend",          # trend
-    "rsi_14", "above_200dma_pct_days",               # technical state
-    "max_drawdown", "calmar_proxy",                  # risk
-    "avg_dollar_vol", "vol_trend",                   # liquidity
-    "skew_60d", "kurt_60d",                           # return shape
-    "up_day_ratio", "gap_freq",                      # behaviour
-    "trend_strength", "mean_reversion",              # regime tendency
+    "ret_1m",
+    "ret_3m",
+    "ret_6m",
+    "ret_12m",  # momentum
+    "vol_20d",
+    "vol_60d",
+    "vol_ratio",  # volatility
+    "dist_52w_high",
+    "dist_52w_low",  # position in range
+    "dma50_gap",
+    "dma200_gap",
+    "dma_trend",  # trend
+    "rsi_14",
+    "above_200dma_pct_days",  # technical state
+    "max_drawdown",
+    "calmar_proxy",  # risk
+    "avg_dollar_vol",
+    "vol_trend",  # liquidity
+    "skew_60d",
+    "kurt_60d",  # return shape
+    "up_day_ratio",
+    "gap_freq",  # behaviour
+    "trend_strength",
+    "mean_reversion",  # regime tendency
 ]
 
 
@@ -76,8 +94,8 @@ FEATURE_NAMES = [
 # STEP 1 — DATA COLLECTION & CLEANSING
 # ══════════════════════════════════════════════════════════════════════════════
 
-def load_and_clean(market: str = "ALL", max_stocks: int = 0,
-                   min_bars: int = 252) -> dict:
+
+def load_and_clean(market: str = "ALL", max_stocks: int = 0, min_bars: int = 252) -> dict:
     """Load Parquet cache, clean each frame, return {symbol: clean_df}."""
     print("STEP 1 — Data Collection & Cleansing")
     files = list(CACHE_DIR.glob("*.parquet")) + list(REF_DIR.glob("*.parquet"))
@@ -96,27 +114,32 @@ def load_and_clean(market: str = "ALL", max_stocks: int = 0,
     seen_symbols = set()
     for f in files:
         sym = f.stem
-        if sym in seen_symbols:        # dedupe across cache + reference dirs
+        if sym in seen_symbols:  # dedupe across cache + reference dirs
             continue
         try:
             df = pd.read_parquet(f)
             if df.empty or len(df) < min_bars:
-                dropped += 1; continue
+                dropped += 1
+                continue
             # Cleanse: sort, dedupe index, forward/back-fill gaps, drop zero-price
             df = df[~df.index.duplicated(keep="last")].sort_index()
-            df = df[["Open","High","Low","Close","Volume"]].ffill().bfill()
+            df = df[["Open", "High", "Low", "Close", "Volume"]].ffill().bfill()
             if (df["Close"] <= 0).any() or df["Close"].isnull().all():
-                dropped += 1; continue
+                dropped += 1
+                continue
             # Liquidity floor: median dollar volume > 0
             if (df["Close"] * df["Volume"]).median() <= 0:
-                dropped += 1; continue
+                dropped += 1
+                continue
             cleaned[sym] = df
             seen_symbols.add(sym)
         except Exception:
             dropped += 1
 
-    print(f"  Loaded {len(cleaned)} clean stocks | dropped {dropped} "
-          f"(short history / illiquid / corrupt)")
+    print(
+        f"  Loaded {len(cleaned)} clean stocks | dropped {dropped} "
+        f"(short history / illiquid / corrupt)"
+    )
     return cleaned
 
 
@@ -124,7 +147,7 @@ def load_and_clean(market: str = "ALL", max_stocks: int = 0,
 # STEP 2 — FEATURE EXTRACTION
 # ══════════════════════════════════════════════════════════════════════════════
 
-FWD = 21   # forward horizon for the supervised target (trading days)
+FWD = 21  # forward horizon for the supervised target (trading days)
 
 
 def extract_features(symbol: str, df_full: pd.DataFrame) -> dict:
@@ -139,8 +162,8 @@ def extract_features(symbol: str, df_full: pd.DataFrame) -> dict:
         return {}
 
     # As-of split: features see [:-FWD], target measures the held-out tail
-    df       = df_full.iloc[:-FWD]
-    fut_close = float(df_full["Close"].iloc[-1])    # price FWD days after as-of
+    df = df_full.iloc[:-FWD]
+    fut_close = float(df_full["Close"].iloc[-1])  # price FWD days after as-of
 
     c = df["Close"].astype(float)
     h = df["High"].astype(float)
@@ -158,34 +181,34 @@ def extract_features(symbol: str, df_full: pd.DataFrame) -> dict:
     feat = {"symbol": symbol}
 
     # Momentum (price return over windows)
-    feat["ret_1m"]  = safe(pct_change(last, c.iloc[-21]))  if n > 21  else 0
-    feat["ret_3m"]  = safe(pct_change(last, c.iloc[-63]))  if n > 63  else 0
-    feat["ret_6m"]  = safe(pct_change(last, c.iloc[-126])) if n > 126 else 0
+    feat["ret_1m"] = safe(pct_change(last, c.iloc[-21])) if n > 21 else 0
+    feat["ret_3m"] = safe(pct_change(last, c.iloc[-63])) if n > 63 else 0
+    feat["ret_6m"] = safe(pct_change(last, c.iloc[-126])) if n > 126 else 0
     feat["ret_12m"] = safe(pct_change(last, c.iloc[-252])) if n > 252 else 0
 
     # Volatility
-    feat["vol_20d"]   = safe(rets.tail(20).std() * np.sqrt(252) * 100)
-    feat["vol_60d"]   = safe(rets.tail(60).std() * np.sqrt(252) * 100)
+    feat["vol_20d"] = safe(rets.tail(20).std() * np.sqrt(252) * 100)
+    feat["vol_60d"] = safe(rets.tail(60).std() * np.sqrt(252) * 100)
     feat["vol_ratio"] = safe(feat["vol_20d"] / feat["vol_60d"]) if feat["vol_60d"] else 1
 
     # Position in 52-week range
     h52, l52 = h.tail(252).max(), l.tail(252).min()
     feat["dist_52w_high"] = safe((last - h52) / h52 * 100)
-    feat["dist_52w_low"]  = safe((last - l52) / l52 * 100)
+    feat["dist_52w_low"] = safe((last - l52) / l52 * 100)
 
     # Trend
-    dma50  = c.rolling(50).mean().iloc[-1]
+    dma50 = c.rolling(50).mean().iloc[-1]
     dma200 = c.rolling(200).mean().iloc[-1]
-    feat["dma50_gap"]  = safe((last - dma50) / dma50 * 100)
+    feat["dma50_gap"] = safe((last - dma50) / dma50 * 100)
     feat["dma200_gap"] = safe((last - dma200) / dma200 * 100)
-    feat["dma_trend"]  = safe((dma50 - dma200) / dma200 * 100)
+    feat["dma_trend"] = safe((dma50 - dma200) / dma200 * 100)
 
     # RSI(14)
     delta = c.diff()
-    gain  = delta.clip(lower=0).rolling(14).mean().iloc[-1]
-    loss  = (-delta.clip(upper=0)).rolling(14).mean().iloc[-1]
-    rs    = gain / loss if loss else 0
-    feat["rsi_14"] = safe(100 - 100/(1+rs)) if loss else 100
+    gain = delta.clip(lower=0).rolling(14).mean().iloc[-1]
+    loss = (-delta.clip(upper=0)).rolling(14).mean().iloc[-1]
+    rs = gain / loss if loss else 0
+    feat["rsi_14"] = safe(100 - 100 / (1 + rs)) if loss else 100
 
     # % of days above 200 DMA (trend persistence)
     dma200_series = c.rolling(200).mean()
@@ -194,14 +217,16 @@ def extract_features(symbol: str, df_full: pd.DataFrame) -> dict:
 
     # Risk
     cumul = (1 + rets).cumprod()
-    dd    = (cumul - cumul.cummax()) / cumul.cummax()
-    feat["max_drawdown"]  = safe(dd.min() * 100)
-    feat["calmar_proxy"]  = safe(feat["ret_12m"] / abs(feat["max_drawdown"])) if feat["max_drawdown"] else 0
+    dd = (cumul - cumul.cummax()) / cumul.cummax()
+    feat["max_drawdown"] = safe(dd.min() * 100)
+    feat["calmar_proxy"] = (
+        safe(feat["ret_12m"] / abs(feat["max_drawdown"])) if feat["max_drawdown"] else 0
+    )
 
     # Liquidity
-    dvol = (c * v)
+    dvol = c * v
     feat["avg_dollar_vol"] = safe(np.log1p(dvol.tail(60).mean()))
-    feat["vol_trend"]      = safe(pct_change(v.tail(20).mean(), v.tail(60).mean()))
+    feat["vol_trend"] = safe(pct_change(v.tail(20).mean(), v.tail(60).mean()))
 
     # Return shape
     feat["skew_60d"] = safe(rets.tail(60).skew())
@@ -209,7 +234,7 @@ def extract_features(symbol: str, df_full: pd.DataFrame) -> dict:
 
     # Behaviour
     feat["up_day_ratio"] = safe((rets > 0).tail(252).mean() * 100)
-    feat["gap_freq"]     = safe((abs(df["Open"]/c.shift(1) - 1) > 0.02).tail(252).mean() * 100)
+    feat["gap_freq"] = safe((abs(df["Open"] / c.shift(1) - 1) > 0.02).tail(252).mean() * 100)
 
     # Regime tendency: trend strength (autocorrelation of sign)
     sign = np.sign(rets.tail(120))
@@ -228,10 +253,14 @@ def extract_features(symbol: str, df_full: pd.DataFrame) -> dict:
 def build_feature_matrix(cleaned: dict) -> pd.DataFrame:
     print("\nSTEP 2 — Feature Extraction")
     from stock_utils import parallel_map
+
     rows = parallel_map(
         lambda kv: extract_features(kv[0], kv[1]) or None,
-        list(cleaned.items()), workers=8, progress_every=500,
-        label="stocks", verbose=True,
+        list(cleaned.items()),
+        workers=8,
+        progress_every=500,
+        label="stocks",
+        verbose=True,
     )
     df = pd.DataFrame([r for r in rows if r and len(r) > 5])
     df = df.dropna(subset=FEATURE_NAMES, how="any")
@@ -242,6 +271,7 @@ def build_feature_matrix(cleaned: dict) -> pd.DataFrame:
 # ══════════════════════════════════════════════════════════════════════════════
 # STEP 3 — MODEL SELECTION & TRAINING
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def discover_clusters(fm: pd.DataFrame, n_clusters: int = 6) -> tuple:
     """Unsupervised: KMeans behavioural archetypes + PCA + DBSCAN anomalies."""
@@ -257,14 +287,16 @@ def discover_clusters(fm: pd.DataFrame, n_clusters: int = 6) -> tuple:
     # PCA for variance explained + 2D structure
     pca = PCA(n_components=min(5, len(FEATURE_NAMES)))
     pcs = pca.fit_transform(Xs)
-    fm["pc1"], fm["pc2"] = pcs[:,0], pcs[:,1]
+    fm["pc1"], fm["pc2"] = pcs[:, 0], pcs[:, 1]
     evr = pca.explained_variance_ratio_
-    print(f"  KMeans: {n_clusters} clusters | PCA top-2 explain "
-          f"{(evr[0]+evr[1])*100:.0f}% of variance")
+    print(
+        f"  KMeans: {n_clusters} clusters | PCA top-2 explain "
+        f"{(evr[0]+evr[1])*100:.0f}% of variance"
+    )
 
     # DBSCAN for anomaly/outlier detection
     db = DBSCAN(eps=3.0, min_samples=5).fit(Xs)
-    fm["is_anomaly"] = (db.labels_ == -1)
+    fm["is_anomaly"] = db.labels_ == -1
     n_anom = int(fm["is_anomaly"].sum())
     print(f"  DBSCAN: {n_anom} anomalous stocks (don't fit any dense cluster)")
 
@@ -279,26 +311,31 @@ def supervised_drivers(fm: pd.DataFrame) -> pd.DataFrame:
         print("  Insufficient labelled data for supervised model")
         return pd.DataFrame()
 
-    X = sub[FEATURE_NAMES].replace([np.inf,-np.inf],0).fillna(0).values
+    X = sub[FEATURE_NAMES].replace([np.inf, -np.inf], 0).fillna(0).values
     y = sub["_target_fwd21"].values
     Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.25, random_state=42)
 
-    model = GradientBoostingRegressor(n_estimators=150, max_depth=3,
-                                      learning_rate=0.05, random_state=42)
+    model = GradientBoostingRegressor(
+        n_estimators=150, max_depth=3, learning_rate=0.05, random_state=42
+    )
     model.fit(Xtr, ytr)
     pred = model.predict(Xte)
-    r2   = r2_score(yte, pred)
-    mae  = mean_absolute_error(yte, pred)
+    r2 = r2_score(yte, pred)
+    mae = mean_absolute_error(yte, pred)
     print(f"  Model fit: R²={r2:.3f} | MAE={mae:.2f}% (forward 21-day return)")
     if r2 < 0.05:
-        print("  ⚠️  Low R² — forward returns are weakly predictable from these "
-              "features (consistent with semi-efficient markets)")
+        print(
+            "  ⚠️  Low R² — forward returns are weakly predictable from these "
+            "features (consistent with semi-efficient markets)"
+        )
 
-    imp = pd.DataFrame({
-        "Feature": FEATURE_NAMES,
-        "Importance": model.feature_importances_,
-    }).sort_values("Importance", ascending=False)
-    imp["Importance%"] = (imp["Importance"]*100).round(1)
+    imp = pd.DataFrame(
+        {
+            "Feature": FEATURE_NAMES,
+            "Importance": model.feature_importances_,
+        }
+    ).sort_values("Importance", ascending=False)
+    imp["Importance%"] = (imp["Importance"] * 100).round(1)
     return imp
 
 
@@ -316,15 +353,14 @@ def find_comoving_pairs(cleaned: dict, fm: pd.DataFrame, top_n: int = 15) -> pd.
                 rets[s] = r
     if len(rets) < 2:
         return pd.DataFrame()
-    rdf  = pd.DataFrame(rets).dropna()
+    rdf = pd.DataFrame(rets).dropna()
     corr = rdf.corr()
     syms = corr.columns.tolist()
     for i in range(len(syms)):
-        for j in range(i+1, len(syms)):
-            c = corr.iloc[i,j]
+        for j in range(i + 1, len(syms)):
+            c = corr.iloc[i, j]
             if c > 0.80:
-                rows.append({"Stock_A": syms[i], "Stock_B": syms[j],
-                             "Correlation": round(c,3)})
+                rows.append({"Stock_A": syms[i], "Stock_B": syms[j], "Correlation": round(c, 3)})
     pairs = pd.DataFrame(rows).sort_values("Correlation", ascending=False).head(top_n)
     print(f"  Found {len(pairs)} pairs with correlation > 0.80")
     return pairs
@@ -334,57 +370,75 @@ def find_comoving_pairs(cleaned: dict, fm: pd.DataFrame, top_n: int = 15) -> pd.
 # STEP 4 — INSIGHT EXTRACTION
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def name_archetype(profile: pd.Series) -> str:
     """Translate a cluster's mean feature profile into a human-readable archetype."""
-    mom  = profile["ret_12m"]; vol = profile["vol_60d"]
-    trend = profile["dma200_gap"]; dd = profile["max_drawdown"]
-    rsi = profile["rsi_14"]; mr = profile["mean_reversion"]
+    mom = profile["ret_12m"]
+    vol = profile["vol_60d"]
+    trend = profile["dma200_gap"]
+    dd = profile["max_drawdown"]
+    rsi = profile["rsi_14"]
+    mr = profile["mean_reversion"]
 
-    if mom > 40 and trend > 10:        return "🚀 High-Momentum Leaders"
-    if mom < -20 and trend < -10:      return "📉 Sustained Downtrenders"
-    if vol > 50:                       return "⚡ High-Volatility Movers"
-    if abs(trend) < 5 and vol < 25:    return "😴 Low-Vol Range-Bound"
-    if mr > 10:                        return "🔄 Mean-Reverters"
-    if rsi > 65 and mom > 15:          return "🔥 Overbought Momentum"
-    if dd < -50:                       return "🩹 Deep-Drawdown Recovery"
+    if mom > 40 and trend > 10:
+        return "🚀 High-Momentum Leaders"
+    if mom < -20 and trend < -10:
+        return "📉 Sustained Downtrenders"
+    if vol > 50:
+        return "⚡ High-Volatility Movers"
+    if abs(trend) < 5 and vol < 25:
+        return "😴 Low-Vol Range-Bound"
+    if mr > 10:
+        return "🔄 Mean-Reverters"
+    if rsi > 65 and mom > 15:
+        return "🔥 Overbought Momentum"
+    if dd < -50:
+        return "🩹 Deep-Drawdown Recovery"
     return "⚖️  Balanced / Mixed"
 
 
-def extract_insights(fm: pd.DataFrame, importances: pd.DataFrame,
-                     pairs: pd.DataFrame, evr) -> dict:
+def extract_insights(fm: pd.DataFrame, importances: pd.DataFrame, pairs: pd.DataFrame, evr) -> dict:
     print("\nSTEP 4 — Insight Extraction")
-    print("="*78)
+    print("=" * 78)
     insights = {}
 
     # Cluster archetypes
     print("\n📊 BEHAVIOURAL ARCHETYPES (unsupervised KMeans clusters):")
-    print(f"  {'Archetype':<32} {'N':>5} {'Ret12m':>8} {'Vol60d':>8} "
-          f"{'200DMA':>8} {'MaxDD':>8} {'RSI':>6}")
-    print("  " + "─"*78)
+    print(
+        f"  {'Archetype':<32} {'N':>5} {'Ret12m':>8} {'Vol60d':>8} "
+        f"{'200DMA':>8} {'MaxDD':>8} {'RSI':>6}"
+    )
+    print("  " + "─" * 78)
     cluster_summaries = []
     for cl in sorted(fm["cluster"].unique()):
-        grp = fm[fm["cluster"]==cl]
+        grp = fm[fm["cluster"] == cl]
         prof = grp[FEATURE_NAMES].mean()
         name = name_archetype(prof)
-        cluster_summaries.append({
-            "Cluster": cl, "Archetype": name, "Count": len(grp),
-            "Avg_Ret12m": round(prof["ret_12m"],1),
-            "Avg_Vol60d": round(prof["vol_60d"],1),
-            "Avg_200DMA_gap": round(prof["dma200_gap"],1),
-            "Avg_MaxDD": round(prof["max_drawdown"],1),
-            "Avg_RSI": round(prof["rsi_14"],0),
-            "Examples": ", ".join(grp["symbol"].head(4).tolist()),
-        })
-        print(f"  {name:<32} {len(grp):>5} {prof['ret_12m']:>7.1f}% "
-              f"{prof['vol_60d']:>7.1f}% {prof['dma200_gap']:>7.1f}% "
-              f"{prof['max_drawdown']:>7.1f}% {prof['rsi_14']:>6.0f}")
+        cluster_summaries.append(
+            {
+                "Cluster": cl,
+                "Archetype": name,
+                "Count": len(grp),
+                "Avg_Ret12m": round(prof["ret_12m"], 1),
+                "Avg_Vol60d": round(prof["vol_60d"], 1),
+                "Avg_200DMA_gap": round(prof["dma200_gap"], 1),
+                "Avg_MaxDD": round(prof["max_drawdown"], 1),
+                "Avg_RSI": round(prof["rsi_14"], 0),
+                "Examples": ", ".join(grp["symbol"].head(4).tolist()),
+            }
+        )
+        print(
+            f"  {name:<32} {len(grp):>5} {prof['ret_12m']:>7.1f}% "
+            f"{prof['vol_60d']:>7.1f}% {prof['dma200_gap']:>7.1f}% "
+            f"{prof['max_drawdown']:>7.1f}% {prof['rsi_14']:>6.0f}"
+        )
     insights["clusters"] = pd.DataFrame(cluster_summaries)
 
     # Feature importances
     if not importances.empty:
-        print(f"\n🎯 RETURN DRIVERS (supervised — predicts forward 21d return):")
+        print("\n🎯 RETURN DRIVERS (supervised — predicts forward 21d return):")
         for _, r in importances.head(8).iterrows():
-            bar = "█"*int(r["Importance%"]/2)
+            bar = "█" * int(r["Importance%"] / 2)
             print(f"  {r['Feature']:<22} {r['Importance%']:>5.1f}%  {bar}")
         insights["importances"] = importances
 
@@ -392,13 +446,13 @@ def extract_insights(fm: pd.DataFrame, importances: pd.DataFrame,
     anom = fm[fm["is_anomaly"]]
     if not anom.empty:
         print(f"\n🔍 ANOMALIES ({len(anom)} stocks not fitting any pattern):")
-        top_anom = anom.nlargest(min(10,len(anom)), "vol_60d")
+        top_anom = anom.nlargest(min(10, len(anom)), "vol_60d")
         print(f"  {', '.join(top_anom['symbol'].tolist()[:12])}")
-        insights["anomalies"] = anom[["symbol"]+FEATURE_NAMES]
+        insights["anomalies"] = anom[["symbol"] + FEATURE_NAMES]
 
     # Co-moving pairs
     if not pairs.empty:
-        print(f"\n🔗 CO-MOVING PAIRS (correlation > 0.80 — pairs-trade candidates):")
+        print("\n🔗 CO-MOVING PAIRS (correlation > 0.80 — pairs-trade candidates):")
         for _, r in pairs.head(8).iterrows():
             print(f"  {r['Stock_A']:<14} ↔ {r['Stock_B']:<14} ρ={r['Correlation']}")
         insights["pairs"] = pairs
@@ -413,7 +467,7 @@ def save_excel(insights: dict, fm: pd.DataFrame, market: str) -> Path:
     ts = datetime.now().strftime("%Y%m%d_%H%M")
     path = OUT_DIR / f"patterns_{market}_{ts}.xlsx"
     with pd.ExcelWriter(path, engine="openpyxl") as w:
-        pd.DataFrame({"DISCLAIMER":[DISCLAIMER]}).to_excel(w, "DISCLAIMER", index=False)
+        pd.DataFrame({"DISCLAIMER": [DISCLAIMER]}).to_excel(w, "DISCLAIMER", index=False)
         if "clusters" in insights:
             insights["clusters"].to_excel(w, "Archetypes", index=False)
         if "importances" in insights:
@@ -422,38 +476,43 @@ def save_excel(insights: dict, fm: pd.DataFrame, market: str) -> Path:
             insights["pairs"].to_excel(w, "CoMoving_Pairs", index=False)
         if "anomalies" in insights:
             insights["anomalies"].head(100).to_excel(w, "Anomalies", index=False)
-        fm[["symbol","cluster","is_anomaly"]+FEATURE_NAMES].to_excel(
-            w, "All_Features", index=False)
+        fm[["symbol", "cluster", "is_anomaly"] + FEATURE_NAMES].to_excel(
+            w, "All_Features", index=False
+        )
     print(f"\n  📊 Pattern Excel → {path}")
     return path
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+
 def main(market="ALL", n_clusters=6, max_stocks=0):
     print(f"\n{'#'*78}")
     print(f"  AI PATTERN DISCOVERY — {market} market | {datetime.now():%d %b %Y %H:%M}")
     print(f"{'#'*78}\n{DISCLAIMER}\n")
     if not _SK_OK:
-        print("❌ pip install scikit-learn"); return
+        print("❌ pip install scikit-learn")
+        return
 
     cleaned = load_and_clean(market, max_stocks)
     if len(cleaned) < 50:
-        print("Insufficient data."); return
+        print("Insufficient data.")
+        return
     fm = build_feature_matrix(cleaned)
     if len(fm) < 50:
-        print("Insufficient features."); return
+        print("Insufficient features.")
+        return
 
     fm, km, pca, evr = discover_clusters(fm, n_clusters)
-    importances      = supervised_drivers(fm)
-    pairs            = find_comoving_pairs(cleaned, fm)
-    insights         = extract_insights(fm, importances, pairs, evr)
+    importances = supervised_drivers(fm)
+    pairs = find_comoving_pairs(cleaned, fm)
+    insights = extract_insights(fm, importances, pairs, evr)
     save_excel(insights, fm, market)
 
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser(description="AI pattern discovery across cached markets")
-    p.add_argument("--market", choices=["IN","US","ALL"], default="ALL")
+    p.add_argument("--market", choices=["IN", "US", "ALL"], default="ALL")
     p.add_argument("--clusters", type=int, default=6)
     p.add_argument("--max", type=int, default=0, help="Cap stocks for speed")
     a = p.parse_args()

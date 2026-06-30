@@ -38,16 +38,21 @@ except ImportError:
     clean_ohlcv = None
 
 import os
-CACHE = Path(os.environ.get("BHAV_CACHE",
-                            Path.home() / "Downloads" / "data" / "bhavcopy_cache"))
+
+CACHE = Path(os.environ.get("BHAV_CACHE", Path.home() / "Downloads" / "data" / "bhavcopy_cache"))
 (NSE_DIR := CACHE / "nse").mkdir(parents=True, exist_ok=True)
 (BSE_DIR := CACHE / "bse").mkdir(parents=True, exist_ok=True)
-ASSEMBLED = CACHE / "assembled_long.parquet"   # consolidated raw (Date,Symbol,OHLCV)
-CLEANED   = CACHE / "cleaned_long.parquet"     # post-clean_ohlcv long frame (fast path)
-NODATA_FILE = CACHE / "no_data_dates.json"     # negative cache: holidays / unpublished
+ASSEMBLED = CACHE / "assembled_long.parquet"  # consolidated raw (Date,Symbol,OHLCV)
+CLEANED = CACHE / "cleaned_long.parquet"  # post-clean_ohlcv long frame (fast path)
+NODATA_FILE = CACHE / "no_data_dates.json"  # negative cache: holidays / unpublished
 
-OHLC_MAP = {"OpnPric": "Open", "HghPric": "High", "LwPric": "Low",
-            "ClsPric": "Close", "TtlTradgVol": "Volume"}
+OHLC_MAP = {
+    "OpnPric": "Open",
+    "HghPric": "High",
+    "LwPric": "Low",
+    "ClsPric": "Close",
+    "TtlTradgVol": "Volume",
+}
 # BSE equity is filtered on FinInstrmTp=="STK"; NSE equity on SctySrs=="EQ".
 
 
@@ -75,8 +80,10 @@ def _bse_day(day: _dt.date, sess: requests.Session) -> Optional[pd.DataFrame]:
     f = BSE_DIR / f"{day:%Y%m%d}.csv"
     if f.exists():
         return pd.read_csv(f)
-    url = ("https://www.bseindia.com/download/BhavCopy/Equity/"
-           f"BhavCopy_BSE_CM_0_0_0_{day:%Y%m%d}_F_0000.CSV")
+    url = (
+        "https://www.bseindia.com/download/BhavCopy/Equity/"
+        f"BhavCopy_BSE_CM_0_0_0_{day:%Y%m%d}_F_0000.CSV"
+    )
     try:
         r = sess.get(url, timeout=25)
         if r.status_code != 200 or len(r.content) < 1000:
@@ -91,8 +98,13 @@ def _bse_day(day: _dt.date, sess: requests.Session) -> Optional[pd.DataFrame]:
 
 
 # ── public API ─────────────────────────────────────────────────────────────────
-def fetch_history(n_days: int = 400, workers: int = 8, exchanges=("NSE", "BSE"),
-                  min_bars: int = 60, verbose: bool = True) -> Dict[str, pd.DataFrame]:
+def fetch_history(
+    n_days: int = 400,
+    workers: int = 8,
+    exchanges=("NSE", "BSE"),
+    min_bars: int = 60,
+    verbose: bool = True,
+) -> Dict[str, pd.DataFrame]:
     """Assemble {symbol: cleaned OHLCV DataFrame} from NSE+BSE bhavcopy.
 
     n_days = calendar days to look back (~400 ≈ 1 trading year after weekends/
@@ -105,15 +117,17 @@ def fetch_history(n_days: int = 400, workers: int = 8, exchanges=("NSE", "BSE"),
     # keep only actual trading days (skip weekends AND NSE/BSE holidays)
     try:
         from market_calendar import trading_days as _trading_days
+
         days = _trading_days(cal)
     except Exception:
-        days = [d for d in cal if d.weekday() < 5]        # fallback: weekdays only
+        days = [d for d in cal if d.weekday() < 5]  # fallback: weekdays only
     want_dates = {pd.Timestamp(d) for d in days}
 
     # ── negative cache: dates already confirmed to have NO bhavcopy ─────────────
     # (holidays / not-yet-published). Skipping these avoids re-hitting the network
     # for the same dead dates on every run.
     import json
+
     no_data = set()
     if NODATA_FILE.exists():
         try:
@@ -163,10 +177,12 @@ def fetch_history(n_days: int = 400, workers: int = 8, exchanges=("NSE", "BSE"),
         except Exception:
             cached = pd.DataFrame()
     have_dates = set(pd.to_datetime(cached["Date"].unique())) if not cached.empty else set()
-    missing = sorted(want_dates - have_dates - no_data)   # skip known-dead dates
+    missing = sorted(want_dates - have_dates - no_data)  # skip known-dead dates
     if verbose:
-        print(f"  assembled cache: {len(have_dates)} dates known, "
-              f"{len(no_data)} dead dates skipped, {len(missing)} new date(s) to fetch")
+        print(
+            f"  assembled cache: {len(have_dates)} dates known, "
+            f"{len(no_data)} dead dates skipped, {len(missing)} new date(s) to fetch"
+        )
 
     # FAST PATH: nothing new to fetch and a cleaned cache exists → serve it
     if not missing and CLEANED.exists():
@@ -183,13 +199,15 @@ def fetch_history(n_days: int = 400, workers: int = 8, exchanges=("NSE", "BSE"),
 
     if missing and "NSE" in exchanges:
         from nse import NSE
+
         nse_client = NSE(download_folder=str(NSE_DIR))
         ok = 0
         for ts in missing:
             d = ts.date()
             df = _nse_day(d, nse_client)
             if df is not None and len(df):
-                frames.append(("NSE", d, df)); ok += 1
+                frames.append(("NSE", d, df))
+                ok += 1
         try:
             nse_client.exit()
         except Exception:
@@ -199,15 +217,16 @@ def fetch_history(n_days: int = 400, workers: int = 8, exchanges=("NSE", "BSE"),
 
     if missing and "BSE" in exchanges:
         sess = requests.Session()
-        sess.headers.update({"User-Agent": "Mozilla/5.0",
-                             "Referer": "https://www.bseindia.com/"})
+        sess.headers.update({"User-Agent": "Mozilla/5.0", "Referer": "https://www.bseindia.com/"})
         ok = 0
         with ThreadPoolExecutor(max_workers=workers) as pool:
             futs = {pool.submit(_bse_day, ts.date(), sess): ts for ts in missing}
             for fut in as_completed(futs):
-                df = fut.result(); ts = futs[fut]
+                df = fut.result()
+                ts = futs[fut]
                 if df is not None and len(df):
-                    frames.append(("BSE", ts.date(), df)); ok += 1
+                    frames.append(("BSE", ts.date(), df))
+                    ok += 1
         if verbose:
             print(f"    BSE: +{ok} new trading days")
 
@@ -253,8 +272,10 @@ def fetch_history(n_days: int = 400, workers: int = 8, exchanges=("NSE", "BSE"),
         try:
             allrows.to_parquet(ASSEMBLED, compression="snappy", index=False)
             if verbose:
-                print(f"  assembled cache updated → {ASSEMBLED.name} "
-                      f"({len(allrows):,} rows, {allrows['Date'].nunique()} dates)")
+                print(
+                    f"  assembled cache updated → {ASSEMBLED.name} "
+                    f"({len(allrows):,} rows, {allrows['Date'].nunique()} dates)"
+                )
         except Exception as e:
             if verbose:
                 print(f"  (could not persist assembled cache: {e})")
@@ -281,11 +302,14 @@ def fetch_history(n_days: int = 400, workers: int = 8, exchanges=("NSE", "BSE"),
     try:
         parts = []
         for sym, g in out_all.items():
-            gg = g.reset_index(); gg.columns = ["Date", "Open", "High", "Low", "Close", "Volume"]
+            gg = g.reset_index()
+            gg.columns = ["Date", "Open", "High", "Low", "Close", "Volume"]
             gg["Symbol"] = sym
             parts.append(gg)
         if parts:
-            pd.concat(parts, ignore_index=True).to_parquet(CLEANED, compression="snappy", index=False)
+            pd.concat(parts, ignore_index=True).to_parquet(
+                CLEANED, compression="snappy", index=False
+            )
             if verbose:
                 print(f"  cleaned cache written → {CLEANED.name}")
     except Exception as e:
@@ -295,6 +319,7 @@ def fetch_history(n_days: int = 400, workers: int = 8, exchanges=("NSE", "BSE"),
     # sync the LMDB NoSQL store (fast keyed retrieval layer) with the fresh data
     try:
         from bhavcopy_store import build as _build_store
+
         _build_store(out_all, verbose=verbose)
     except Exception as e:
         if verbose:
@@ -330,10 +355,13 @@ def get_symbol(symbol: str, n_days: int = 400) -> Optional[pd.DataFrame]:
 
 if __name__ == "__main__":
     import sys
+
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 400
     h = fetch_history(n_days=n)
     print(f"\nSymbols: {len(h)}")
     for s in list(h)[:3]:
         df = h[s]
-        print(f"  {s}: {len(df)} bars, {df.index[0].date()}→{df.index[-1].date()}, "
-              f"last close ₹{df['Close'].iloc[-1]:.1f}")
+        print(
+            f"  {s}: {len(df)} bars, {df.index[0].date()}→{df.index[-1].date()}, "
+            f"last close ₹{df['Close'].iloc[-1]:.1f}"
+        )

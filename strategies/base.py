@@ -22,9 +22,10 @@ import pandas as pd
 @dataclass
 class StockData:
     """Everything a strategy might inspect for one ticker."""
+
     symbol: str
     market: str = ""
-    ohlcv: Optional[pd.DataFrame] = None          # Date-indexed OHLCV
+    ohlcv: Optional[pd.DataFrame] = None  # Date-indexed OHLCV
     # fundamentals (best-effort; any may be None)
     fundamentals: dict = field(default_factory=dict)
 
@@ -47,14 +48,19 @@ class Result:
     symbol: str
     strategy: str
     passed: bool
-    score: Optional[float] = None        # strategy-specific score / rank key
+    score: Optional[float] = None  # strategy-specific score / rank key
     metrics: dict = field(default_factory=dict)
     note: str = ""
 
     def row(self) -> dict:
-        return {"Symbol": self.symbol, "Strategy": self.strategy,
-                "Pass": "YES" if self.passed else "NO",
-                "Score": self.score, **self.metrics, "Note": self.note}
+        return {
+            "Symbol": self.symbol,
+            "Strategy": self.strategy,
+            "Pass": "YES" if self.passed else "NO",
+            "Score": self.score,
+            **self.metrics,
+            "Note": self.note,
+        }
 
 
 # ── small shared helpers ────────────────────────────────────────────────────────
@@ -80,6 +86,6 @@ def safe(v):
     """Return float or None (filters NaN)."""
     try:
         f = float(v)
-        return None if f != f else f          # NaN check
+        return None if f != f else f  # NaN check
     except (TypeError, ValueError):
         return None

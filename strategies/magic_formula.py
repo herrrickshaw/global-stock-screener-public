@@ -2,14 +2,19 @@
 # Magic Formula — Joel Greenblatt: rank by Earnings Yield (EBIT/EV) + Return on
 # Capital (EBIT/(Net WC + Net Fixed Assets)). High of both = cheap & good.
 from __future__ import annotations
-from .base import StockData, Result, safe
 
-META = {"name": "Magic Formula", "slug": "magic_formula", "category": "fundamental",
-        "description": "Greenblatt: high earnings yield (EBIT/EV) AND high return on "
-                       "capital. Ranked composite of the two.",
-        "needs": "fundamentals"}
-EY_MIN = 8.0     # % earnings yield floor for a standalone pass
-ROC_MIN = 15.0   # % return on capital floor
+from .base import Result, StockData, safe
+
+META = {
+    "name": "Magic Formula",
+    "slug": "magic_formula",
+    "category": "fundamental",
+    "description": "Greenblatt: high earnings yield (EBIT/EV) AND high return on "
+    "capital. Ranked composite of the two.",
+    "needs": "fundamentals",
+}
+EY_MIN = 8.0  # % earnings yield floor for a standalone pass
+ROC_MIN = 15.0  # % return on capital floor
 
 
 def screen(s: StockData) -> Result | None:
@@ -24,7 +29,11 @@ def screen(s: StockData) -> Result | None:
         return None
     passed = ey >= EY_MIN and roc >= ROC_MIN
     # composite score: higher EY + higher ROC rank better (sum, higher=better)
-    return Result(s.symbol, META["slug"], passed=passed,
-                  score=round(ey + roc, 2),
-                  metrics={"EarningsYield%": round(ey, 2), "ROC%": round(roc, 2)},
-                  note="cheap+quality" if passed else "")
+    return Result(
+        s.symbol,
+        META["slug"],
+        passed=passed,
+        score=round(ey + roc, 2),
+        metrics={"EarningsYield%": round(ey, 2), "ROC%": round(roc, 2)},
+        note="cheap+quality" if passed else "",
+    )

@@ -20,7 +20,6 @@ import warnings
 from pathlib import Path
 from typing import Dict, List, Optional
 
-import numpy as np
 import pandas as pd
 
 warnings.filterwarnings("ignore")
@@ -28,16 +27,35 @@ warnings.filterwarnings("ignore")
 INDEX_PATH = Path(__file__).parent / "cache_seed" / "liquidity_index.parquet"
 
 # market -> currency; LSE quotes pence, JSE cents → divide turnover by unit
-CCY = {"US": "USD", "IN": "INR", "CN": "CNY", "JP": "JPY", "EU": "EUR", "HK": "HKD",
-       "KR": "KRW", "TW": "TWD", "CA": "CAD", "UK": "GBP", "DE": "EUR", "AU": "AUD",
-       "SG": "SGD", "SA": "SAR", "BR": "BRL", "CH": "CHF", "ZA": "ZAR", "SE": "SEK",
-       "FI": "EUR", "DK": "DKK"}
+CCY = {
+    "US": "USD",
+    "IN": "INR",
+    "CN": "CNY",
+    "JP": "JPY",
+    "EU": "EUR",
+    "HK": "HKD",
+    "KR": "KRW",
+    "TW": "TWD",
+    "CA": "CAD",
+    "UK": "GBP",
+    "DE": "EUR",
+    "AU": "AUD",
+    "SG": "SGD",
+    "SA": "SAR",
+    "BR": "BRL",
+    "CH": "CHF",
+    "ZA": "ZAR",
+    "SE": "SEK",
+    "FI": "EUR",
+    "DK": "DKK",
+}
 UNIT = {"UK": 100.0, "ZA": 100.0}
 
 
 def _fx_rates(currencies) -> Dict[str, float]:
     """USD value of 1 unit-of-USD in each currency (live, with cache fallback)."""
     import yfinance as yf
+
     need = sorted(set(currencies) - {"USD"})
     fx = {"USD": 1.0}
     try:
@@ -56,6 +74,7 @@ def _fx_rates(currencies) -> Dict[str, float]:
 def build_index(verbose: bool = True) -> pd.DataFrame:
     """Compute per-symbol 20-day median turnover (USD) across all market seeds."""
     import screener_kit as kit
+
     fx = _fx_rates(CCY.values())
     rows = []
     for m in kit.MARKETS:
@@ -69,9 +88,14 @@ def build_index(verbose: bool = True) -> pd.DataFrame:
                 continue
             t = float((df["Close"] * df["Volume"]).tail(20).median())
             if t > 0:
-                rows.append({"Symbol": s, "Market": m,
-                             "turnover_usd": (t / unit) / rate,
-                             "ltp": float(df["Close"].iloc[-1])})
+                rows.append(
+                    {
+                        "Symbol": s,
+                        "Market": m,
+                        "turnover_usd": (t / unit) / rate,
+                        "ltp": float(df["Close"].iloc[-1]),
+                    }
+                )
         if verbose:
             print(f"  {m}: indexed {sum(1 for r in rows if r['Market']==m)} stocks")
     idx = pd.DataFrame(rows)
@@ -87,22 +111,32 @@ def _load_index() -> pd.DataFrame:
 
 
 # liquidity tiers by USD median daily turnover (global defaults)
-HIGH = 10_000_000      # ≥ $10M/day  → High
-MED = 1_000_000        # $1M–$10M/day → Medium  (< $1M → Low)
+HIGH = 10_000_000  # ≥ $10M/day  → High
+MED = 1_000_000  # $1M–$10M/day → Medium  (< $1M → Low)
 
 # Per-market overrides (high, medium) — smaller/thinner markets use lower bars so
 # "High/Medium/Low" is meaningful *within* each market. Tune freely.
 MARKET_TIERS = {
-    "US": (20_000_000, 2_000_000), "CN": (20_000_000, 2_000_000),
-    "JP": (10_000_000, 1_000_000), "EU": (10_000_000, 1_000_000),
-    "HK": (5_000_000, 500_000),    "TW": (5_000_000, 500_000),
-    "KR": (5_000_000, 500_000),    "UK": (5_000_000, 500_000),
-    "DE": (5_000_000, 500_000),    "CA": (3_000_000, 300_000),
-    "AU": (3_000_000, 300_000),    "IN": (5_000_000, 500_000),
-    "BR": (3_000_000, 300_000),    "SA": (3_000_000, 300_000),
-    "CH": (3_000_000, 300_000),    "SG": (2_000_000, 200_000),
-    "ZA": (2_000_000, 200_000),    "SE": (2_000_000, 200_000),
-    "FI": (1_000_000, 100_000),    "DK": (1_000_000, 100_000),
+    "US": (20_000_000, 2_000_000),
+    "CN": (20_000_000, 2_000_000),
+    "JP": (10_000_000, 1_000_000),
+    "EU": (10_000_000, 1_000_000),
+    "HK": (5_000_000, 500_000),
+    "TW": (5_000_000, 500_000),
+    "KR": (5_000_000, 500_000),
+    "UK": (5_000_000, 500_000),
+    "DE": (5_000_000, 500_000),
+    "CA": (3_000_000, 300_000),
+    "AU": (3_000_000, 300_000),
+    "IN": (5_000_000, 500_000),
+    "BR": (3_000_000, 300_000),
+    "SA": (3_000_000, 300_000),
+    "CH": (3_000_000, 300_000),
+    "SG": (2_000_000, 200_000),
+    "ZA": (2_000_000, 200_000),
+    "SE": (2_000_000, 200_000),
+    "FI": (1_000_000, 100_000),
+    "DK": (1_000_000, 100_000),
 }
 
 
@@ -150,8 +184,9 @@ def turnover(symbol: str) -> Optional[float]:
     return float(hit.iloc[0]["turnover_usd"]) if not hit.empty else None
 
 
-def liquid_symbols(market: Optional[str] = None, min_usd: float = 1_000_000,
-                   top: Optional[int] = None) -> List[str]:
+def liquid_symbols(
+    market: Optional[str] = None, min_usd: float = 1_000_000, top: Optional[int] = None
+) -> List[str]:
     """Symbols trading at least `min_usd`/day, optionally limited to a market and
     the top-N most liquid. This is the fast pre-filter for screens."""
     idx = _load_index()
@@ -167,6 +202,7 @@ def liquid_symbols(market: Optional[str] = None, min_usd: float = 1_000_000,
 
 if __name__ == "__main__":
     import sys
+
     if "--build" in sys.argv:
         build_index()
     idx = _load_index()

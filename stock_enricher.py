@@ -39,6 +39,7 @@ warnings.filterwarnings("ignore")
 
 try:
     import yfinance as yf
+
     _YF_OK = True
 except ImportError:
     _YF_OK = False
@@ -49,72 +50,72 @@ except ImportError:
 
 _IN_SECTOR_PE = {
     # Sector keyword (lowercase) → (buy, fair, caution)
-    "bank":               (12, 18, 22),
-    "finance":            (12, 20, 25),
-    "nbfc":               (15, 22, 28),
-    "insurance":          (20, 35, 50),
-    "fmcg":               (40, 60, 80),
-    "consumer":           (35, 55, 75),
-    "food":               (40, 60, 80),
-    "beverage":           (40, 60, 80),
-    "household":          (35, 55, 70),
-    "personal":           (35, 55, 70),
+    "bank": (12, 18, 22),
+    "finance": (12, 20, 25),
+    "nbfc": (15, 22, 28),
+    "insurance": (20, 35, 50),
+    "fmcg": (40, 60, 80),
+    "consumer": (35, 55, 75),
+    "food": (40, 60, 80),
+    "beverage": (40, 60, 80),
+    "household": (35, 55, 70),
+    "personal": (35, 55, 70),
     "information technology": (18, 28, 38),
-    "software":           (18, 28, 38),
-    "it service":         (18, 28, 38),
-    "pharma":             (22, 35, 50),
-    "healthcare":         (25, 40, 55),
-    "hospital":           (30, 50, 70),
-    "diagnostic":         (30, 55, 75),
-    "energy":             (8,  15, 22),
-    "oil":                (8,  14, 20),
-    "gas":                (8,  14, 20),
-    "power":              (10, 18, 25),
-    "utility":            (10, 18, 25),
-    "auto":               (14, 22, 30),
-    "automobile":         (14, 22, 30),
-    "vehicle":            (14, 22, 30),
-    "tyre":               (15, 22, 30),
-    "chemical":           (20, 32, 45),
-    "specialty chem":     (22, 35, 50),
-    "cement":             (20, 30, 40),
-    "infrastructure":     (18, 28, 38),
-    "construction":       (18, 28, 38),
-    "real estate":        (20, 35, 50),
-    "realty":             (20, 35, 50),
-    "metal":              (8,  15, 22),
-    "steel":              (8,  14, 20),
-    "aluminium":          (8,  14, 20),
-    "mining":             (8,  14, 20),
-    "telecom":            (20, 35, 55),
-    "media":              (15, 25, 40),
-    "retail":             (25, 45, 65),
-    "textile":            (10, 18, 25),
-    "logistics":          (15, 25, 35),
-    "aviation":           (15, 30, 50),
-    "hotel":              (25, 45, 70),
-    "default":            (15, 25, 35),
+    "software": (18, 28, 38),
+    "it service": (18, 28, 38),
+    "pharma": (22, 35, 50),
+    "healthcare": (25, 40, 55),
+    "hospital": (30, 50, 70),
+    "diagnostic": (30, 55, 75),
+    "energy": (8, 15, 22),
+    "oil": (8, 14, 20),
+    "gas": (8, 14, 20),
+    "power": (10, 18, 25),
+    "utility": (10, 18, 25),
+    "auto": (14, 22, 30),
+    "automobile": (14, 22, 30),
+    "vehicle": (14, 22, 30),
+    "tyre": (15, 22, 30),
+    "chemical": (20, 32, 45),
+    "specialty chem": (22, 35, 50),
+    "cement": (20, 30, 40),
+    "infrastructure": (18, 28, 38),
+    "construction": (18, 28, 38),
+    "real estate": (20, 35, 50),
+    "realty": (20, 35, 50),
+    "metal": (8, 15, 22),
+    "steel": (8, 14, 20),
+    "aluminium": (8, 14, 20),
+    "mining": (8, 14, 20),
+    "telecom": (20, 35, 55),
+    "media": (15, 25, 40),
+    "retail": (25, 45, 65),
+    "textile": (10, 18, 25),
+    "logistics": (15, 25, 35),
+    "aviation": (15, 30, 50),
+    "hotel": (25, 45, 70),
+    "default": (15, 25, 35),
 }
 
 _US_SECTOR_PE = {
-    "technology":         (22, 35, 50),
-    "software":           (22, 35, 50),
-    "semiconductor":      (18, 30, 45),
-    "communication":      (20, 32, 45),
-    "financial":          (10, 16, 22),
-    "bank":               (8,  14, 20),
-    "insurance":          (10, 16, 22),
-    "healthcare":         (18, 30, 45),
-    "pharmaceutical":     (20, 32, 48),
-    "biotechnology":      (25, 45, 80),
+    "technology": (22, 35, 50),
+    "software": (22, 35, 50),
+    "semiconductor": (18, 30, 45),
+    "communication": (20, 32, 45),
+    "financial": (10, 16, 22),
+    "bank": (8, 14, 20),
+    "insurance": (10, 16, 22),
+    "healthcare": (18, 30, 45),
+    "pharmaceutical": (20, 32, 48),
+    "biotechnology": (25, 45, 80),
     "consumer discretionary": (18, 28, 40),
-    "consumer staples":   (20, 28, 38),
-    "energy":             (10, 18, 28),
-    "utilities":          (14, 20, 28),
-    "real estate":        (30, 50, 80),
-    "industrials":        (15, 22, 32),
-    "materials":          (12, 20, 28),
-    "default":            (15, 22, 32),
+    "consumer staples": (20, 28, 38),
+    "energy": (10, 18, 28),
+    "utilities": (14, 20, 28),
+    "real estate": (30, 50, 80),
+    "industrials": (15, 22, 32),
+    "materials": (12, 20, 28),
+    "default": (15, 22, 32),
 }
 
 
@@ -124,11 +125,17 @@ def _classify_pe(pe: float, sector: str, market: str = "IN") -> dict:
     Returns dict with zone label, emoji, and thresholds.
     """
     if pe is None or pd.isna(pe) or pe <= 0:
-        return {"zone": "N/A", "emoji": "⚪", "pe_str": "N/A",
-                "buy": None, "fair": None, "caution": None}
+        return {
+            "zone": "N/A",
+            "emoji": "⚪",
+            "pe_str": "N/A",
+            "buy": None,
+            "fair": None,
+            "caution": None,
+        }
 
     sector_lower = (sector or "").lower()
-    thresholds   = _IN_SECTOR_PE if market == "IN" else _US_SECTOR_PE
+    thresholds = _IN_SECTOR_PE if market == "IN" else _US_SECTOR_PE
     buy, fair, caution = thresholds["default"]
 
     for keyword, thresh in thresholds.items():
@@ -138,43 +145,70 @@ def _classify_pe(pe: float, sector: str, market: str = "IN") -> dict:
 
     pe_str = f"{pe:.1f}x"
     if pe <= buy:
-        return {"zone": "BUY ZONE",    "emoji": "🟢", "pe_str": pe_str,
-                "buy": buy, "fair": fair, "caution": caution}
+        return {
+            "zone": "BUY ZONE",
+            "emoji": "🟢",
+            "pe_str": pe_str,
+            "buy": buy,
+            "fair": fair,
+            "caution": caution,
+        }
     elif pe <= fair:
-        return {"zone": "FAIR VALUE",  "emoji": "🟡", "pe_str": pe_str,
-                "buy": buy, "fair": fair, "caution": caution}
+        return {
+            "zone": "FAIR VALUE",
+            "emoji": "🟡",
+            "pe_str": pe_str,
+            "buy": buy,
+            "fair": fair,
+            "caution": caution,
+        }
     elif pe <= caution:
-        return {"zone": "CAUTION",     "emoji": "🟠", "pe_str": pe_str,
-                "buy": buy, "fair": fair, "caution": caution}
+        return {
+            "zone": "CAUTION",
+            "emoji": "🟠",
+            "pe_str": pe_str,
+            "buy": buy,
+            "fair": fair,
+            "caution": caution,
+        }
     else:
-        return {"zone": "SELL ZONE",   "emoji": "🔴", "pe_str": pe_str,
-                "buy": buy, "fair": fair, "caution": caution}
+        return {
+            "zone": "SELL ZONE",
+            "emoji": "🔴",
+            "pe_str": pe_str,
+            "buy": buy,
+            "fair": fair,
+            "caution": caution,
+        }
 
 
-def _fetch_one(symbol: str, suffix: str, market: str = "IN",
-               retries: int = 3) -> dict:
+def _fetch_one(symbol: str, suffix: str, market: str = "IN", retries: int = 3) -> dict:
     """Fetch company name, PE, sector, exchange for one stock."""
     result = {
-        "symbol":       symbol,
-        "suffix":       suffix,
+        "symbol": symbol,
+        "suffix": suffix,
         "company_name": symbol,
-        "exchange":     "NSE" if suffix == ".NS" else ("BSE" if suffix == ".BO" else
-                         "NASDAQ" if market == "US" else "NYSE"),
-        "sector":       "",
-        "trailing_pe":  None,
-        "forward_pe":   None,
-        "pe_zone":      "⚪ N/A",
-        "pe_label":     "N/A",
-        "pe_thresholds":"",
+        "exchange": (
+            "NSE"
+            if suffix == ".NS"
+            else ("BSE" if suffix == ".BO" else "NASDAQ" if market == "US" else "NYSE")
+        ),
+        "sector": "",
+        "trailing_pe": None,
+        "forward_pe": None,
+        "pe_zone": "⚪ N/A",
+        "pe_label": "N/A",
+        "pe_thresholds": "",
     }
     if not _YF_OK:
         return result
 
     import time as _time
+
     for attempt in range(retries):
         try:
             ticker = yf.Ticker(f"{symbol}{suffix}")
-            info   = ticker.info or {}
+            info = ticker.info or {}
             if not info or len(info) < 5:
                 # Empty response — likely rate limited
                 _time.sleep(3 * (attempt + 1))
@@ -214,25 +248,31 @@ def _fetch_one(symbol: str, suffix: str, market: str = "IN",
         t_pe = info.get("trailingPE")
         f_pe = info.get("forwardPE")
         result["trailing_pe"] = round(float(t_pe), 1) if t_pe else None
-        result["forward_pe"]  = round(float(f_pe), 1) if f_pe else None
+        result["forward_pe"] = round(float(f_pe), 1) if f_pe else None
 
         # Use trailing PE for zone classification (forward PE if trailing unavailable)
         pe_for_zone = result["trailing_pe"] or result["forward_pe"]
         pe_info = _classify_pe(pe_for_zone, sector, market)
-        result["pe_zone"]       = f"{pe_info['emoji']} {pe_info['zone']}"
-        result["pe_label"]      = pe_info["zone"]
-        result["pe_thresholds"] = (f"Buy<{pe_info['buy']} Fair<{pe_info['fair']} "
-                                   f"Caution<{pe_info['caution']}"
-                                   if pe_info.get("buy") else "")
+        result["pe_zone"] = f"{pe_info['emoji']} {pe_info['zone']}"
+        result["pe_label"] = pe_info["zone"]
+        result["pe_thresholds"] = (
+            f"Buy<{pe_info['buy']} Fair<{pe_info['fair']} " f"Caution<{pe_info['caution']}"
+            if pe_info.get("buy")
+            else ""
+        )
     except Exception:
         pass
 
     return result
 
 
-def enrich_stocks(df: pd.DataFrame, symbol_col: str = "Symbol",
-                  suffix_col: str = "Suffix", market: str = "IN",
-                  workers: int = 8) -> pd.DataFrame:
+def enrich_stocks(
+    df: pd.DataFrame,
+    symbol_col: str = "Symbol",
+    suffix_col: str = "Suffix",
+    market: str = "IN",
+    workers: int = 8,
+) -> pd.DataFrame:
     """
     Enrich a screener results DataFrame with company name, PE, exchange.
 
@@ -246,17 +286,18 @@ def enrich_stocks(df: pd.DataFrame, symbol_col: str = "Symbol",
       Company_Name, Exchange, Sector, Trailing_PE, Forward_PE, PE_Zone, PE_Label
     """
     symbols = df[symbol_col].tolist()
-    suffixes = df[suffix_col].tolist() if suffix_col in df.columns else [
-        ".NS" if market == "IN" else ""
-    ] * len(symbols)
+    suffixes = (
+        df[suffix_col].tolist()
+        if suffix_col in df.columns
+        else [".NS" if market == "IN" else ""] * len(symbols)
+    )
 
     print(f"  Enriching {len(symbols)} stocks with PE + company name …")
     enriched = {}
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {
-            pool.submit(_fetch_one, sym, sfx, market): sym
-            for sym, sfx in zip(symbols, suffixes)
+            pool.submit(_fetch_one, sym, sfx, market): sym for sym, sfx in zip(symbols, suffixes)
         }
         done = 0
         for future in as_completed(futures):
@@ -271,20 +312,13 @@ def enrich_stocks(df: pd.DataFrame, symbol_col: str = "Symbol",
 
     # Merge back into DataFrame
     df = df.copy()
-    df["Company_Name"] = df[symbol_col].map(
-        lambda s: enriched.get(s, {}).get("company_name", s))
-    df["Exchange"]     = df[symbol_col].map(
-        lambda s: enriched.get(s, {}).get("exchange", "NSE"))
-    df["Sector"]       = df[symbol_col].map(
-        lambda s: enriched.get(s, {}).get("sector", ""))
-    df["Trailing_PE"]  = df[symbol_col].map(
-        lambda s: enriched.get(s, {}).get("trailing_pe"))
-    df["Forward_PE"]   = df[symbol_col].map(
-        lambda s: enriched.get(s, {}).get("forward_pe"))
-    df["PE_Zone"]      = df[symbol_col].map(
-        lambda s: enriched.get(s, {}).get("pe_zone", "⚪ N/A"))
-    df["PE_Label"]     = df[symbol_col].map(
-        lambda s: enriched.get(s, {}).get("pe_label", "N/A"))
+    df["Company_Name"] = df[symbol_col].map(lambda s: enriched.get(s, {}).get("company_name", s))
+    df["Exchange"] = df[symbol_col].map(lambda s: enriched.get(s, {}).get("exchange", "NSE"))
+    df["Sector"] = df[symbol_col].map(lambda s: enriched.get(s, {}).get("sector", ""))
+    df["Trailing_PE"] = df[symbol_col].map(lambda s: enriched.get(s, {}).get("trailing_pe"))
+    df["Forward_PE"] = df[symbol_col].map(lambda s: enriched.get(s, {}).get("forward_pe"))
+    df["PE_Zone"] = df[symbol_col].map(lambda s: enriched.get(s, {}).get("pe_zone", "⚪ N/A"))
+    df["PE_Label"] = df[symbol_col].map(lambda s: enriched.get(s, {}).get("pe_label", "N/A"))
 
     return df
 
@@ -294,9 +328,9 @@ def format_stock_display(row: dict) -> str:
     Format one stock row as:
     COMPANY NAME [TICKER · EXCHANGE]
     """
-    name   = row.get("Company_Name", row.get("Symbol", ""))
-    sym    = row.get("Symbol", "")
-    exch   = row.get("Exchange", "NSE")
+    name = row.get("Company_Name", row.get("Symbol", ""))
+    sym = row.get("Symbol", "")
+    exch = row.get("Exchange", "NSE")
     return f"{name.upper()} [{sym} · {exch}]"
 
 
@@ -313,14 +347,13 @@ def build_exchange_groups(df: pd.DataFrame) -> dict:
         if not sub.empty:
             groups[exch] = sub.reset_index(drop=True)
     # Catch anything not in the four exchanges
-    other = df[~df["Exchange"].isin(["NSE","BSE","NASDAQ","NYSE"])]
+    other = df[~df["Exchange"].isin(["NSE", "BSE", "NASDAQ", "NYSE"])]
     if not other.empty:
         groups["OTHER"] = other.reset_index(drop=True)
     return groups
 
 
-def generate_stock_table_html(df: pd.DataFrame, market: str = "IN",
-                               max_rows: int = 15) -> str:
+def generate_stock_table_html(df: pd.DataFrame, market: str = "IN", max_rows: int = 15) -> str:
     """
     Generate an HTML <table> for one exchange group with:
     Company Name [Ticker · Exchange] | LTP | Upside% | PE | PE Zone
@@ -331,7 +364,7 @@ def generate_stock_table_html(df: pd.DataFrame, market: str = "IN",
         return "<p style='color:#999'>No qualifying stocks</p>"
 
     currency = "₹" if market == "IN" else "$"
-    rows     = df.head(max_rows)
+    rows = df.head(max_rows)
 
     html = """
 <table>
@@ -346,29 +379,31 @@ def generate_stock_table_html(df: pd.DataFrame, market: str = "IN",
   </tr>"""
 
     for _, r in rows.iterrows():
-        sym    = r.get("Symbol", "")
-        name   = r.get("Company_Name", sym)
-        exch   = r.get("Exchange", "NSE")
-        ltp    = r.get("LTP", "—")
-        chg    = r.get("Change%", 0) or 0
+        sym = r.get("Symbol", "")
+        name = r.get("Company_Name", sym)
+        exch = r.get("Exchange", "NSE")
+        ltp = r.get("LTP", "—")
+        chg = r.get("Change%", 0) or 0
         upside = r.get("Upside_to_Top%", r.get("Upside%", "—"))
-        tpe    = r.get("Trailing_PE", None)
-        pe_zone= r.get("PE_Zone", "⚪ N/A")
-        screens= r.get("Screens_Passed", r.get("Darvas_Signal", "—"))
+        tpe = r.get("Trailing_PE", None)
+        pe_zone = r.get("PE_Zone", "⚪ N/A")
+        screens = r.get("Screens_Passed", r.get("Darvas_Signal", "—"))
 
         # Formatting
-        ltp_str    = f"{currency}{float(ltp):,.2f}" if ltp != "—" else "—"
-        chg_str    = (f'<span class="pass">▲ {chg:+.2f}%</span>' if chg >= 0
-                      else f'<span class="fail">▼ {chg:.2f}%</span>')
-        upside_str = (f"{float(upside):+.1f}%" if upside != "—" and upside is not None
-                      else "—")
-        pe_str     = f"{tpe:.1f}x" if tpe and not pd.isna(tpe) else "N/A"
-        name_str   = f"<strong>{name.upper()}</strong> [{sym} · {exch}]"
+        ltp_str = f"{currency}{float(ltp):,.2f}" if ltp != "—" else "—"
+        chg_str = (
+            f'<span class="pass">▲ {chg:+.2f}%</span>'
+            if chg >= 0
+            else f'<span class="fail">▼ {chg:.2f}%</span>'
+        )
+        upside_str = f"{float(upside):+.1f}%" if upside != "—" and upside is not None else "—"
+        pe_str = f"{tpe:.1f}x" if tpe and not pd.isna(tpe) else "N/A"
+        name_str = f"<strong>{name.upper()}</strong> [{sym} · {exch}]"
 
         # PE Zone colour
-        zone_class = {"BUY ZONE":"pass","FAIR VALUE":"","CAUTION":"warn","SELL ZONE":"fail"}
+        zone_class = {"BUY ZONE": "pass", "FAIR VALUE": "", "CAUTION": "warn", "SELL ZONE": "fail"}
         zone_label = r.get("PE_Label", "N/A")
-        zone_css   = zone_class.get(zone_label, "")
+        zone_css = zone_class.get(zone_label, "")
         pe_zone_html = f'<span class="{zone_css}">{pe_zone}</span>'
 
         html += f"""

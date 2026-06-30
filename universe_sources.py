@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import List
+from typing import List, Optional
 
 import pandas as pd
 import requests
@@ -29,21 +29,29 @@ _SEC_UA = {"User-Agent": "market-research umashankartd1991@gmail.com"}  # SEC re
 
 def us_sec() -> List[str]:
     """US: SEC EDGAR official ticker registry (government source)."""
-    r = requests.get("https://www.sec.gov/files/company_tickers.json",
-                     headers=_SEC_UA, timeout=30)
+    r = requests.get("https://www.sec.gov/files/company_tickers.json", headers=_SEC_UA, timeout=30)
     r.raise_for_status()
-    return sorted({v["ticker"].upper().replace(".", "-") for v in r.json().values()
-                   if v.get("ticker")})
+    return sorted(
+        {v["ticker"].upper().replace(".", "-") for v in r.json().values() if v.get("ticker")}
+    )
 
 
 def sg_sgx() -> List[str]:
     """SG: SGX official securities API → stocks + reits + business trusts."""
-    r = requests.get("https://api.sgx.com/securities/v1.1?excludetypes=bonds&params=nc%2Ctype",
-                     headers=_UA, timeout=30)
+    r = requests.get(
+        "https://api.sgx.com/securities/v1.1?excludetypes=bonds&params=nc%2Ctype",
+        headers=_UA,
+        timeout=30,
+    )
     r.raise_for_status()
     keep = {"stocks", "reits", "businesstrusts"}
-    return sorted({f"{d['nc']}.SI" for d in r.json()["data"]["prices"]
-                   if d.get("nc") and d.get("type") in keep})
+    return sorted(
+        {
+            f"{d['nc']}.SI"
+            for d in r.json()["data"]["prices"]
+            if d.get("nc") and d.get("type") in keep
+        }
+    )
 
 
 def cn_eastmoney() -> List[str]:
@@ -51,15 +59,22 @@ def cn_eastmoney() -> List[str]:
     fs boards: m:1 t:2/t:23 (SSE A/STAR), m:0 t:6/t:80 (SZSE A/ChiNext)."""
     out, pn, total = [], 1, None
     fs = "m:1+t:2,m:1+t:23,m:0+t:6,m:0+t:80"
-    hosts = ["https://push2.eastmoney.com", "https://82.push2.eastmoney.com",
-             "http://80.push2.eastmoney.com", "https://push2delay.eastmoney.com"]
+    hosts = [
+        "https://push2.eastmoney.com",
+        "https://82.push2.eastmoney.com",
+        "http://80.push2.eastmoney.com",
+        "https://push2delay.eastmoney.com",
+    ]
     while True:
         data = None
         for host in hosts:
             try:
-                r = requests.get(f"{host}/api/qt/clist/get",
-                                 params={"pn": pn, "pz": 200, "fs": fs, "fields": "f12,f13"},
-                                 headers=_UA, timeout=30)
+                r = requests.get(
+                    f"{host}/api/qt/clist/get",
+                    params={"pn": pn, "pz": 200, "fs": fs, "fields": "f12,f13"},
+                    headers=_UA,
+                    timeout=30,
+                )
                 data = r.json().get("data") or {}
                 break
             except Exception:
@@ -68,12 +83,12 @@ def cn_eastmoney() -> List[str]:
             break
         total = total or data.get("total")
         diff = data.get("diff") or []
-        if isinstance(diff, dict):               # some hosts key diff by index
+        if isinstance(diff, dict):  # some hosts key diff by index
             diff = list(diff.values())
         if not diff:
             break
         for d in diff:
-            code, mkt = d.get("f12"), d.get("f13")     # f13: 1=Shanghai, 0=Shenzhen
+            code, mkt = d.get("f12"), d.get("f13")  # f13: 1=Shanghai, 0=Shenzhen
             if code:
                 out.append(f"{code}.SS" if mkt == 1 else f"{code}.SZ")
         if total and len(out) >= total:
@@ -84,6 +99,7 @@ def cn_eastmoney() -> List[str]:
 
 def jp_jpx() -> List[str]:
     from full_japan_market_scan import fetch_tse_universe_jpx, fetch_tse_universe_kabupy
+
     uni = []
     try:
         uni = fetch_tse_universe_jpx()
@@ -91,34 +107,44 @@ def jp_jpx() -> List[str]:
         uni = []
     if not uni:
         uni = fetch_tse_universe_kabupy()
-    return sorted({u.get("yf_ticker") or f"{u['code']}.T" for u in uni
-                   if u.get("code") or u.get("yf_ticker")})
+    return sorted(
+        {u.get("yf_ticker") or f"{u['code']}.T" for u in uni if u.get("code") or u.get("yf_ticker")}
+    )
 
 
 def kr_krx() -> List[str]:
     from full_korea_market_scan import build_krx_universe
-    return sorted({f"{u['code']}{u.get('yf_suffix', '.KS')}"
-                   for u in build_krx_universe() if u.get("code")})
+
+    return sorted(
+        {f"{u['code']}{u.get('yf_suffix', '.KS')}" for u in build_krx_universe() if u.get("code")}
+    )
 
 
 def in_bhavcopy() -> List[str]:
     """IN: symbols present in the bhavcopy assembled/cleaned cache (exchange EOD)."""
     try:
         import bhavcopy_store as s
+
         syms = s.symbols()
         if syms:
             return sorted(syms)
     except Exception:
         pass
     from bhavcopy_history import fetch_history
+
     return sorted(fetch_history(verbose=False).keys())
 
 
 # Euronext live (official) → yfinance suffix by listing venue.
 _EURONEXT_SUFFIX = {
-    "Euronext Paris": ".PA", "Euronext Amsterdam": ".AS", "Euronext Brussels": ".BR",
-    "Euronext Lisbon": ".LS", "Euronext Dublin": ".IR", "Oslo Børs": ".OL",
-    "Euronext Milan": ".MI", "Borsa Italiana": ".MI",
+    "Euronext Paris": ".PA",
+    "Euronext Amsterdam": ".AS",
+    "Euronext Brussels": ".BR",
+    "Euronext Lisbon": ".LS",
+    "Euronext Dublin": ".IR",
+    "Oslo Børs": ".OL",
+    "Euronext Milan": ".MI",
+    "Borsa Italiana": ".MI",
 }
 
 
@@ -127,6 +153,7 @@ def euronext_equities(mics: str = "XPAR,XAMS,XBRU,XLIS,XMSM,XDUB,XOSL,XMIL") -> 
     mapped to yfinance tickers (Symbol + venue suffix). Covers Paris, Amsterdam,
     Brussels, Lisbon, Dublin, Oslo and Milan."""
     import io as _io
+
     url = f"https://live.euronext.com/en/pd_es/data/stocks/download?mics={mics}"
     h = {**_UA, "Referer": "https://live.euronext.com/en/products/equities/list"}
     r = requests.get(url, headers=h, timeout=40)
@@ -135,17 +162,33 @@ def euronext_equities(mics: str = "XPAR,XAMS,XBRU,XLIS,XMSM,XDUB,XOSL,XMIL") -> 
     df = df[df["ISIN"].notna() & df["Symbol"].notna()]
     out = []
     for _, row in df.iterrows():
-        venue = str(row["Market"]).split(",")[0].strip()      # primary listing
+        venue = str(row["Market"]).split(",")[0].strip()  # primary listing
         suf = _EURONEXT_SUFFIX.get(venue)
         if suf:
             out.append(f"{str(row['Symbol']).strip()}{suf}")
     return sorted(set(out))
 
 
-def investpy_universe(countries=("france", "germany", "united kingdom", "italy",
-                                 "spain", "netherlands", "switzerland", "sweden",
-                                 "belgium", "norway", "denmark", "finland",
-                                 "portugal", "ireland", "austria", "poland")):
+def investpy_universe(
+    countries=(
+        "france",
+        "germany",
+        "united kingdom",
+        "italy",
+        "spain",
+        "netherlands",
+        "switzerland",
+        "sweden",
+        "belgium",
+        "norway",
+        "denmark",
+        "finland",
+        "portugal",
+        "ireland",
+        "austria",
+        "poland",
+    )
+):
     """European stock LISTINGS via investpy (Investing.com bundled lists): returns
     a DataFrame of name / full_name / isin / symbol / currency / country.
 
@@ -163,6 +206,7 @@ def investpy_universe(countries=("france", "germany", "united kingdom", "italy",
         except Exception:
             continue
     import pandas as _pd
+
     return _pd.concat(frames, ignore_index=True) if frames else None
 
 
@@ -170,20 +214,86 @@ def investpy_universe(countries=("france", "germany", "united kingdom", "italy",
 # Euronext is pulled live, the rest are curated large/mid-caps.
 def eu_curated() -> List[str]:
     from full_european_market_scan import EURO_STOXX_50_META
+
     extra = [
         # FTSE (London .L)
-        "HSBA.L","BP.L","SHEL.L","AZN.L","ULVR.L","GSK.L","RIO.L","GLEN.L","BATS.L",
-        "DGE.L","LSEG.L","REL.L","NG.L","BARC.L","LLOY.L","NWG.L","VOD.L","TSCO.L",
-        "PRU.L","AAL.L","RR.L","BA.L","IMB.L","CPG.L","NXT.L","STAN.L","AV.L",
+        "HSBA.L",
+        "BP.L",
+        "SHEL.L",
+        "AZN.L",
+        "ULVR.L",
+        "GSK.L",
+        "RIO.L",
+        "GLEN.L",
+        "BATS.L",
+        "DGE.L",
+        "LSEG.L",
+        "REL.L",
+        "NG.L",
+        "BARC.L",
+        "LLOY.L",
+        "NWG.L",
+        "VOD.L",
+        "TSCO.L",
+        "PRU.L",
+        "AAL.L",
+        "RR.L",
+        "BA.L",
+        "IMB.L",
+        "CPG.L",
+        "NXT.L",
+        "STAN.L",
+        "AV.L",
         # DAX (Xetra .DE) beyond stoxx50
-        "SAP.DE","SIE.DE","DTE.DE","MBG.DE","VOW3.DE","BMW.DE","BAS.DE","BAYN.DE",
-        "RWE.DE","EOAN.DE","DB1.DE","DBK.DE","ADS.DE","MUV2.DE","IFX.DE","HEN3.DE",
+        "SAP.DE",
+        "SIE.DE",
+        "DTE.DE",
+        "MBG.DE",
+        "VOW3.DE",
+        "BMW.DE",
+        "BAS.DE",
+        "BAYN.DE",
+        "RWE.DE",
+        "EOAN.DE",
+        "DB1.DE",
+        "DBK.DE",
+        "ADS.DE",
+        "MUV2.DE",
+        "IFX.DE",
+        "HEN3.DE",
         # CAC (Paris .PA) beyond stoxx50
-        "MC.PA","OR.PA","RMS.PA","TTE.PA","SAN.PA","BNP.PA","AIR.PA","SU.PA","CS.PA",
-        "EL.PA","DG.PA","BN.PA","KER.PA","SAF.PA","STLAP.PA","ENGI.PA","VIE.PA",
+        "MC.PA",
+        "OR.PA",
+        "RMS.PA",
+        "TTE.PA",
+        "SAN.PA",
+        "BNP.PA",
+        "AIR.PA",
+        "SU.PA",
+        "CS.PA",
+        "EL.PA",
+        "DG.PA",
+        "BN.PA",
+        "KER.PA",
+        "SAF.PA",
+        "STLAP.PA",
+        "ENGI.PA",
+        "VIE.PA",
         # AEX (Amsterdam .AS) / SIX (.SW)
-        "ASML.AS","PRX.AS","INGA.AS","AD.AS","PHIA.AS","WKL.AS","HEIA.AS",
-        "NESN.SW","ROG.SW","NOVN.SW","UBSG.SW","ZURN.SW","ABBN.SW","CFR.SW",
+        "ASML.AS",
+        "PRX.AS",
+        "INGA.AS",
+        "AD.AS",
+        "PHIA.AS",
+        "WKL.AS",
+        "HEIA.AS",
+        "NESN.SW",
+        "ROG.SW",
+        "NOVN.SW",
+        "UBSG.SW",
+        "ZURN.SW",
+        "ABBN.SW",
+        "CFR.SW",
     ]
     return sorted(set(EURO_STOXX_50_META.keys()) | set(extra))
 
@@ -203,9 +313,22 @@ def eu() -> List[str]:
 # His company master (indname.xls) carries Country + Exchange:Ticker for ~48k firms;
 # we map each exchange code to the yfinance suffix and reconstruct tickers.
 _DAMO_EXCH_SUFFIX = {
-    "SEHK": ".HK", "TWSE": ".TW", "TPEX": ".TWO", "TSX": ".TO", "TSXV": ".V",
-    "CNSX": ".CN", "ASX": ".AX", "BOVESPA": ".SA", "JSE": ".JO", "SASE": ".SR",
-    "LSE": ".L", "AIM": ".L", "XTRA": ".DE", "DB": ".F", "HMSE": ".F", "SWX": ".SW",
+    "SEHK": ".HK",
+    "TWSE": ".TW",
+    "TPEX": ".TWO",
+    "TSX": ".TO",
+    "TSXV": ".V",
+    "CNSX": ".CN",
+    "ASX": ".AX",
+    "BOVESPA": ".SA",
+    "JSE": ".JO",
+    "SASE": ".SR",
+    "LSE": ".L",
+    "AIM": ".L",
+    "XTRA": ".DE",
+    "DB": ".F",
+    "HMSE": ".F",
+    "SWX": ".SW",
 }
 # Nordic exchange codes collide (all "OM"), so resolve those by country instead.
 _COUNTRY_SUFFIX = {"Sweden": ".ST", "Denmark": ".CO", "Finland": ".HE", "Norway": ".OL"}
@@ -214,6 +337,7 @@ _COUNTRY_SUFFIX = {"Sweden": ".ST", "Denmark": ".CO", "Finland": ".HE", "Norway"
 def from_damodaran(country: str, allowed_exch: Optional[set] = None) -> List[str]:
     """Build a yfinance-ticker universe for a country from Damodaran's master."""
     from reference_data import damodaran_companies
+
     df = damodaran_companies()
     if df is None:
         return []
@@ -228,7 +352,7 @@ def from_damodaran(country: str, allowed_exch: Optional[set] = None) -> List[str
         if not suf:
             continue
         t = str(tkr).strip()
-        if suf == ".HK":                          # HK codes are zero-padded to 4
+        if suf == ".HK":  # HK codes are zero-padded to 4
             t = t.zfill(4)
         out.append(t + suf)
     return sorted(set(out))
@@ -236,8 +360,13 @@ def from_damodaran(country: str, allowed_exch: Optional[set] = None) -> List[str
 
 PROVIDERS = {
     # official / exchange feeds
-    "US": us_sec, "IN": in_bhavcopy, "JP": jp_jpx, "KR": kr_krx,
-    "SG": sg_sgx, "CN": cn_eastmoney, "EU": eu,
+    "US": us_sec,
+    "IN": in_bhavcopy,
+    "JP": jp_jpx,
+    "KR": kr_krx,
+    "SG": sg_sgx,
+    "CN": cn_eastmoney,
+    "EU": eu,
     # major exchanges via Damodaran master (key factor: # listed companies)
     "HK": lambda: from_damodaran("Hong Kong", {"SEHK"}),
     "TW": lambda: from_damodaran("Taiwan", {"TWSE", "TPEX"}),
@@ -261,6 +390,7 @@ def get_universe(market: str) -> List[str]:
 
 if __name__ == "__main__":
     import sys
+
     mkts = [m.upper() for m in sys.argv[1:]] or list(PROVIDERS)
     for m in mkts:
         try:

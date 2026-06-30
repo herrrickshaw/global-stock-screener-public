@@ -29,7 +29,8 @@ from bhavcopy_history import fetch_history
 from full_indian_market_scan import compute_darvas_box, compute_golden_crossover
 from stock_utils import parallel_map, pct_change
 
-OUT_DIR = Path("indian_full_scan"); OUT_DIR.mkdir(exist_ok=True)
+OUT_DIR = Path("indian_full_scan")
+OUT_DIR.mkdir(exist_ok=True)
 
 
 def _screen_one(item):
@@ -66,8 +67,9 @@ def main():
     print(f"  {len(hist)} symbols ready\n")
 
     print("Stage 2 — Price screeners (Darvas + Golden Cross) …")
-    rows = parallel_map(_screen_one, list(hist.items()), workers=8,
-                        label="stocks", progress_every=1000)
+    rows = parallel_map(
+        _screen_one, list(hist.items()), workers=8, label="stocks", progress_every=1000
+    )
     all_df = pd.DataFrame([r for r in rows if r])
     darvas_df = all_df[all_df["Darvas_Signal"].isin(["BREAKOUT_BUY", "BREAKDOWN_SELL"])]
     gc_n = int((all_df["GC_Signal"] == "GOLDEN_CROSS").sum())
@@ -88,7 +90,9 @@ def main():
     triple_rows = []
     if not fund_df.empty:
         # refresh each fundamental row's Darvas signal + LTP with today's bhavcopy
-        fund_df["Darvas_Signal"] = fund_df["Symbol"].map(fresh_darvas).fillna(fund_df.get("Darvas_Signal"))
+        fund_df["Darvas_Signal"] = (
+            fund_df["Symbol"].map(fresh_darvas).fillna(fund_df.get("Darvas_Signal"))
+        )
         if "LTP" in fund_df.columns:
             fund_df["LTP"] = fund_df["Symbol"].map(fresh_ltp).fillna(fund_df["LTP"])
         for _, r in fund_df.iterrows():
@@ -109,15 +113,18 @@ def main():
     out = OUT_DIR / f"indian_full_scan_{ts}.xlsx"
     with pd.ExcelWriter(out, engine="openpyxl") as xw:
         all_df.sort_values("Change%", ascending=False).to_excel(xw, "All_Stocks", index=False)
-        darvas_df.sort_values("Upside_to_Top%", ascending=False, na_position="last")\
-                 .to_excel(xw, "Darvas_Signals", index=False)
+        darvas_df.sort_values("Upside_to_Top%", ascending=False, na_position="last").to_excel(
+            xw, "Darvas_Signals", index=False
+        )
         if not fund_df.empty:
             fund_df.to_excel(xw, "Fundamentals", index=False)
         if not triple_df.empty:
             triple_df.to_excel(xw, "Triple_Hits", index=False)
     print(f"📄 → {out}")
-    print(f"   Source: NSE+BSE bhavcopy (official EOD). Triple Hits: "
-          f"{', '.join(triple_df['Symbol'].astype(str)) if not triple_df.empty else 'none today'}")
+    print(
+        f"   Source: NSE+BSE bhavcopy (official EOD). Triple Hits: "
+        f"{', '.join(triple_df['Symbol'].astype(str)) if not triple_df.empty else 'none today'}"
+    )
     return out
 
 

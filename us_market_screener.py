@@ -48,10 +48,8 @@
 
 import argparse
 import io
-import json
 import logging
 import sqlite3
-import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
@@ -63,6 +61,7 @@ import yfinance as yf
 
 try:
     from tqdm import tqdm
+
     TQDM_OK = True
 except ImportError:
     TQDM_OK = False
@@ -78,22 +77,23 @@ log = logging.getLogger("screener")
 
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-OUTPUT_DIR    = Path("./us_screener_output")
-DB_FILE       = OUTPUT_DIR / "screener.db"
+OUTPUT_DIR = Path("./us_screener_output")
+DB_FILE = OUTPUT_DIR / "screener.db"
 DARVAS_CONFIRM = 3
 
 # NASDAQ Trader machine-readable stock lists (updated daily by NASDAQ).
 NASDAQ_URL = "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt"
-OTHER_URL  = "https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt"
+OTHER_URL = "https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt"
 
 # Piotroski + Coffee Can STRONG thresholds
-PIOTROSKI_STRONG    = 7    # F-Score >= this → STRONG
-COFFEE_CAN_CRITERIA = 6    # total criteria in Coffee Can screen
+PIOTROSKI_STRONG = 7  # F-Score >= this → STRONG
+COFFEE_CAN_CRITERIA = 6  # total criteria in Coffee Can screen
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # STOCK UNIVERSE  (NASDAQ Trader pipe-delimited files)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def fetch_stock_universe(exchange_filter: str = "all") -> pd.DataFrame:
     """
@@ -111,32 +111,34 @@ def fetch_stock_universe(exchange_filter: str = "all") -> pd.DataFrame:
 
     Returns a DataFrame with columns: Symbol, Name, Exchange.
     """
+
     def _parse(url, is_nasdaq):
         r = requests.get(url, timeout=15)
         r.raise_for_status()
-        lines = [l for l in r.text.strip().split("\n")
-                 if not l.startswith("File Creation")]
+        lines = [l for l in r.text.strip().split("\n") if not l.startswith("File Creation")]
         df = pd.read_csv(io.StringIO("\n".join(lines)), sep="|", dtype=str).fillna("")
 
         if is_nasdaq:
             df = df.rename(columns={"Security Name": "Name"})
             keep = (
-                (df["Test Issue"]       == "N") &
-                (df["ETF"]              == "N") &
-                (df["Financial Status"] == "N") &
-                df["Symbol"].str.match(r"^[A-Z]{1,5}$", na=False)
+                (df["Test Issue"] == "N")
+                & (df["ETF"] == "N")
+                & (df["Financial Status"] == "N")
+                & df["Symbol"].str.match(r"^[A-Z]{1,5}$", na=False)
             )
             df["Exchange"] = "NASDAQ"
         else:
             df = df.rename(columns={"ACT Symbol": "Symbol", "Security Name": "Name"})
             keep = (
-                (df["Test Issue"] == "N") &
-                (df["ETF"]        == "N") &
-                df["Symbol"].str.match(r"^[A-Z]{1,5}$", na=False)
+                (df["Test Issue"] == "N")
+                & (df["ETF"] == "N")
+                & df["Symbol"].str.match(r"^[A-Z]{1,5}$", na=False)
             )
-            df["Exchange"] = df.get("Exchange", pd.Series(["OTHER"] * len(df))).map(
-                {"N": "NYSE", "A": "AMEX", "P": "ARCA", "Z": "BATS"}
-            ).fillna("OTHER")
+            df["Exchange"] = (
+                df.get("Exchange", pd.Series(["OTHER"] * len(df)))
+                .map({"N": "NYSE", "A": "AMEX", "P": "ARCA", "Z": "BATS"})
+                .fillna("OTHER")
+            )
 
         return df[keep][["Symbol", "Name", "Exchange"]].copy()
 
@@ -156,6 +158,7 @@ def fetch_stock_universe(exchange_filter: str = "all") -> pd.DataFrame:
 # SCAN 1 — DARVAS BOX  (batch OHLC via yf.download)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _darvas_from_df(df: pd.DataFrame, confirm: int = DARVAS_CONFIRM) -> dict:
     """
     Compute Darvas Box signal from a flat OHLC DataFrame.
@@ -174,16 +177,16 @@ def _darvas_from_df(df: pd.DataFrame, confirm: int = DARVAS_CONFIRM) -> dict:
 
     # yf.download columns: Open, High, Low, Close, Volume
     try:
-        highs  = pd.to_numeric(df["High"],  errors="coerce").fillna(0).tolist()
-        lows   = pd.to_numeric(df["Low"],   errors="coerce").fillna(0).tolist()
+        highs = pd.to_numeric(df["High"], errors="coerce").fillna(0).tolist()
+        lows = pd.to_numeric(df["Low"], errors="coerce").fillna(0).tolist()
         closes = pd.to_numeric(df["Close"], errors="coerce").fillna(0).tolist()
     except KeyError:
         return {"signal": "INSUFFICIENT_DATA", "box_top": None, "box_bottom": None}
 
     current = closes[-1]
-    highs_h = highs[:-1]    # historical only
-    lows_h  = lows[:-1]
-    n       = len(highs_h)
+    highs_h = highs[:-1]  # historical only
+    lows_h = lows[:-1]
+    n = len(highs_h)
 
     # Step 1 — find confirmed box top
     box_top_idx = box_top = None
@@ -191,7 +194,7 @@ def _darvas_from_df(df: pd.DataFrame, confirm: int = DARVAS_CONFIRM) -> dict:
         c = highs_h[i]
         if c == 0:
             continue
-        window = highs_h[i + 1: i + 1 + confirm]
+        window = highs_h[i + 1 : i + 1 + confirm]
         if len(window) == confirm and all(h < c for h in window):
             box_top_idx, box_top = i, c
             break
@@ -200,13 +203,13 @@ def _darvas_from_df(df: pd.DataFrame, confirm: int = DARVAS_CONFIRM) -> dict:
         return {"signal": "NO_BOX", "box_top": None, "box_bottom": None}
 
     # Step 2 — find confirmed box bottom (historical segment only)
-    seg        = lows_h[box_top_idx:]
+    seg = lows_h[box_top_idx:]
     box_bottom = None
     for i in range(len(seg) - confirm):
         c = seg[i]
         if c == 0:
             continue
-        window = seg[i + 1: i + 1 + confirm]
+        window = seg[i + 1 : i + 1 + confirm]
         if len(window) == confirm and all(l > c for l in window):
             box_bottom = c
             break
@@ -218,26 +221,28 @@ def _darvas_from_df(df: pd.DataFrame, confirm: int = DARVAS_CONFIRM) -> dict:
         return {"signal": "NO_BOX", "box_top": round(box_top, 2), "box_bottom": None}
 
     # Step 3 — classify today's close
-    if   current > box_top:    signal = "BREAKOUT_BUY"
-    elif current < box_bottom: signal = "BREAKDOWN_SELL"
-    else:                      signal = "IN_BOX"
+    if current > box_top:
+        signal = "BREAKOUT_BUY"
+    elif current < box_bottom:
+        signal = "BREAKDOWN_SELL"
+    else:
+        signal = "IN_BOX"
 
-    rng         = box_top - box_bottom
-    upside_pct  = (box_top - current) / current * 100 if current else 0
-    pos_in_box  = (current - box_bottom) / rng * 100 if rng else 0
+    rng = box_top - box_bottom
+    upside_pct = (box_top - current) / current * 100 if current else 0
+    pos_in_box = (current - box_bottom) / rng * 100 if rng else 0
 
     return {
-        "signal":        signal,
-        "box_top":       round(box_top,    2),
-        "box_bottom":    round(box_bottom, 2),
-        "current_price": round(current,    2),
-        "upside_pct":    round(upside_pct, 2),
-        "pos_in_box":    round(pos_in_box, 1),
+        "signal": signal,
+        "box_top": round(box_top, 2),
+        "box_bottom": round(box_bottom, 2),
+        "current_price": round(current, 2),
+        "upside_pct": round(upside_pct, 2),
+        "pos_in_box": round(pos_in_box, 1),
     }
 
 
-def run_darvas_batch(symbols: list, batch_size: int = 500,
-                     pbar=None) -> dict:
+def run_darvas_batch(symbols: list, batch_size: int = 500, pbar=None) -> dict:
     """
     Download 6-month OHLC for all symbols in batches and compute Darvas signals.
 
@@ -247,8 +252,7 @@ def run_darvas_batch(symbols: list, batch_size: int = 500,
     Returns {symbol: darvas_result_dict}.
     """
     results = {}
-    batches = [symbols[i: i + batch_size]
-               for i in range(0, len(symbols), batch_size)]
+    batches = [symbols[i : i + batch_size] for i in range(0, len(symbols), batch_size)]
 
     for batch in batches:
         label = f"Darvas OHLC [{batch[0]}…]"
@@ -276,7 +280,7 @@ def run_darvas_batch(symbols: list, batch_size: int = 500,
                         continue
                     df = raw[sym].dropna()
                 else:
-                    df = raw.dropna()   # single-ticker path
+                    df = raw.dropna()  # single-ticker path
 
                 results[sym] = _darvas_from_df(df)
             except Exception as e:
@@ -292,6 +296,7 @@ def run_darvas_batch(symbols: list, batch_size: int = 500,
 # ═══════════════════════════════════════════════════════════════════════════════
 # SCAN 2 — PIOTROSKI F-SCORE  (per-stock, yfinance financial statements)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _first_df(ticker, *attrs):
     """
@@ -333,27 +338,27 @@ def run_piotroski(ticker: yf.Ticker) -> dict:
 
     ≥7 → STRONG;  4-6 → MODERATE;  ≤3 → WEAK
     """
-    inc = _first_df(ticker, "income_stmt",  "financials")
+    inc = _first_df(ticker, "income_stmt", "financials")
     bal = _first_df(ticker, "balance_sheet")
-    cf  = _first_df(ticker, "cash_flow",    "cashflow")
+    cf = _first_df(ticker, "cash_flow", "cashflow")
 
     if inc is None or inc.empty:
         return {"f_score": None, "error": "no_income_data"}
 
-    s = {}   # individual criterion scores
+    s = {}  # individual criterion scores
 
     # Profitability
-    ni0 = _val(inc, "Net Income", col=0);  ni1 = _val(inc, "Net Income", col=1)
-    a0  = _val(bal, "Total Assets", col=0); a1  = _val(bal, "Total Assets", col=1)
+    ni0 = _val(inc, "Net Income", col=0)
+    ni1 = _val(inc, "Net Income", col=1)
+    a0 = _val(bal, "Total Assets", col=0)
+    a1 = _val(bal, "Total Assets", col=1)
     roa0 = ni0 / a0 if (ni0 and a0) else None
     roa1 = ni1 / a1 if (ni1 and a1) else None
     s["F1"] = 1 if (roa0 and roa0 > 0) else 0
-    ocf0 = _val(cf, "Operating Cash Flow",
-                "Total Cash From Operating Activities", col=0)
+    ocf0 = _val(cf, "Operating Cash Flow", "Total Cash From Operating Activities", col=0)
     s["F2"] = 1 if (ocf0 and ocf0 > 0) else 0
     s["F3"] = 1 if (roa0 is not None and roa1 is not None and roa0 > roa1) else 0
-    s["F4"] = 1 if (ocf0 and a0 and roa0 is not None
-                    and (ocf0 / a0) > roa0) else 0
+    s["F4"] = 1 if (ocf0 and a0 and roa0 is not None and (ocf0 / a0) > roa0) else 0
 
     # Leverage & Liquidity
     ltd0 = _val(bal, "Long Term Debt", col=0) or 0
@@ -375,10 +380,12 @@ def run_piotroski(ticker: yf.Ticker) -> dict:
     s["F7"] = (1 if sh0 <= sh1 else 0) if (sh0 and sh1) else 1
 
     # Operating Efficiency
-    rev0 = _val(inc, "Total Revenue", col=0); gp0 = _val(inc, "Gross Profit", col=0)
-    rev1 = _val(inc, "Total Revenue", col=1); gp1 = _val(inc, "Gross Profit", col=1)
-    gm0  = (gp0 / rev0) if (gp0 and rev0) else None
-    gm1  = (gp1 / rev1) if (gp1 and rev1) else None
+    rev0 = _val(inc, "Total Revenue", col=0)
+    gp0 = _val(inc, "Gross Profit", col=0)
+    rev1 = _val(inc, "Total Revenue", col=1)
+    gp1 = _val(inc, "Gross Profit", col=1)
+    gm0 = (gp0 / rev0) if (gp0 and rev0) else None
+    gm1 = (gp1 / rev1) if (gp1 and rev1) else None
     s["F8"] = 1 if (gm0 is not None and gm1 is not None and gm0 > gm1) else 0
 
     at0 = (rev0 / a0) if (rev0 and a0) else None
@@ -393,6 +400,7 @@ def run_piotroski(ticker: yf.Ticker) -> dict:
 # SCAN 3 — COFFEE CAN SCREEN  (per-stock, yfinance)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def run_coffee_can(ticker: yf.Ticker) -> dict:
     """
     US Coffee Can Portfolio screen — all 6 criteria must pass.
@@ -406,7 +414,7 @@ def run_coffee_can(ticker: yf.Ticker) -> dict:
     """
     inc = _first_df(ticker, "income_stmt", "financials")
     bal = _first_df(ticker, "balance_sheet")
-    cf  = _first_df(ticker, "cash_flow",   "cashflow")
+    cf = _first_df(ticker, "cash_flow", "cashflow")
 
     info = {}
     try:
@@ -428,7 +436,7 @@ def run_coffee_can(ticker: yf.Ticker) -> dict:
     # C1 — Revenue CAGR > 10%
     revs = series(inc, "Total Revenue")
     if len(revs) >= 2:
-        yrs  = len(revs) - 1
+        yrs = len(revs) - 1
         cagr = ((revs[0] / revs[-1]) ** (1 / yrs) - 1) * 100 if revs[-1] > 0 else None
         c["C1"] = 1 if (cagr and cagr > 10) else 0
     else:
@@ -436,11 +444,13 @@ def run_coffee_can(ticker: yf.Ticker) -> dict:
 
     # C2 — ROE > 15% avg
     ni_s = series(inc, "Net Income")
-    eq_s = series(bal, "Stockholders Equity", "Total Stockholder Equity",
-                  "Total Equity Gross Minority Interest")
-    roe_list = [ni_s[i] / eq_s[i] * 100
-                for i in range(min(len(ni_s), len(eq_s)))
-                if eq_s[i] > 0]
+    eq_s = series(
+        bal,
+        "Stockholders Equity",
+        "Total Stockholder Equity",
+        "Total Equity Gross Minority Interest",
+    )
+    roe_list = [ni_s[i] / eq_s[i] * 100 for i in range(min(len(ni_s), len(eq_s))) if eq_s[i] > 0]
     avg_roe = sum(roe_list) / len(roe_list) if roe_list else None
     c["C2"] = 1 if (avg_roe and avg_roe > 15) else 0
 
@@ -452,8 +462,7 @@ def run_coffee_can(ticker: yf.Ticker) -> dict:
         c["C3"] = 1 if de < 1 else 0
     else:
         ltd_s = series(bal, "Long Term Debt")
-        c["C3"] = (1 if (ltd_s and eq_s and eq_s[0] > 0
-                         and ltd_s[0] / eq_s[0] < 1) else 0)
+        c["C3"] = 1 if (ltd_s and eq_s and eq_s[0] > 0 and ltd_s[0] / eq_s[0] < 1) else 0
 
     # C4 — Market Cap ≥ $1B
     mcap = info.get("marketCap")
@@ -472,8 +481,7 @@ def run_coffee_can(ticker: yf.Ticker) -> dict:
     if fcf_s:
         c["C6"] = 1 if fcf_s[0] > 0 else 0
     else:
-        ocf_s   = series(cf, "Operating Cash Flow",
-                         "Total Cash From Operating Activities")
+        ocf_s = series(cf, "Operating Cash Flow", "Total Cash From Operating Activities")
         capex_s = series(cf, "Capital Expenditure", "Capital Expenditures")
         if ocf_s and capex_s:
             c["C6"] = 1 if (ocf_s[0] - abs(capex_s[0])) > 0 else 0
@@ -482,11 +490,11 @@ def run_coffee_can(ticker: yf.Ticker) -> dict:
 
     total = sum(c.values())
     return {
-        "qualifies":  total == COFFEE_CAN_CRITERIA,
-        "score":      f"{total}/{COFFEE_CAN_CRITERIA}",
-        "criteria":   c,
-        "roe_avg":    round(avg_roe, 2) if avg_roe else None,
-        "error":      None,
+        "qualifies": total == COFFEE_CAN_CRITERIA,
+        "score": f"{total}/{COFFEE_CAN_CRITERIA}",
+        "criteria": c,
+        "roe_avg": round(avg_roe, 2) if avg_roe else None,
+        "error": None,
     }
 
 
@@ -494,11 +502,13 @@ def run_coffee_can(ticker: yf.Ticker) -> dict:
 # SQLITE CHECKPOINT  (survives interruptions; enables --resume)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def init_db(db_path: Path) -> sqlite3.Connection:
     """Create (or open existing) SQLite database with results + progress tables."""
     con = sqlite3.connect(db_path)
-    con.execute("PRAGMA journal_mode=WAL")   # allow concurrent reads while writing
-    con.execute("""
+    con.execute("PRAGMA journal_mode=WAL")  # allow concurrent reads while writing
+    con.execute(
+        """
         CREATE TABLE IF NOT EXISTS results (
             symbol          TEXT PRIMARY KEY,
             name            TEXT,
@@ -528,23 +538,24 @@ def init_db(db_path: Path) -> sqlite3.Connection:
             scanned_at      TEXT,
             error           TEXT
         )
-    """)
-    con.execute("""
+    """
+    )
+    con.execute(
+        """
         CREATE TABLE IF NOT EXISTS progress (
             symbol     TEXT PRIMARY KEY,
             phase      TEXT,        -- 'darvas' | 'fundamentals'
             done_at    TEXT
         )
-    """)
+    """
+    )
     con.commit()
     return con
 
 
 def already_done(con: sqlite3.Connection, phase: str) -> set:
     """Return the set of symbols already processed in the given phase."""
-    cur = con.execute(
-        "SELECT symbol FROM progress WHERE phase = ?", (phase,)
-    )
+    cur = con.execute("SELECT symbol FROM progress WHERE phase = ?", (phase,))
     return {r[0] for r in cur.fetchall()}
 
 
@@ -558,7 +569,7 @@ def mark_done(con: sqlite3.Connection, symbol: str, phase: str):
 
 def upsert_result(con: sqlite3.Connection, row: dict):
     """Insert or update a result row (partial updates are fine)."""
-    cols   = ", ".join(row.keys())
+    cols = ", ".join(row.keys())
     placeh = ", ".join(["?"] * len(row))
     update = ", ".join([f"{k} = excluded.{k}" for k in row if k != "symbol"])
     con.execute(
@@ -573,6 +584,7 @@ def upsert_result(con: sqlite3.Connection, row: dict):
 # FUNDAMENTALS WORKER  (runs inside a thread pool)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def scan_fundamentals_one(symbol: str, name: str, exchange: str) -> dict:
     """
     Fetch yfinance metadata + run Piotroski + Coffee Can for one stock.
@@ -581,8 +593,8 @@ def scan_fundamentals_one(symbol: str, name: str, exchange: str) -> dict:
     Returns a flat dict ready for upsert_result().
     """
     row = {
-        "symbol":   symbol,
-        "name":     name,
+        "symbol": symbol,
+        "name": name,
         "exchange": exchange,
         "scanned_at": datetime.now().isoformat(),
     }
@@ -596,8 +608,8 @@ def scan_fundamentals_one(symbol: str, name: str, exchange: str) -> dict:
         except Exception:
             pass
 
-        row["sector"]     = info.get("sector",   "")
-        row["industry"]   = info.get("industry", "")
+        row["sector"] = info.get("sector", "")
+        row["industry"] = info.get("industry", "")
         row["market_cap"] = info.get("marketCap")
         try:
             row["last_price"] = ticker.fast_info.last_price
@@ -614,7 +626,7 @@ def scan_fundamentals_one(symbol: str, name: str, exchange: str) -> dict:
         # Coffee Can
         cc = run_coffee_can(ticker)
         row["cc_qualifies"] = 1 if cc.get("qualifies") else 0
-        row["cc_score"]     = cc.get("score")
+        row["cc_score"] = cc.get("score")
         crit = cc.get("criteria", {})
         for i in range(1, 7):
             row[f"cc_c{i}"] = crit.get(f"C{i}")
@@ -633,6 +645,7 @@ def scan_fundamentals_one(symbol: str, name: str, exchange: str) -> dict:
 # ═══════════════════════════════════════════════════════════════════════════════
 # RESULTS COMPILATION
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def compile_outputs(con: sqlite3.Connection, today: str):
     """
@@ -661,9 +674,19 @@ def compile_outputs(con: sqlite3.Connection, today: str):
     print(f"  Summary ({len(df):,} rows)       → {out_summary}")
 
     # ── Darvas breakouts ──────────────────────────────────────────────────────
-    darvas_cols = ["symbol", "name", "exchange", "sector", "last_price",
-                   "darvas_signal", "darvas_box_top", "darvas_box_bot",
-                   "darvas_current", "darvas_upside", "darvas_pos"]
+    darvas_cols = [
+        "symbol",
+        "name",
+        "exchange",
+        "sector",
+        "last_price",
+        "darvas_signal",
+        "darvas_box_top",
+        "darvas_box_bot",
+        "darvas_current",
+        "darvas_upside",
+        "darvas_pos",
+    ]
     breakouts = df[df["darvas_signal"] == "BREAKOUT_BUY"][
         [c for c in darvas_cols if c in df.columns]
     ].sort_values("darvas_upside")
@@ -672,9 +695,24 @@ def compile_outputs(con: sqlite3.Connection, today: str):
     print(f"  Darvas breakouts ({len(breakouts):,})    → {out_darvas}")
 
     # ── Strong Piotroski ──────────────────────────────────────────────────────
-    pio_cols = ["symbol", "name", "exchange", "sector", "last_price",
-                "market_cap", "f_score",
-                "f1","f2","f3","f4","f5","f6","f7","f8","f9"]
+    pio_cols = [
+        "symbol",
+        "name",
+        "exchange",
+        "sector",
+        "last_price",
+        "market_cap",
+        "f_score",
+        "f1",
+        "f2",
+        "f3",
+        "f4",
+        "f5",
+        "f6",
+        "f7",
+        "f8",
+        "f9",
+    ]
     strong_pio = df[df["f_score"].notna() & (df["f_score"] >= PIOTROSKI_STRONG)][
         [c for c in pio_cols if c in df.columns]
     ].sort_values("f_score", ascending=False)
@@ -683,30 +721,55 @@ def compile_outputs(con: sqlite3.Connection, today: str):
     print(f"  Strong Piotroski ({len(strong_pio):,})    → {out_pio}")
 
     # ── Coffee Can qualifiers ─────────────────────────────────────────────────
-    cc_cols = ["symbol", "name", "exchange", "sector", "industry",
-               "last_price", "market_cap", "cc_score", "cc_roe_avg",
-               "cc_c1","cc_c2","cc_c3","cc_c4","cc_c5","cc_c6"]
-    qualifiers = df[df["cc_qualifies"] == 1][
-        [c for c in cc_cols if c in df.columns]
-    ].sort_values("market_cap", ascending=False)
+    cc_cols = [
+        "symbol",
+        "name",
+        "exchange",
+        "sector",
+        "industry",
+        "last_price",
+        "market_cap",
+        "cc_score",
+        "cc_roe_avg",
+        "cc_c1",
+        "cc_c2",
+        "cc_c3",
+        "cc_c4",
+        "cc_c5",
+        "cc_c6",
+    ]
+    qualifiers = df[df["cc_qualifies"] == 1][[c for c in cc_cols if c in df.columns]].sort_values(
+        "market_cap", ascending=False
+    )
     out_cc = OUTPUT_DIR / f"coffee_can_{today}.csv"
     qualifiers.to_csv(out_cc, index=False)
     print(f"  Coffee Can qualifiers ({len(qualifiers):,}) → {out_cc}")
 
     # ── Triple hits ───────────────────────────────────────────────────────────
     triple_mask = (
-        (df["darvas_signal"] == "BREAKOUT_BUY") &
-        (df["f_score"].notna()) &
-        (df["f_score"] >= PIOTROSKI_STRONG) &
-        (df["cc_qualifies"] == 1)
+        (df["darvas_signal"] == "BREAKOUT_BUY")
+        & (df["f_score"].notna())
+        & (df["f_score"] >= PIOTROSKI_STRONG)
+        & (df["cc_qualifies"] == 1)
     )
-    triple_cols = ["symbol", "name", "exchange", "sector", "industry",
-                   "last_price", "market_cap",
-                   "darvas_signal", "darvas_box_top", "darvas_upside",
-                   "f_score", "cc_score", "cc_roe_avg"]
-    triple = df[triple_mask][
-        [c for c in triple_cols if c in df.columns]
-    ].sort_values("f_score", ascending=False)
+    triple_cols = [
+        "symbol",
+        "name",
+        "exchange",
+        "sector",
+        "industry",
+        "last_price",
+        "market_cap",
+        "darvas_signal",
+        "darvas_box_top",
+        "darvas_upside",
+        "f_score",
+        "cc_score",
+        "cc_roe_avg",
+    ]
+    triple = df[triple_mask][[c for c in triple_cols if c in df.columns]].sort_values(
+        "f_score", ascending=False
+    )
     out_triple = OUTPUT_DIR / f"triple_hits_{today}.csv"
     triple.to_csv(out_triple, index=False)
     print(f"\n  ★  Triple hits ({len(triple):,} stocks)       → {out_triple}")
@@ -714,23 +777,26 @@ def compile_outputs(con: sqlite3.Connection, today: str):
         print(f"\n  {'Symbol':<8} {'Name':<35} {'Signal':<15} {'F':>3} {'CC':>4}")
         print("  " + "-" * 70)
         for _, r in triple.head(20).iterrows():
-            print(f"  {r['symbol']:<8} {str(r.get('name',''))[:34]:<35} "
-                  f"{r['darvas_signal']:<15} {int(r['f_score']):>3} "
-                  f"{r['cc_score']:>4}")
+            print(
+                f"  {r['symbol']:<8} {str(r.get('name',''))[:34]:<35} "
+                f"{r['darvas_signal']:<15} {int(r['f_score']):>3} "
+                f"{r['cc_score']:>4}"
+            )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # MAIN ORCHESTRATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def main(
-    exchange:     str  = "all",
-    limit:        int  = 0,
-    resume:       bool = False,
-    darvas_only:  bool = False,
-    batch_size:   int  = 500,
-    workers:      int  = 10,
-    delay:        float = 0.05,   # seconds between fundamentals calls per worker
+    exchange: str = "all",
+    limit: int = 0,
+    resume: bool = False,
+    darvas_only: bool = False,
+    batch_size: int = 500,
+    workers: int = 10,
+    delay: float = 0.05,  # seconds between fundamentals calls per worker
 ):
     """
     Full pipeline:
@@ -768,7 +834,7 @@ def main(
         universe = universe.head(limit)
         print(f"  Limited to {len(universe):,} stocks (--limit {limit})")
 
-    symbols  = universe["Symbol"].tolist()
+    symbols = universe["Symbol"].tolist()
     name_map = dict(zip(universe["Symbol"], universe["Name"]))
     exch_map = dict(zip(universe["Symbol"], universe["Exchange"]))
 
@@ -777,38 +843,43 @@ def main(
 
     done_darvas = already_done(con, "darvas") if resume else set()
     todo_darvas = [s for s in symbols if s not in done_darvas]
-    print(f"  Symbols to scan: {len(todo_darvas):,}  "
-          f"(skipping {len(done_darvas):,} already done)")
+    print(
+        f"  Symbols to scan: {len(todo_darvas):,}  " f"(skipping {len(done_darvas):,} already done)"
+    )
 
-    pbar_d = (tqdm(total=len(todo_darvas), unit="stocks",
-                   desc="Darvas", ncols=80)
-              if TQDM_OK else None)
+    pbar_d = (
+        tqdm(total=len(todo_darvas), unit="stocks", desc="Darvas", ncols=80) if TQDM_OK else None
+    )
 
-    darvas_results = run_darvas_batch(todo_darvas, batch_size=batch_size,
-                                       pbar=pbar_d)
+    darvas_results = run_darvas_batch(todo_darvas, batch_size=batch_size, pbar=pbar_d)
     if pbar_d:
         pbar_d.close()
 
     # Write Darvas results to SQLite
     for sym, dr in darvas_results.items():
-        upsert_result(con, {
-            "symbol":       sym,
-            "name":         name_map.get(sym, ""),
-            "exchange":     exch_map.get(sym, ""),
-            "darvas_signal": dr.get("signal"),
-            "darvas_box_top": dr.get("box_top"),
-            "darvas_box_bot": dr.get("box_bottom"),
-            "darvas_current": dr.get("current_price"),
-            "darvas_upside":  dr.get("upside_pct"),
-            "darvas_pos":     dr.get("pos_in_box"),
-            "scanned_at":    datetime.now().isoformat(),
-        })
+        upsert_result(
+            con,
+            {
+                "symbol": sym,
+                "name": name_map.get(sym, ""),
+                "exchange": exch_map.get(sym, ""),
+                "darvas_signal": dr.get("signal"),
+                "darvas_box_top": dr.get("box_top"),
+                "darvas_box_bot": dr.get("box_bottom"),
+                "darvas_current": dr.get("current_price"),
+                "darvas_upside": dr.get("upside_pct"),
+                "darvas_pos": dr.get("pos_in_box"),
+                "scanned_at": datetime.now().isoformat(),
+            },
+        )
         mark_done(con, sym, "darvas")
 
-    print(f"  Phase 1 done.  "
-          f"Breakouts: {sum(1 for v in darvas_results.values() if v.get('signal')=='BREAKOUT_BUY'):,}  "
-          f"In-box: {sum(1 for v in darvas_results.values() if v.get('signal')=='IN_BOX'):,}  "
-          f"Breakdown: {sum(1 for v in darvas_results.values() if v.get('signal')=='BREAKDOWN_SELL'):,}")
+    print(
+        f"  Phase 1 done.  "
+        f"Breakouts: {sum(1 for v in darvas_results.values() if v.get('signal')=='BREAKOUT_BUY'):,}  "
+        f"In-box: {sum(1 for v in darvas_results.values() if v.get('signal')=='IN_BOX'):,}  "
+        f"Breakdown: {sum(1 for v in darvas_results.values() if v.get('signal')=='BREAKDOWN_SELL'):,}"
+    )
 
     if darvas_only:
         print("\n  --darvas-only set. Skipping fundamentals.")
@@ -819,22 +890,25 @@ def main(
 
     # ── Step 3: Piotroski + Coffee Can (threaded) ─────────────────────────────
     print(f"\n── Phase 2: Piotroski + Coffee Can ({workers} workers) ──────────────────")
-    print(f"  Estimated time: {len(symbols) * 4 / workers / 60:.0f}–"
-          f"{len(symbols) * 6 / workers / 60:.0f} minutes "
-          f"(depends on Yahoo Finance latency)")
+    print(
+        f"  Estimated time: {len(symbols) * 4 / workers / 60:.0f}–"
+        f"{len(symbols) * 6 / workers / 60:.0f} minutes "
+        f"(depends on Yahoo Finance latency)"
+    )
 
-    done_fund  = already_done(con, "fundamentals") if resume else set()
-    todo_fund  = [s for s in symbols if s not in done_fund]
-    print(f"  Symbols to scan: {len(todo_fund):,}  "
-          f"(skipping {len(done_fund):,} already done)")
+    done_fund = already_done(con, "fundamentals") if resume else set()
+    todo_fund = [s for s in symbols if s not in done_fund]
+    print(f"  Symbols to scan: {len(todo_fund):,}  " f"(skipping {len(done_fund):,} already done)")
 
-    pbar_f = (tqdm(total=len(todo_fund), unit="stocks",
-                   desc="Fundamentals", ncols=80)
-              if TQDM_OK else None)
+    pbar_f = (
+        tqdm(total=len(todo_fund), unit="stocks", desc="Fundamentals", ncols=80)
+        if TQDM_OK
+        else None
+    )
 
     def _worker(sym):
         result = scan_fundamentals_one(sym, name_map.get(sym, ""), exch_map.get(sym, ""))
-        time.sleep(delay)   # gentle rate-limit spacing per worker
+        time.sleep(delay)  # gentle rate-limit spacing per worker
         return sym, result
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
@@ -863,29 +937,41 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Full NASDAQ + NYSE equity screener: Darvas, Piotroski, Coffee Can."
     )
-    parser.add_argument("--exchange",    default="all",
-                        choices=["all","nasdaq","nyse","amex"],
-                        help="Exchange filter (default: all)")
-    parser.add_argument("--limit",       type=int, default=0,
-                        help="Process only first N stocks (0 = all, default)")
-    parser.add_argument("--resume",      action="store_true",
-                        help="Skip symbols already in screener.db checkpoint")
-    parser.add_argument("--darvas-only", action="store_true",
-                        help="Run Darvas phase only (fast, ~5 min)")
-    parser.add_argument("--batch-size",  type=int, default=500,
-                        help="Tickers per yf.download() batch (default 500)")
-    parser.add_argument("--workers",     type=int, default=10,
-                        help="Threads for fundamentals phase (default 10)")
-    parser.add_argument("--delay",       type=float, default=0.05,
-                        help="Per-worker sleep between API calls in seconds (default 0.05)")
+    parser.add_argument(
+        "--exchange",
+        default="all",
+        choices=["all", "nasdaq", "nyse", "amex"],
+        help="Exchange filter (default: all)",
+    )
+    parser.add_argument(
+        "--limit", type=int, default=0, help="Process only first N stocks (0 = all, default)"
+    )
+    parser.add_argument(
+        "--resume", action="store_true", help="Skip symbols already in screener.db checkpoint"
+    )
+    parser.add_argument(
+        "--darvas-only", action="store_true", help="Run Darvas phase only (fast, ~5 min)"
+    )
+    parser.add_argument(
+        "--batch-size", type=int, default=500, help="Tickers per yf.download() batch (default 500)"
+    )
+    parser.add_argument(
+        "--workers", type=int, default=10, help="Threads for fundamentals phase (default 10)"
+    )
+    parser.add_argument(
+        "--delay",
+        type=float,
+        default=0.05,
+        help="Per-worker sleep between API calls in seconds (default 0.05)",
+    )
 
     args = parser.parse_args()
     main(
-        exchange    = args.exchange,
-        limit       = args.limit,
-        resume      = args.resume,
-        darvas_only = args.darvas_only,
-        batch_size  = args.batch_size,
-        workers     = args.workers,
-        delay       = args.delay,
+        exchange=args.exchange,
+        limit=args.limit,
+        resume=args.resume,
+        darvas_only=args.darvas_only,
+        batch_size=args.batch_size,
+        workers=args.workers,
+        delay=args.delay,
     )

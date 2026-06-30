@@ -28,8 +28,7 @@ warnings.filterwarnings("ignore")
 
 from universe_sources import PROVIDERS, get_universe
 
-CACHE = Path(os.environ.get("BHAV_CACHE",
-                            Path.home() / "Downloads" / "data" / "bhavcopy_cache"))
+CACHE = Path(os.environ.get("BHAV_CACHE", Path.home() / "Downloads" / "data" / "bhavcopy_cache"))
 SNAP_DIR = CACHE / "universe_snapshots"
 SNAP_DIR.mkdir(parents=True, exist_ok=True)
 LOG = CACHE / "new_listings.json"
@@ -46,8 +45,9 @@ def _load_snapshot(mkt: str) -> set:
 
 
 def _save_snapshot(mkt: str, tickers: set):
-    (SNAP_DIR / f"{mkt}.json").write_text(json.dumps(
-        {"updated": _dt.date.today().isoformat(), "tickers": sorted(tickers)}))
+    (SNAP_DIR / f"{mkt}.json").write_text(
+        json.dumps({"updated": _dt.date.today().isoformat(), "tickers": sorted(tickers)})
+    )
 
 
 def _append_log(entries: list):
@@ -78,8 +78,10 @@ def check(markets, seed: bool = False, verbose: bool = True) -> dict:
         if seed or not prev:
             _save_snapshot(mkt, current)
             if verbose:
-                print(f"  {mkt}: snapshot seeded ({len(current)} tickers)"
-                      + ("" if not prev else " [reseeded]"))
+                print(
+                    f"  {mkt}: snapshot seeded ({len(current)} tickers)"
+                    + ("" if not prev else " [reseeded]")
+                )
             continue
         new = sorted(current - prev)
         delisted = sorted(prev - current)
@@ -87,16 +89,20 @@ def check(markets, seed: bool = False, verbose: bool = True) -> dict:
         if new:
             log_entries.append({"date": today, "market": mkt, "new_listings": new})
         if verbose:
-            print(f"  {mkt}: {len(new)} new listing(s), {len(delisted)} delisted "
-                  f"(universe {len(prev)} → {len(current)})")
+            print(
+                f"  {mkt}: {len(new)} new listing(s), {len(delisted)} delisted "
+                f"(universe {len(prev)} → {len(current)})"
+            )
             for t in new[:15]:
                 print(f"      + {t}")
-        _save_snapshot(mkt, current)         # roll snapshot forward
+        _save_snapshot(mkt, current)  # roll snapshot forward
     if log_entries:
         _append_log(log_entries)
         if verbose:
-            print(f"\n  logged {sum(len(e['new_listings']) for e in log_entries)} "
-                  f"new listings → {LOG.name}")
+            print(
+                f"\n  logged {sum(len(e['new_listings']) for e in log_entries)} "
+                f"new listings → {LOG.name}"
+            )
     return found
 
 

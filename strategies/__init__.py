@@ -7,15 +7,35 @@
 
 from __future__ import annotations
 
-from . import (piotroski, coffee_can, magic_formula, bluest_blue_chips,
-               debt_reduction, dividend_yield, golden_crossover,
-               loss_to_profit, garp, darvas, cash_conversion_cycle)
-from .base import StockData, Result
+from . import (
+    bluest_blue_chips,
+    cash_conversion_cycle,
+    coffee_can,
+    darvas,
+    debt_reduction,
+    dividend_yield,
+    garp,
+    golden_crossover,
+    loss_to_profit,
+    magic_formula,
+    piotroski,
+)
+from .base import Result, StockData
 
 # ordered as the user listed them (top-10) + cash conversion cycle
-_MODULES = [piotroski, coffee_can, magic_formula, bluest_blue_chips, debt_reduction,
-            dividend_yield, golden_crossover, loss_to_profit, garp, darvas,
-            cash_conversion_cycle]
+_MODULES = [
+    piotroski,
+    coffee_can,
+    magic_formula,
+    bluest_blue_chips,
+    debt_reduction,
+    dividend_yield,
+    golden_crossover,
+    loss_to_profit,
+    garp,
+    darvas,
+    cash_conversion_cycle,
+]
 
 STRATEGIES = {m.META["slug"]: m for m in _MODULES}
 META = {slug: m.META for slug, m in STRATEGIES.items()}

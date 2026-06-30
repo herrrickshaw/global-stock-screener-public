@@ -29,8 +29,7 @@ _UA = {"User-Agent": "market-research umashankartd1991@gmail.com"}  # SEC requir
 @lru_cache(maxsize=1)
 def _ticker_cik() -> Dict[str, str]:
     """Map TICKER -> zero-padded 10-digit CIK (SEC official registry)."""
-    r = requests.get("https://www.sec.gov/files/company_tickers.json",
-                     headers=_UA, timeout=30)
+    r = requests.get("https://www.sec.gov/files/company_tickers.json", headers=_UA, timeout=30)
     r.raise_for_status()
     return {v["ticker"].upper(): str(v["cik_str"]).zfill(10) for v in r.json().values()}
 
@@ -67,8 +66,9 @@ def companyfacts(ticker: str) -> Optional[dict]:
     if not cik:
         return None
     try:
-        r = requests.get(f"https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json",
-                         headers=_UA, timeout=30)
+        r = requests.get(
+            f"https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json", headers=_UA, timeout=30
+        )
         if r.status_code != 200:
             return None
         return r.json().get("facts", {})
@@ -86,20 +86,31 @@ def fundamentals(ticker: str) -> Dict:
     if not f:
         return {}
     ni = _first(f, "NetIncomeLoss")
-    rev = _first(f, "RevenueFromContractWithCustomerExcludingAssessedTax",
-                 "RevenueFromContractWithCustomerIncludingAssessedTax",
-                 "Revenues", "SalesRevenueNet")
+    rev = _first(
+        f,
+        "RevenueFromContractWithCustomerExcludingAssessedTax",
+        "RevenueFromContractWithCustomerIncludingAssessedTax",
+        "Revenues",
+        "SalesRevenueNet",
+    )
     assets = _first(f, "Assets")
     liab = _first(f, "Liabilities")
     equity = _first(f, "StockholdersEquity")
     cur_a = _first(f, "AssetsCurrent")
     cur_l = _first(f, "LiabilitiesCurrent")
-    cfo = _first(f, "NetCashProvidedByUsedInOperatingActivities",
-                 "NetCashProvidedByUsedInOperatingActivitiesContinuingOperations")
+    cfo = _first(
+        f,
+        "NetCashProvidedByUsedInOperatingActivities",
+        "NetCashProvidedByUsedInOperatingActivitiesContinuingOperations",
+    )
     ebit = _first(f, "OperatingIncomeLoss")
     gp = _first(f, "GrossProfit")
-    shares = _first(f, "CommonStockSharesOutstanding",
-                    "WeightedAverageNumberOfSharesOutstandingBasic", "dei:EntityCommonStockSharesOutstanding")
+    shares = _first(
+        f,
+        "CommonStockSharesOutstanding",
+        "WeightedAverageNumberOfSharesOutstandingBasic",
+        "dei:EntityCommonStockSharesOutstanding",
+    )
     eps = _first(f, "EarningsPerShareBasic", "EarningsPerShareDiluted")
     debt = _first(f, "LongTermDebtNoncurrent", "LongTermDebt", "DebtCurrent")
     capex = _first(f, "PaymentsToAcquirePropertyPlantAndEquipment")
@@ -116,12 +127,15 @@ def fundamentals(ticker: str) -> Dict:
     roa_p = _ratio(g(ni, 1), g(assets, 1))
     out = {
         "source": "SEC-EDGAR",
-        "net_income": g(ni), "net_income_prev": g(ni, 1),
-        "revenue": g(rev), "revenue_5y_ago": g(rev, 3) or g(rev, -1) if rev else None,
+        "net_income": g(ni),
+        "net_income_prev": g(ni, 1),
+        "revenue": g(rev),
+        "revenue_5y_ago": g(rev, 3) or g(rev, -1) if rev else None,
         "roa": roa * 100 if roa is not None else None,
         "roa_prev": roa_p * 100 if roa_p is not None else None,
         "roe": (_ratio(g(ni), g(equity)) or 0) * 100 if g(equity) else None,
-        "cfo": g(cfo), "ebit": g(ebit),
+        "cfo": g(cfo),
+        "ebit": g(ebit),
         "current_ratio": _ratio(g(cur_a), g(cur_l)),
         "current_ratio_prev": _ratio(g(cur_a, 1), g(cur_l, 1)),
         "debt_to_assets": _ratio(g(liab), g(assets)),
@@ -131,14 +145,18 @@ def fundamentals(ticker: str) -> Dict:
         "gross_margin_prev": _margin(g(gp, 1), g(rev, 1)),
         "asset_turnover": _ratio(g(rev), g(assets)),
         "asset_turnover_prev": _ratio(g(rev, 1), g(assets, 1)),
-        "shares": g(shares), "shares_prev": g(shares, 1),
-        "eps_ttm": g(eps), "eps_growth": _pct(g(eps), g(eps, 1)),
+        "shares": g(shares),
+        "shares_prev": g(shares, 1),
+        "eps_ttm": g(eps),
+        "eps_growth": _pct(g(eps), g(eps, 1)),
         "debt_history": [v for v in debt] or None,
         "capex_history": [v for v in capex] or None,
         "roe_history": _roe_history(ni, equity),
         "dividend_history": [v for v in div] or None,
         # cash-conversion-cycle inputs (used by the CCC strategy)
-        "inventory": g(inv), "receivables": g(recv), "payables": g(pay),
+        "inventory": g(inv),
+        "receivables": g(recv),
+        "payables": g(pay),
         "cogs": g(cogs),
     }
     return {k: v for k, v in out.items() if v is not None}
@@ -168,10 +186,18 @@ def _roe_history(ni, equity):
 
 if __name__ == "__main__":
     import sys
-    for t in (sys.argv[1:] or ["AAPL", "MSFT", "KO"]):
+
+    for t in sys.argv[1:] or ["AAPL", "MSFT", "KO"]:
         f = fundamentals(t)
-        keys = ["net_income", "roa", "roe", "current_ratio", "debt_to_equity",
-                "gross_margin", "eps_growth"]
+        keys = [
+            "net_income",
+            "roa",
+            "roe",
+            "current_ratio",
+            "debt_to_equity",
+            "gross_margin",
+            "eps_growth",
+        ]
         print(f"\n{t}:  " + ("no data" if not f else ""))
         for k in keys:
             if k in f:

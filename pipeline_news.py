@@ -29,7 +29,7 @@ from __future__ import annotations
 import argparse
 import json
 import warnings
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -40,50 +40,80 @@ warnings.filterwarnings("ignore")
 from sentiment_pipeline import SentimentPipeline
 from stock_utils import pct_change
 
-OUT_DIR     = Path("./news_pipeline_results"); OUT_DIR.mkdir(exist_ok=True)
+OUT_DIR = Path("./news_pipeline_results")
+OUT_DIR.mkdir(exist_ok=True)
 MONITOR_LOG = OUT_DIR / "news_sentiment_log.json"
-CACHE_DIR   = Path.home() / "Downloads" / "market_cache" / "ohlc"
+CACHE_DIR = Path.home() / "Downloads" / "market_cache" / "ohlc"
 
 HORIZONS = {"1d": 1, "1wk": 5, "1mo": 21, "3mo": 63}
 
-DISCLAIMER = ("⚠️  NEWS pipeline: sentiment is noisy, provider-dependent, may lead "
-              "or lag price. Educational/research only. NOT investment advice.")
+DISCLAIMER = (
+    "⚠️  NEWS pipeline: sentiment is noisy, provider-dependent, may lead "
+    "or lag price. Educational/research only. NOT investment advice."
+)
 
-NIFTY50 = ["RELIANCE","TCS","HDFCBANK","ICICIBANK","INFY","HINDUNILVR","ITC","SBIN",
-           "BHARTIARTL","KOTAKBANK","LT","AXISBANK","BAJFINANCE","ASIANPAINT",
-           "MARUTI","TITAN","SUNPHARMA","ADANIENT","ADANIPORTS","NTPC"]
+NIFTY50 = [
+    "RELIANCE",
+    "TCS",
+    "HDFCBANK",
+    "ICICIBANK",
+    "INFY",
+    "HINDUNILVR",
+    "ITC",
+    "SBIN",
+    "BHARTIARTL",
+    "KOTAKBANK",
+    "LT",
+    "AXISBANK",
+    "BAJFINANCE",
+    "ASIANPAINT",
+    "MARUTI",
+    "TITAN",
+    "SUNPHARMA",
+    "ADANIENT",
+    "ADANIPORTS",
+    "NTPC",
+]
 
 
 # ── Stage 1: market mood ──────────────────────────────────────────────────────
+
 
 def stage_mood(sp: SentimentPipeline):
     print(f"\n{'─'*70}\n  ▶ STAGE 1 — MARKET MOOD (Indian news regime gauge)\n{'─'*70}")
     mood = sp.get_market_mood()
     if not mood:
-        print("  No RSS mood available (feedparser missing?)"); return mood
-    emoji = {"POSITIVE":"🟢","NEGATIVE":"🔴","NEUTRAL":"🟡"}.get(mood.get("mood"),"⚪")
-    print(f"  {emoji} Indian market news mood: {mood.get('mood')} "
-          f"(score {mood.get('score'):+.3f}) from {mood.get('n_articles')} live articles")
-    print(f"  Sources: Moneycontrol, Economic Times, BusinessLine, LiveMint")
+        print("  No RSS mood available (feedparser missing?)")
+        return mood
+    emoji = {"POSITIVE": "🟢", "NEGATIVE": "🔴", "NEUTRAL": "🟡"}.get(mood.get("mood"), "⚪")
+    print(
+        f"  {emoji} Indian market news mood: {mood.get('mood')} "
+        f"(score {mood.get('score'):+.3f}) from {mood.get('n_articles')} live articles"
+    )
+    print("  Sources: Moneycontrol, Economic Times, BusinessLine, LiveMint")
     return mood
 
 
 # ── Stage 2: per-ticker scoring ───────────────────────────────────────────────
 
+
 def stage_score(sp: SentimentPipeline, tickers: list, market: str) -> dict:
     print(f"\n{'─'*70}\n  ▶ STAGE 2 — PER-TICKER SENTIMENT ({len(tickers)} stocks)\n{'─'*70}")
     res = sp.get_batch(tickers, market)
     print(f"\n  {'Ticker':<12} {'Sentiment':<9} {'Score':>7} {'Articles':>9} {'Sources'}")
-    print("  " + "─"*58)
+    print("  " + "─" * 58)
     for tk, s in sorted(res.items(), key=lambda x: -x[1].score):
         if s.label == "NO_DATA":
             continue
-        print(f"  {tk:<12} {s.label:<9} {s.score:>+7.3f} {s.n_articles:>9} "
-              f"{','.join(p.split(':')[0] for p in set(s.providers))}")
+        print(
+            f"  {tk:<12} {s.label:<9} {s.score:>+7.3f} {s.n_articles:>9} "
+            f"{','.join(p.split(':')[0] for p in set(s.providers))}"
+        )
     return res
 
 
 # ── Stage 3: forward monitor ──────────────────────────────────────────────────
+
 
 def stage_monitor(sp: SentimentPipeline, tickers: list, market: str):
     print(f"\n{'─'*70}\n  ▶ STAGE 3 — FORWARD MONITOR (log for 1d/1wk/1mo/3mo join)\n{'─'*70}")
@@ -94,51 +124,69 @@ def stage_monitor(sp: SentimentPipeline, tickers: list, market: str):
     for tk, s in res.items():
         if s.label == "NO_DATA":
             continue
-        log.append({"date": today, "ticker": tk, "market": market,
-                    "sentiment": s.score, "label": s.label,
-                    "n_articles": s.n_articles})
+        log.append(
+            {
+                "date": today,
+                "ticker": tk,
+                "market": market,
+                "sentiment": s.score,
+                "label": s.label,
+                "n_articles": s.n_articles,
+            }
+        )
         added += 1
     MONITOR_LOG.write_text(json.dumps(log, indent=2))
     print(f"  Logged {added} tickers for {today}. Total log: {len(log)} rows.")
-    print(f"  Schedule daily; run --join later to link sentiment to realised moves.")
+    print("  Schedule daily; run --join later to link sentiment to realised moves.")
 
 
 # ── Stage 4: join logged sentiment to realised price moves ────────────────────
+
 
 def _load_prices(ticker: str, market: str) -> pd.DataFrame:
     suffix = ".NS" if market == "IN" else ""
     for cand in (f"{ticker}{suffix}.parquet", f"{ticker}.parquet"):
         p = CACHE_DIR / cand
         if p.exists():
-            try: return pd.read_parquet(p)
-            except Exception: pass
+            try:
+                return pd.read_parquet(p)
+            except Exception:
+                pass
     return pd.DataFrame()
 
 
 def stage_join(market: str):
     print(f"\n{'─'*70}\n  ▶ STAGE 4 — SENTIMENT ↔ PRICE JOIN (true news linkage)\n{'─'*70}")
     if not MONITOR_LOG.exists():
-        print("  No monitor log yet. Run --monitor daily first."); return
+        print("  No monitor log yet. Run --monitor daily first.")
+        return
     log = pd.DataFrame(json.loads(MONITOR_LOG.read_text()))
     log = log[log["market"] == market]
     if log.empty:
-        print(f"  No {market} entries in log."); return
+        print(f"  No {market} entries in log.")
+        return
 
     rows = []
     for _, e in log.iterrows():
         px = _load_prices(e["ticker"], market)
-        if px.empty: continue
+        if px.empty:
+            continue
         idx = px.index
         try:
             sig_dt = pd.Timestamp(e["date"])
             pos = idx.searchsorted(sig_dt)
-            if pos >= len(px): continue
+            if pos >= len(px):
+                continue
             entry = float(px["Close"].iloc[pos])
-            rec = {"ticker": e["ticker"], "date": e["date"],
-                   "sentiment": e["sentiment"], "label": e["label"]}
+            rec = {
+                "ticker": e["ticker"],
+                "date": e["date"],
+                "sentiment": e["sentiment"],
+                "label": e["label"],
+            }
             for h, n in HORIZONS.items():
                 if pos + n < len(px):
-                    rec[f"fwd_{h}"] = pct_change(float(px["Close"].iloc[pos+n]), entry)
+                    rec[f"fwd_{h}"] = pct_change(float(px["Close"].iloc[pos + n]), entry)
                 else:
                     rec[f"fwd_{h}"] = np.nan
             rows.append(rec)
@@ -151,9 +199,9 @@ def stage_join(market: str):
     df = pd.DataFrame(rows)
     print(f"  Joined {len(df)} logged sentiments to realised prices.")
     # Correlation of sentiment with each forward horizon
-    print(f"\n  Sentiment → forward-return correlation (true news):")
+    print("\n  Sentiment → forward-return correlation (true news):")
     print(f"  {'Horizon':<8} {'Corr':>8} {'N':>6}")
-    print("  " + "─"*26)
+    print("  " + "─" * 26)
     for h in HORIZONS:
         col = f"fwd_{h}"
         sub = df[["sentiment", col]].dropna()
@@ -170,9 +218,10 @@ def stage_join(market: str):
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+
 def main():
     p = argparse.ArgumentParser(description="PIPELINE 2 — News-based analysis (live sentiment)")
-    p.add_argument("--market", choices=["IN","US"], default="IN")
+    p.add_argument("--market", choices=["IN", "US"], default="IN")
     p.add_argument("--tickers", nargs="+", default=None)
     p.add_argument("--watchlist", choices=["nifty50"], default=None)
     p.add_argument("--mood", action="store_true", help="Market mood only")
@@ -191,12 +240,15 @@ def main():
     tickers = a.tickers or (NIFTY50 if a.watchlist == "nifty50" else None)
 
     if a.join:
-        stage_join(a.market); return
+        stage_join(a.market)
+        return
     if a.mood or (not tickers and not a.monitor):
         stage_mood(sp)
-        if not tickers: return
+        if not tickers:
+            return
     if a.monitor:
-        if not tickers: tickers = NIFTY50
+        if not tickers:
+            tickers = NIFTY50
         stage_monitor(sp, tickers, a.market)
     elif tickers:
         stage_score(sp, tickers, a.market)

@@ -58,7 +58,7 @@
 import json
 import time
 import warnings
-from datetime import datetime, timedelta, date
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -69,36 +69,37 @@ warnings.filterwarnings("ignore")
 
 try:
     import yfinance as yf
+
     _YF_OK = True
 except ImportError:
     _YF_OK = False
 
-try:                                   # central data-cleaning gate (shared)
+try:  # central data-cleaning gate (shared)
     from stock_utils import clean_ohlcv as _clean_ohlcv_central
 except ImportError:
     _clean_ohlcv_central = None
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-CACHE_ROOT   = Path.home() / "Downloads" / "market_cache"
-OHLC_DIR     = CACHE_ROOT / "ohlc"
-FUND_DIR     = CACHE_ROOT / "fundamentals"
-INDEX_DIR    = CACHE_ROOT / "index"
-META_DIR     = CACHE_ROOT / "meta"
-META_FILE    = META_DIR / "cache_index.json"
+CACHE_ROOT = Path.home() / "Downloads" / "market_cache"
+OHLC_DIR = CACHE_ROOT / "ohlc"
+FUND_DIR = CACHE_ROOT / "fundamentals"
+INDEX_DIR = CACHE_ROOT / "index"
+META_DIR = CACHE_ROOT / "meta"
+META_FILE = META_DIR / "cache_index.json"
 
 # Default data windows (paper: 5 years for ML training)
-OHLC_YEARS   = 5          # years of OHLC to keep cached
-INDEX_YEARS  = 10         # years for index (backtest uses 10y)
+OHLC_YEARS = 5  # years of OHLC to keep cached
+INDEX_YEARS = 10  # years for index (backtest uses 10y)
 
 # Stale thresholds — how old before we refresh
-OHLC_STALE_HOURS  = 20    # refresh OHLC if older than 20h (1 trading session)
-FUND_STALE_DAYS   = 7     # refresh financials weekly (quarterly results ≤ 4× / year)
-INDEX_STALE_HOURS = 20    # same as OHLC
+OHLC_STALE_HOURS = 20  # refresh OHLC if older than 20h (1 trading session)
+FUND_STALE_DAYS = 7  # refresh financials weekly (quarterly results ≤ 4× / year)
+INDEX_STALE_HOURS = 20  # same as OHLC
 
 # yfinance batch parameters
-BATCH_SIZE  = 100         # smaller batches → fewer rate limit hits
-BATCH_SLEEP = 2.0         # seconds between batches
+BATCH_SIZE = 100  # smaller batches → fewer rate limit hits
+BATCH_SLEEP = 2.0  # seconds between batches
 
 # Create directories on import
 for d in [OHLC_DIR, FUND_DIR, INDEX_DIR, META_DIR]:
@@ -108,6 +109,7 @@ for d in [OHLC_DIR, FUND_DIR, INDEX_DIR, META_DIR]:
 # ════════════════════════════════════════════════════════════════════════════════
 # CACHE CLASS
 # ════════════════════════════════════════════════════════════════════════════════
+
 
 class MarketCache:
     """
@@ -122,11 +124,11 @@ class MarketCache:
 
     def __init__(self, verbose: bool = True):
         self.verbose = verbose
-        self._meta   = self._load_meta()
+        self._meta = self._load_meta()
         # In-memory cache: {ticker: DataFrame}
         # Avoids repeated disk reads within the same Python session.
         # Cleared when the process exits (ephemeral, disk is the source of truth).
-        self._mem:   dict = {}
+        self._mem: dict = {}
 
     # ── Meta (JSON index tracking what's cached) ──────────────────────────────
 
@@ -144,11 +146,11 @@ class MarketCache:
     def _update_meta(self, key: str, path: Path, df: pd.DataFrame):
         """Record cache entry metadata after writing a file."""
         self._meta[key] = {
-            "rows":    len(df),
-            "from":    str(df.index.min().date()) if not df.empty else None,
-            "to":      str(df.index.max().date()) if not df.empty else None,
+            "rows": len(df),
+            "from": str(df.index.min().date()) if not df.empty else None,
+            "to": str(df.index.max().date()) if not df.empty else None,
             "updated": datetime.now().isoformat(),
-            "file":    str(path),
+            "file": str(path),
         }
         self._save_meta()
 
@@ -187,7 +189,7 @@ class MarketCache:
         - Subsequent calls: reads from Parquet, appends only new rows
         - Missing values: forward-filled then backward-filled (AlQahtani et al. 2025)
         """
-        key  = f"ohlc:{ticker}"
+        key = f"ohlc:{ticker}"
         path = self._ohlc_path(ticker)
 
         if not force and path.exists() and not self._is_stale(key, OHLC_STALE_HOURS):
@@ -201,7 +203,7 @@ class MarketCache:
 
         if path.exists() and not force:
             # Cache exists but may be stale — incremental update
-            existing  = pd.read_parquet(path)
+            existing = pd.read_parquet(path)
             last_date = self._last_cached_date(key)
             if last_date:
                 # Only fetch from the day after last cached date
@@ -217,26 +219,29 @@ class MarketCache:
                     self._write_parquet(path, combined)
                     self._update_meta(key, path, combined)
                     if self.verbose:
-                        print(f"  Cache updated: {ticker} +{len(new_df)} rows "
-                              f"(total {len(combined)})")
+                        print(
+                            f"  Cache updated: {ticker} +{len(new_df)} rows "
+                            f"(total {len(combined)})"
+                        )
                     return combined
                 return existing
         else:
             # Cold start — download full history
             start = date.today() - timedelta(days=OHLC_YEARS * 365 + 30)
-            df    = self._yf_download_single(ticker, start=start)
+            df = self._yf_download_single(ticker, start=start)
             if df.empty:
                 return df
             df = self._clean_ohlc(df)
             self._write_parquet(path, df)
             self._update_meta(key, path, df)
             if self.verbose:
-                print(f"  Cache created: {ticker} {len(df)} rows "
-                      f"({df.index.min().date()} – {df.index.max().date()})")
+                print(
+                    f"  Cache created: {ticker} {len(df)} rows "
+                    f"({df.index.min().date()} – {df.index.max().date()})"
+                )
             return df
 
-    def get_ohlc_bulk(self, tickers: list, force: bool = False,
-                      workers: int = 1) -> dict:
+    def get_ohlc_bulk(self, tickers: list, force: bool = False, workers: int = 1) -> dict:
         """
         Get OHLC for many tickers efficiently.
 
@@ -249,12 +254,12 @@ class MarketCache:
 
         Returns dict: {ticker: DataFrame}
         """
-        needs_full  = []
-        needs_incr  = []
-        fresh       = []
+        needs_full = []
+        needs_incr = []
+        fresh = []
 
         for t in tickers:
-            key  = f"ohlc:{t}"
+            key = f"ohlc:{t}"
             path = self._ohlc_path(t)
             if not path.exists():
                 needs_full.append(t)
@@ -264,13 +269,16 @@ class MarketCache:
                 fresh.append(t)
 
         if self.verbose:
-            print(f"  Cache: {len(fresh)} fresh | {len(needs_incr)} incremental | "
-                  f"{len(needs_full)} cold-start")
+            print(
+                f"  Cache: {len(fresh)} fresh | {len(needs_incr)} incremental | "
+                f"{len(needs_full)} cold-start"
+            )
 
         result: dict[str, pd.DataFrame] = {}
 
         # ── Read fresh: L1 memory first, L2 disk in parallel ────────────────
-        from concurrent.futures import ThreadPoolExecutor as _TPE, as_completed as _ac
+        from concurrent.futures import ThreadPoolExecutor as _TPE
+        from concurrent.futures import as_completed as _ac
 
         def _read_one(t):
             # L1: memory
@@ -280,7 +288,7 @@ class MarketCache:
             path = self._ohlc_path(t)
             try:
                 df = pd.read_parquet(path)
-                self._mem[t] = df    # promote to L1
+                self._mem[t] = df  # promote to L1
                 return t, df, "disk"
             except Exception:
                 return t, None, "error"
@@ -336,14 +344,13 @@ class MarketCache:
 
     # ── Financials ────────────────────────────────────────────────────────────
 
-    def get_financials(self, ticker: str, freq: str = "annual",
-                       force: bool = False) -> dict:
+    def get_financials(self, ticker: str, freq: str = "annual", force: bool = False) -> dict:
         """
         Get income statement + balance sheet + cash flow for one ticker.
         freq: 'annual' or 'quarterly'
         Returns dict: {income_stmt, balance_sheet, cash_flow}
         """
-        key  = f"fund:{ticker}:{freq}"
+        key = f"fund:{ticker}:{freq}"
         path = FUND_DIR / f"{ticker.replace('/', '_')}_{freq}.parquet"
 
         if not force and path.exists() and not self._is_stale(key, FUND_STALE_DAYS * 24):
@@ -366,14 +373,15 @@ class MarketCache:
             t = yf.Ticker(ticker)
             if freq == "annual":
                 data = {
-                    "income_stmt":   _first_df(t, "income_stmt",  "financials"),
+                    "income_stmt": _first_df(t, "income_stmt", "financials"),
                     "balance_sheet": _first_df(t, "balance_sheet"),
-                    "cash_flow":     _first_df(t, "cash_flow",    "cashflow"),
+                    "cash_flow": _first_df(t, "cash_flow", "cashflow"),
                 }
             else:
                 data = {
-                    "quarterly_income": _first_df(t, "quarterly_income_stmt",
-                                                    "quarterly_financials"),
+                    "quarterly_income": _first_df(
+                        t, "quarterly_income_stmt", "quarterly_financials"
+                    ),
                 }
 
             # Store as stacked Parquet (all sheets in one file)
@@ -390,7 +398,7 @@ class MarketCache:
                 self._write_parquet(path, combined)
                 self._meta[key] = {
                     "updated": datetime.now().isoformat(),
-                    "sheets":  list(data.keys()),
+                    "sheets": list(data.keys()),
                 }
                 self._save_meta()
 
@@ -408,7 +416,7 @@ class MarketCache:
         Cached separately from stock OHLC because it needs longer history.
         """
         safe = ticker.replace("^", "").replace("/", "_")
-        key  = f"index:{ticker}"
+        key = f"index:{ticker}"
         path = INDEX_DIR / f"{safe}.parquet"
 
         if not force and path.exists() and not self._is_stale(key, INDEX_STALE_HOURS):
@@ -416,22 +424,22 @@ class MarketCache:
             return df
 
         start = date.today() - timedelta(days=INDEX_YEARS * 365 + 30)
-        df    = self._yf_download_single(ticker, start=start)
+        df = self._yf_download_single(ticker, start=start)
         if df.empty:
             return df
 
         # Pre-compute regime indicators (done once, stored in cache)
-        df["dma50"]     = df["Close"].rolling(50).mean()
-        df["dma200"]    = df["Close"].rolling(200).mean()
+        df["dma50"] = df["Close"].rolling(50).mean()
+        df["dma200"] = df["Close"].rolling(200).mean()
         df["dma200_sl"] = df["dma200"].diff(5)
-        df["vol20"]     = df["Close"].pct_change().rolling(20).std() * np.sqrt(252) * 100
+        df["vol20"] = df["Close"].pct_change().rolling(20).std() * np.sqrt(252) * 100
 
         self._write_parquet(path, df)
         self._meta[key] = {
             "updated": datetime.now().isoformat(),
-            "rows":    len(df),
-            "from":    str(df.index.min().date()),
-            "to":      str(df.index.max().date()),
+            "rows": len(df),
+            "from": str(df.index.min().date()),
+            "to": str(df.index.max().date()),
         }
         self._save_meta()
         if self.verbose:
@@ -457,27 +465,31 @@ class MarketCache:
                         age = f"{delta.days}d"
                 except Exception:
                     pass
-            rows.append({
-                "Key":     key[:50],
-                "Rows":    meta.get("rows", "—"),
-                "From":    meta.get("from", "—"),
-                "To":      meta.get("to", "—"),
-                "Age":     age,
-            })
+            rows.append(
+                {
+                    "Key": key[:50],
+                    "Rows": meta.get("rows", "—"),
+                    "From": meta.get("from", "—"),
+                    "To": meta.get("to", "—"),
+                    "Age": age,
+                }
+            )
         if not rows:
             print("  Cache is empty — run cache.get_ohlc_bulk(symbols) to populate")
             return pd.DataFrame()
         df = pd.DataFrame(rows)
         ohlc_count = sum(1 for k in self._meta if k.startswith("ohlc:"))
         fund_count = sum(1 for k in self._meta if k.startswith("fund:"))
-        idx_count  = sum(1 for k in self._meta if k.startswith("index:"))
-        size_mb    = sum(
+        idx_count = sum(1 for k in self._meta if k.startswith("index:"))
+        size_mb = sum(
             f.stat().st_size / 1e6
             for d in [OHLC_DIR, FUND_DIR, INDEX_DIR]
             for f in d.glob("*.parquet")
         )
-        print(f"\n  Cache report: {ohlc_count} OHLC | {fund_count} fundamental | "
-              f"{idx_count} index | {size_mb:.1f} MB on disk")
+        print(
+            f"\n  Cache report: {ohlc_count} OHLC | {fund_count} fundamental | "
+            f"{idx_count} index | {size_mb:.1f} MB on disk"
+        )
         return df
 
     def purge(self, ticker: str = None):
@@ -486,9 +498,11 @@ class MarketCache:
         ticker=None → full wipe (use before switching from 1y to 5y window).
         """
         if ticker:
-            for path in [self._ohlc_path(ticker),
-                         FUND_DIR / f"{ticker.replace('/', '_')}_annual.parquet",
-                         FUND_DIR / f"{ticker.replace('/', '_')}_quarterly.parquet"]:
+            for path in [
+                self._ohlc_path(ticker),
+                FUND_DIR / f"{ticker.replace('/', '_')}_annual.parquet",
+                FUND_DIR / f"{ticker.replace('/', '_')}_quarterly.parquet",
+            ]:
                 if path.exists():
                     path.unlink()
             keys = [k for k in self._meta if ticker in k]
@@ -515,7 +529,7 @@ class MarketCache:
                 if isinstance(df.columns, pd.MultiIndex):
                     df = df.xs(ticker, axis=1, level=1)
                 if not df.empty:
-                    return df[["Open","High","Low","Close","Volume"]].dropna(how="all")
+                    return df[["Open", "High", "Low", "Close", "Volume"]].dropna(how="all")
             except Exception as e:
                 if "Rate" in str(e) or "429" in str(e):
                     time.sleep(15 * (attempt + 1))
@@ -528,32 +542,35 @@ class MarketCache:
         if not _YF_OK:
             return {}
         result = {}
-        batches = [tickers[i:i+BATCH_SIZE] for i in range(0, len(tickers), BATCH_SIZE)]
+        batches = [tickers[i : i + BATCH_SIZE] for i in range(0, len(tickers), BATCH_SIZE)]
         n_total = len(tickers)
-        n_done  = 0
+        n_done = 0
 
         for idx, batch in enumerate(batches, 1):
-            print(f"    Downloading batch {idx}/{len(batches)} "
-                  f"({len(batch)} tickers) …", end=" ", flush=True)
+            print(
+                f"    Downloading batch {idx}/{len(batches)} " f"({len(batch)} tickers) …",
+                end=" ",
+                flush=True,
+            )
             for attempt in range(3):
                 try:
                     raw = yf.download(
-                        batch, start=start, auto_adjust=True,
-                        threads=True, progress=False
+                        batch, start=start, auto_adjust=True, threads=True, progress=False
                     )
                     if raw.empty:
-                        print("empty"); break
+                        print("empty")
+                        break
                     if isinstance(raw.columns, pd.MultiIndex):
                         for t in batch:
                             try:
                                 df = raw.xs(t, axis=1, level=1).dropna(how="all")
                                 if not df.empty and "Close" in df.columns:
-                                    result[t] = df[["Open","High","Low","Close","Volume"]]
+                                    result[t] = df[["Open", "High", "Low", "Close", "Volume"]]
                             except KeyError:
                                 pass
                     else:
                         if not raw.empty:
-                            result[batch[0]] = raw[["Open","High","Low","Close","Volume"]]
+                            result[batch[0]] = raw[["Open", "High", "Low", "Close", "Volume"]]
                     ok = sum(1 for t in batch if t in result)
                     print(f"OK ({ok}/{len(batch)})")
                     n_done += ok
@@ -564,7 +581,8 @@ class MarketCache:
                         print(f"\n    Rate limited — waiting {wait}s …", end="", flush=True)
                         time.sleep(wait)
                     else:
-                        print(f"ERROR: {e}"); break
+                        print(f"ERROR: {e}")
+                        break
             if idx < len(batches):
                 time.sleep(BATCH_SLEEP)
 
@@ -608,6 +626,7 @@ class MarketCache:
 
 # ── Module-level helpers (used by other scripts) ──────────────────────────────
 
+
 def _first_df(ticker, *attrs):
     for a in attrs:
         df = getattr(ticker, a, None)
@@ -619,6 +638,7 @@ def _first_df(ticker, *attrs):
 # Singleton cache instance (created once, reused across imports)
 _CACHE_INSTANCE: Optional[MarketCache] = None
 
+
 def get_cache() -> MarketCache:
     global _CACHE_INSTANCE
     if _CACHE_INSTANCE is None:
@@ -626,8 +646,9 @@ def get_cache() -> MarketCache:
     return _CACHE_INSTANCE
 
 
-def warm_cache(symbols: list, period_years: int = 5,
-               index_tickers: list = None, verbose: bool = True):
+def warm_cache(
+    symbols: list, period_years: int = 5, index_tickers: list = None, verbose: bool = True
+):
     """
     One-shot cache warm-up for a symbol list.
     Call this once (takes ~45 min for full NSE) — every subsequent run is fast.
@@ -643,8 +664,7 @@ def warm_cache(symbols: list, period_years: int = 5,
 
     print(f"  Warming cache: {len(symbols)} stocks, {period_years}-year window")
     print(f"  Storage: {CACHE_ROOT}")
-    print(f"  First run: ~{len(symbols)//100 * 3} minutes | "
-          f"Subsequent runs: < 60 seconds\n")
+    print(f"  First run: ~{len(symbols)//100 * 3} minutes | " f"Subsequent runs: < 60 seconds\n")
 
     # Download index first (fast, needed for regime classification)
     for idx_sym in index_tickers:
@@ -654,4 +674,4 @@ def warm_cache(symbols: list, period_years: int = 5,
     cache.get_ohlc_bulk(symbols)
 
     cache.report()
-    print(f"\n  ✅ Cache warm. All future runs will use local Parquet files.")
+    print("\n  ✅ Cache warm. All future runs will use local Parquet files.")

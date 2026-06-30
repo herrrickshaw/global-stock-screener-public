@@ -28,16 +28,26 @@ OUT_PARQUET = Path(__file__).parent / "cache_seed" / "market_performance_5y.parq
 
 # market -> (benchmark index yfinance ticker, index name)
 INDEX = {
-    "US": ("^GSPC", "S&P 500"), "IN": ("^NSEI", "Nifty 50"),
-    "CN": ("000001.SS", "SSE Composite"), "JP": ("^N225", "Nikkei 225"),
-    "EU": ("^STOXX50E", "EURO STOXX 50"), "HK": ("^HSI", "Hang Seng"),
-    "KR": ("^KS11", "KOSPI"), "TW": ("^TWII", "TAIEX"),
-    "CA": ("^GSPTSE", "S&P/TSX"), "UK": ("^FTSE", "FTSE 100"),
-    "DE": ("^GDAXI", "DAX"), "AU": ("^AXJO", "ASX 200"),
-    "SG": ("^STI", "Straits Times"), "SA": ("^TASI.SR", "Tadawul TASI"),
-    "BR": ("^BVSP", "Bovespa"), "CH": ("^SSMI", "SMI"),
-    "ZA": ("^J203.JO", "JSE All Share"), "SE": ("^OMX", "OMX Stockholm 30"),
-    "FI": ("^OMXH25", "OMX Helsinki 25"), "DK": ("^OMXC25", "OMX Copenhagen 25"),
+    "US": ("^GSPC", "S&P 500"),
+    "IN": ("^NSEI", "Nifty 50"),
+    "CN": ("000001.SS", "SSE Composite"),
+    "JP": ("^N225", "Nikkei 225"),
+    "EU": ("^STOXX50E", "EURO STOXX 50"),
+    "HK": ("^HSI", "Hang Seng"),
+    "KR": ("^KS11", "KOSPI"),
+    "TW": ("^TWII", "TAIEX"),
+    "CA": ("^GSPTSE", "S&P/TSX"),
+    "UK": ("^FTSE", "FTSE 100"),
+    "DE": ("^GDAXI", "DAX"),
+    "AU": ("^AXJO", "ASX 200"),
+    "SG": ("^STI", "Straits Times"),
+    "SA": ("^TASI.SR", "Tadawul TASI"),
+    "BR": ("^BVSP", "Bovespa"),
+    "CH": ("^SSMI", "SMI"),
+    "ZA": ("^J203.JO", "JSE All Share"),
+    "SE": ("^OMX", "OMX Stockholm 30"),
+    "FI": ("^OMXH25", "OMX Helsinki 25"),
+    "DK": ("^OMXC25", "OMX Copenhagen 25"),
 }
 
 
@@ -63,20 +73,25 @@ def _metrics(close: pd.Series) -> dict:
     jan = close[close.index >= pd.Timestamp(close.index[-1].year, 1, 1)]
     if len(jan) > 1:
         ytd = (float(jan.iloc[-1]) / float(jan.iloc[0]) - 1) * 100
-    return {"Total_5y%": round(tot, 1), "CAGR%": round(cagr, 1) if cagr else None,
-            "Vol_ann%": round(vol, 1), "MaxDD%": round(mdd, 1),
-            "Sharpe": round(sharpe, 2) if sharpe else None,
-            "Return_1y%": round(one_y, 1) if one_y else None,
-            "YTD%": round(ytd, 1) if ytd else None,
-            "Years": round(yrs, 1)}
+    return {
+        "Total_5y%": round(tot, 1),
+        "CAGR%": round(cagr, 1) if cagr else None,
+        "Vol_ann%": round(vol, 1),
+        "MaxDD%": round(mdd, 1),
+        "Sharpe": round(sharpe, 2) if sharpe else None,
+        "Return_1y%": round(one_y, 1) if one_y else None,
+        "YTD%": round(ytd, 1) if ytd else None,
+        "Years": round(yrs, 1),
+    }
 
 
 def analyse(verbose: bool = True) -> pd.DataFrame:
     tickers = {v[0]: m for m, v in INDEX.items()}
     if verbose:
         print("Fetching 5y index history for 20 markets …")
-    data = multi_fetch(list(tickers), order=("yahoo", "stooq"), period="5y",
-                       min_bars=60, verbose=False)
+    data = multi_fetch(
+        list(tickers), order=("yahoo", "stooq"), period="5y", min_bars=60, verbose=False
+    )
     rows = []
     for m, (tkr, name) in INDEX.items():
         df = data.get(tkr)

@@ -24,19 +24,25 @@ import pandas as pd
 
 warnings.filterwarnings("ignore")
 
-import screener_kit as kit
 import custom_screener as cs
+import screener_kit as kit
 from strategies.base import StockData
 
 # "momentum" highlight: established uptrend, near 52-week high, strong 6-month
 # return, not over-extended, and liquid enough to be tradable.
-MOMENTUM = {"above_200dma": ("==", True), "dist_52w_high": ("<", 8),
-            "ret_126": (">", 15), "rsi14": ("<", 75), "avg_vol_20": (">", 50000)}
+MOMENTUM = {
+    "above_200dma": ("==", True),
+    "dist_52w_high": ("<", 8),
+    "ret_126": (">", 15),
+    "rsi14": ("<", 75),
+    "avg_vol_20": (">", 50000),
+}
 SHOW = ["ltp", "ret_126", "ret_252", "rsi14", "dist_52w_high"]
 
 
-def analyse(markets=None, top_per_market: int = 5, verbose: bool = True,
-            min_turnover_usd: float = 1_000_000) -> dict:
+def analyse(
+    markets=None, top_per_market: int = 5, verbose: bool = True, min_turnover_usd: float = 1_000_000
+) -> dict:
     """min_turnover_usd>0 pre-filters to liquid names — far faster and surfaces
     only tradable stocks (default $1M/day)."""
     markets = markets or kit.markets()
@@ -53,14 +59,15 @@ def analyse(markets=None, top_per_market: int = 5, verbose: bool = True,
         stocks = [StockData(s, m, ohlcv=d) for s, d in data.items()]
         darvas = kit.screen("darvas", m, min_turnover_usd=min_turnover_usd)
         gcross = kit.screen("golden_crossover", m, min_turnover_usd=min_turnover_usd)
-        mom = cs.screen(stocks, MOMENTUM, rank_by="ret_126",
-                        top=top_per_market, show=SHOW)
+        mom = cs.screen(stocks, MOMENTUM, rank_by="ret_126", top=top_per_market, show=SHOW)
         per_market[m] = mom
         if verbose:
             nb = 0 if darvas is None or darvas.empty else len(darvas)
             ng = 0 if gcross is None or gcross.empty else len(gcross)
-            print(f"■ {m}: {len(stocks)} stocks | Darvas {nb} | GoldenCross {ng} | "
-                  f"momentum {0 if mom.empty else len(mom)}")
+            print(
+                f"■ {m}: {len(stocks)} stocks | Darvas {nb} | GoldenCross {ng} | "
+                f"momentum {0 if mom.empty else len(mom)}"
+            )
             if not mom.empty:
                 print("   " + mom.to_string(index=False).replace("\n", "\n   ") + "\n")
         if not mom.empty:
@@ -92,7 +99,9 @@ def analyse(markets=None, top_per_market: int = 5, verbose: bool = True,
     return {"per_market": per_market, "global": g}
 
 
-HIGHLIGHTS_PARQUET = __import__("pathlib").Path(__file__).parent / "cache_seed" / "global_highlights.parquet"
+HIGHLIGHTS_PARQUET = (
+    __import__("pathlib").Path(__file__).parent / "cache_seed" / "global_highlights.parquet"
+)
 
 
 def load_highlights() -> pd.DataFrame:

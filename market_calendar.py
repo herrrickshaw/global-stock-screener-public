@@ -13,28 +13,54 @@ from __future__ import annotations
 
 import datetime as _dt
 import json
+import os
 from pathlib import Path
 from typing import Iterable, List, Set
 
-import os
-CACHE = Path(os.environ.get("BHAV_CACHE",
-                            Path.home() / "Downloads" / "data" / "bhavcopy_cache"))
+CACHE = Path(os.environ.get("BHAV_CACHE", Path.home() / "Downloads" / "data" / "bhavcopy_cache"))
 CACHE.mkdir(parents=True, exist_ok=True)
 HOLIDAY_CACHE = CACHE / "nse_holidays.json"
-REFRESH_AFTER_DAYS = 14            # re-pull the live list at most this often
+REFRESH_AFTER_DAYS = 14  # re-pull the live list at most this often
 
 # Hardcoded fallback — NSE equity (CM) trading holidays. Saturdays/Sundays are
 # excluded automatically elsewhere, so only weekday holidays matter here.
 _FALLBACK = {
     # 2025
-    "2025-02-26", "2025-03-14", "2025-03-31", "2025-04-10", "2025-04-14",
-    "2025-04-18", "2025-05-01", "2025-08-15", "2025-08-27", "2025-10-02",
-    "2025-10-21", "2025-10-22", "2025-11-05", "2025-12-25",
+    "2025-02-26",
+    "2025-03-14",
+    "2025-03-31",
+    "2025-04-10",
+    "2025-04-14",
+    "2025-04-18",
+    "2025-05-01",
+    "2025-08-15",
+    "2025-08-27",
+    "2025-10-02",
+    "2025-10-21",
+    "2025-10-22",
+    "2025-11-05",
+    "2025-12-25",
     # 2026 (from nse_holidays()["CM"])
-    "2026-01-15", "2026-01-26", "2026-02-15", "2026-03-03", "2026-03-21",
-    "2026-03-26", "2026-03-31", "2026-04-03", "2026-04-14", "2026-05-01",
-    "2026-05-28", "2026-06-26", "2026-08-15", "2026-09-14", "2026-10-02",
-    "2026-10-20", "2026-11-08", "2026-11-10", "2026-11-24", "2026-12-25",
+    "2026-01-15",
+    "2026-01-26",
+    "2026-02-15",
+    "2026-03-03",
+    "2026-03-21",
+    "2026-03-26",
+    "2026-03-31",
+    "2026-04-03",
+    "2026-04-14",
+    "2026-05-01",
+    "2026-05-28",
+    "2026-06-26",
+    "2026-08-15",
+    "2026-09-14",
+    "2026-10-02",
+    "2026-10-20",
+    "2026-11-08",
+    "2026-11-10",
+    "2026-11-24",
+    "2026-12-25",
 }
 
 
@@ -55,7 +81,7 @@ def _load_cache() -> Set[str]:
         d = json.loads(HOLIDAY_CACHE.read_text())
         fetched = _dt.date.fromisoformat(d.get("fetched", "1970-01-01"))
         if (_dt.date.today() - fetched).days > REFRESH_AFTER_DAYS:
-            return set()                      # stale → trigger refresh
+            return set()  # stale → trigger refresh
         return set(d.get("dates", []))
     except Exception:
         return set()
@@ -64,6 +90,7 @@ def _load_cache() -> Set[str]:
 def _fetch_live() -> Set[str]:
     try:
         from nsepython import nse_holidays
+
         h = nse_holidays()
         cm = h.get("CM") or h.get("CBM") or []
         return {_parse(x["tradingDate"]) for x in cm if x.get("tradingDate")}
@@ -77,11 +104,12 @@ def get_holidays(refresh: bool = False) -> Set[str]:
     if cached:
         return cached | _FALLBACK
     live = _fetch_live()
-    dates = (live | _FALLBACK)
-    if live:                                   # persist only a successful live pull
+    dates = live | _FALLBACK
+    if live:  # persist only a successful live pull
         try:
-            HOLIDAY_CACHE.write_text(json.dumps(
-                {"fetched": _dt.date.today().isoformat(), "dates": sorted(live)}))
+            HOLIDAY_CACHE.write_text(
+                json.dumps({"fetched": _dt.date.today().isoformat(), "dates": sorted(live)})
+            )
         except Exception:
             pass
     return dates
@@ -89,7 +117,7 @@ def get_holidays(refresh: bool = False) -> Set[str]:
 
 def is_trading_day(d: _dt.date, holidays: Set[str] | None = None) -> bool:
     """True if d is a weekday and not an exchange holiday."""
-    if d.weekday() >= 5:                        # Sat/Sun
+    if d.weekday() >= 5:  # Sat/Sun
         return False
     h = holidays if holidays is not None else get_holidays()
     return d.strftime("%Y-%m-%d") not in h

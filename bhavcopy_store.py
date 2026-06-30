@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import io
+import os
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional
 
@@ -26,12 +27,10 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.feather as feather
 
-import os
-CACHE = Path(os.environ.get("BHAV_CACHE",
-                            Path.home() / "Downloads" / "data" / "bhavcopy_cache"))
+CACHE = Path(os.environ.get("BHAV_CACHE", Path.home() / "Downloads" / "data" / "bhavcopy_cache"))
 STORE = CACHE / "ohlcv.lmdb"
 CLEANED = CACHE / "cleaned_long.parquet"
-_MAP_SIZE = 512 * 1024 * 1024          # 512 MB virtual cap (sparse; grows as used)
+_MAP_SIZE = 512 * 1024 * 1024  # 512 MB virtual cap (sparse; grows as used)
 _META_KEY = b"__meta__"
 
 
@@ -48,8 +47,7 @@ def _ser(df: pd.DataFrame) -> bytes:
     if "Volume" in d.columns:
         d["Volume"] = pd.to_numeric(d["Volume"], errors="coerce").fillna(0).astype("int64")
     buf = io.BytesIO()
-    feather.write_feather(pa.Table.from_pandas(d, preserve_index=False), buf,
-                          compression="zstd")
+    feather.write_feather(pa.Table.from_pandas(d, preserve_index=False), buf, compression="zstd")
     return buf.getvalue()
 
 
@@ -69,11 +67,13 @@ def build(hist: Optional[Dict[str, pd.DataFrame]] = None, verbose: bool = True) 
     """Build/refresh the LMDB store. Source: a {symbol: df} dict, else the
     cleaned_long parquet. Returns the number of symbols written."""
     import lmdb
+
     if hist is None:
         # ingest every market seed present (cleaned_long.parquet = IN bhavcopy,
         # cleaned_long_US.parquet, cleaned_long_<MKT>.parquet …) into one store.
-        seeds = sorted(set([CLEANED] if CLEANED.exists() else [])
-                       | set(CACHE.glob("cleaned_long_*.parquet")))
+        seeds = sorted(
+            set([CLEANED] if CLEANED.exists() else []) | set(CACHE.glob("cleaned_long_*.parquet"))
+        )
         if not seeds:
             raise FileNotFoundError(f"no cleaned_long*.parquet in {CACHE}")
         hist = {}
@@ -82,14 +82,17 @@ def build(hist: Optional[Dict[str, pd.DataFrame]] = None, verbose: bool = True) 
             long["Date"] = pd.to_datetime(long["Date"])
             for sym, g in long.groupby("Symbol"):
                 hist[str(sym)] = g.set_index("Date").sort_index()[
-                    ["Open", "High", "Low", "Close", "Volume"]]
+                    ["Open", "High", "Low", "Close", "Volume"]
+                ]
         if verbose:
-            print(f"  ingesting {len(seeds)} market seed(s): "
-                  f"{', '.join(s.name for s in seeds)}")
+            print(
+                f"  ingesting {len(seeds)} market seed(s): " f"{', '.join(s.name for s in seeds)}"
+            )
 
     # fresh rebuild: remove any prior store so deleted pages aren't carried as
     # free space (LMDB does not shrink its file in place).
     import shutil
+
     if STORE.exists():
         shutil.rmtree(STORE, ignore_errors=True)
 
@@ -105,19 +108,24 @@ def build(hist: Optional[Dict[str, pd.DataFrame]] = None, verbose: bool = True) 
             last = df.index[-1]
             maxd = last if maxd is None or last > maxd else maxd
         txn.put(_META_KEY, f"{n}|{maxd}".encode())
-    env.sync(); env.close()
+    env.sync()
+    env.close()
     if verbose:
         size = sum(f.stat().st_size for f in STORE.glob("*"))
-        print(f"  LMDB store built: {n} symbols, {size/1e6:.1f} MB → {STORE.name} "
-              f"(latest bar {maxd.date() if maxd is not None else '?'})")
+        print(
+            f"  LMDB store built: {n} symbols, {size/1e6:.1f} MB → {STORE.name} "
+            f"(latest bar {maxd.date() if maxd is not None else '?'})"
+        )
     return n
 
 
 # ── read ────────────────────────────────────────────────────────────────────────
 def _env(readonly=True):
     import lmdb
-    return lmdb.open(str(STORE), map_size=_MAP_SIZE, subdir=True,
-                     readonly=readonly, lock=not readonly)
+
+    return lmdb.open(
+        str(STORE), map_size=_MAP_SIZE, subdir=True, readonly=readonly, lock=not readonly
+    )
 
 
 def get(symbol: str) -> Optional[pd.DataFrame]:
@@ -206,6 +214,7 @@ def vacuum(verbose: bool = True) -> int:
 
 if __name__ == "__main__":
     import sys
+
     if "--build" in sys.argv:
         build()
     if "--vacuum" in sys.argv:

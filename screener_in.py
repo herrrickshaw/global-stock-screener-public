@@ -16,7 +16,6 @@ from __future__ import annotations
 import re
 import warnings
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 import requests
@@ -57,7 +56,7 @@ def fetch_screen(url: str, max_pages: int = 40, verbose: bool = True) -> pd.Data
             cols = _header(r.text)
         page_syms = set()
         for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", r.text, re.S):
-            sym = re.search(r'/company/([A-Z0-9&._-]+)/', tr)
+            sym = re.search(r"/company/([A-Z0-9&._-]+)/", tr)
             if not sym:
                 continue
             cells = [_TAG.sub("", c).replace("&amp;", "&").strip() for c in _CELL.findall(tr)]
@@ -67,7 +66,8 @@ def fetch_screen(url: str, max_pages: int = 40, verbose: bool = True) -> pd.Data
             if s in seen:
                 continue
             rows.append([s] + cells)
-            seen.add(s); page_syms.add(s)
+            seen.add(s)
+            page_syms.add(s)
         if not page_syms:
             break
     if not rows:
@@ -98,8 +98,11 @@ def ccc_screen() -> pd.DataFrame:
         elif c.lower().startswith("roce"):
             ren[c] = "ROCE"
     df = df.rename(columns=ren)
-    keep = [c for c in ["Symbol", "Name", "CMP", "MarCap_Cr", "P/E", "ROCE", "Cash_Cycle"]
-            if c in df.columns]
+    keep = [
+        c
+        for c in ["Symbol", "Name", "CMP", "MarCap_Cr", "P/E", "ROCE", "Cash_Cycle"]
+        if c in df.columns
+    ]
     return df[keep]
 
 

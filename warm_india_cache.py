@@ -12,14 +12,17 @@
 
 import warnings
 from datetime import datetime, timedelta
+
 warnings.filterwarnings("ignore")
 
 import pandas as pd
+
 from market_data_cache import warm_cache
 
 # ── NSE symbols ───────────────────────────────────────────────────────────────
 print("Fetching NSE EQ universe …")
 from nsepython import nse_eq_symbols
+
 nse_syms = set(nse_eq_symbols())
 print(f"  NSE EQ: {len(nse_syms)}")
 
@@ -28,6 +31,7 @@ print("Fetching BSE equity universe …")
 bse_syms = set()
 try:
     from bse import BSE
+
     b = BSE(download_folder="/tmp")
     today = datetime.today()
     for off in range(7):
@@ -52,10 +56,11 @@ bse_only = sorted(bse_syms - nse_syms)
 print(f"  BSE-only (not on NSE): {len(bse_only)}")
 
 # ── Build ticker list ─────────────────────────────────────────────────────────
-tickers  = [f"{s}.NS" for s in sorted(nse_syms)]
+tickers = [f"{s}.NS" for s in sorted(nse_syms)]
 tickers += [f"{s}.BO" for s in bse_only]
-print(f"\nTotal tickers to warm: {len(tickers)} "
-      f"({len(nse_syms)} NSE + {len(bse_only)} BSE-only)")
+print(
+    f"\nTotal tickers to warm: {len(tickers)} " f"({len(nse_syms)} NSE + {len(bse_only)} BSE-only)"
+)
 
 # ── Warm cache (5-year OHLC) ──────────────────────────────────────────────────
 warm_cache(tickers, period_years=5, index_tickers=["^NSEI", "^BSESN"])

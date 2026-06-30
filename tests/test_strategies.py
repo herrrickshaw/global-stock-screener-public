@@ -1,5 +1,5 @@
 """strategy modules — pure logic on synthetic StockData."""
-import pandas as pd
+
 import strategies as st
 from strategies.base import StockData
 
@@ -23,11 +23,23 @@ def test_golden_cross_above_200(uptrend):
 
 
 def test_piotroski_strong():
-    f = {"net_income": 100, "net_income_prev": 80, "roa": 12, "roa_prev": 9,
-         "cfo": 130, "debt_to_assets": 0.2, "debt_to_assets_prev": 0.3,
-         "current_ratio": 2.1, "current_ratio_prev": 1.8, "shares": 100,
-         "shares_prev": 100, "gross_margin": 40, "gross_margin_prev": 38,
-         "asset_turnover": 1.1, "asset_turnover_prev": 1.0}
+    f = {
+        "net_income": 100,
+        "net_income_prev": 80,
+        "roa": 12,
+        "roa_prev": 9,
+        "cfo": 130,
+        "debt_to_assets": 0.2,
+        "debt_to_assets_prev": 0.3,
+        "current_ratio": 2.1,
+        "current_ratio_prev": 1.8,
+        "shares": 100,
+        "shares_prev": 100,
+        "gross_margin": 40,
+        "gross_margin_prev": 38,
+        "asset_turnover": 1.1,
+        "asset_turnover_prev": 1.0,
+    }
     r = st.get("piotroski").screen(StockData("T", fundamentals=f))
     assert r.score >= 7 and r.passed
 

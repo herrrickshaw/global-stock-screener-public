@@ -42,18 +42,17 @@
 
 import time
 import warnings
-from datetime import datetime, timedelta, date
+from datetime import date, datetime, timedelta
 from pathlib import Path
-from functools import lru_cache
 
 import pandas as pd
-import numpy as np
 
 warnings.filterwarnings("ignore")
 
 # ── Imports with graceful fallback ─────────────────────────────────────────────
 try:
     import yfinance as yf
+
     _YF_OK = True
 except ImportError:
     _YF_OK = False
@@ -61,11 +60,21 @@ except ImportError:
 
 try:
     from nsepython import (
-        nse_eq_symbols, indiavix, get_bulkdeals, get_blockdeals,
-        nse_events, nse_get_index_quote, nse_fiidii,
-        nse_get_top_gainers, nse_get_top_losers, nse_circular,
-        holiday_master, fnolist, expiry_list,
+        expiry_list,
+        fnolist,
+        get_blockdeals,
+        get_bulkdeals,
+        holiday_master,
+        indiavix,
+        nse_circular,
+        nse_eq_symbols,
+        nse_events,
+        nse_fiidii,
+        nse_get_index_quote,
+        nse_get_top_gainers,
+        nse_get_top_losers,
     )
+
     _NSEPY_OK = True
 except ImportError:
     _NSEPY_OK = False
@@ -73,6 +82,7 @@ except ImportError:
 
 try:
     from nsepy import get_history as _nsepy_get_history
+
     _NSEPY_LIB_OK = True
 except ImportError:
     _NSEPY_LIB_OK = False
@@ -83,6 +93,7 @@ CACHE_DIR.mkdir(exist_ok=True)
 # ═══════════════════════════════════════════════════════════════════════════════
 # MAIN DATA FETCHER CLASS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class NSEDataFetcher:
     """
@@ -129,6 +140,7 @@ class NSEDataFetcher:
         # Fallback: nse library bhavcopy
         try:
             from nse import NSE
+
             today = datetime.today()
             with NSE(download_folder=str(CACHE_DIR), server=False) as nse:
                 for offset in range(7):
@@ -138,8 +150,12 @@ class NSEDataFetcher:
                         if hasattr(result, "exists") and result.exists():
                             df = pd.read_csv(result)
                             if "SctySrs" in df.columns:
-                                syms = sorted(df[df["SctySrs"]==series]["TckrSymb"]
-                                              .dropna().str.strip().tolist())
+                                syms = sorted(
+                                    df[df["SctySrs"] == series]["TckrSymb"]
+                                    .dropna()
+                                    .str.strip()
+                                    .tolist()
+                                )
                                 if syms:
                                     print(f"  nse bhavcopy {d.date()}: {len(syms)} EQ symbols")
                                     self._set_cache(cache_key, syms)
@@ -151,16 +167,56 @@ class NSEDataFetcher:
 
         print("  ⚠️  Could not fetch NSE symbol list — using Nifty 50 fallback")
         return [
-            "ADANIENT","ADANIPORTS","APOLLOHOSP","ASIANPAINT","AXISBANK",
-            "BAJAJ-AUTO","BAJFINANCE","BAJAJFINSV","BPCL","BHARTIARTL",
-            "BRITANNIA","CIPLA","COALINDIA","DIVISLAB","DRREDDY",
-            "EICHERMOT","GRASIM","HCLTECH","HDFCBANK","HDFCLIFE",
-            "HEROMOTOCO","HINDALCO","HINDUNILVR","ICICIBANK","ITC",
-            "INDUSINDBK","INFY","JSWSTEEL","KOTAKBANK","LT",
-            "M&M","MARUTI","NTPC","NESTLEIND","ONGC",
-            "POWERGRID","RELIANCE","SBILIFE","SHRIRAMFIN","SBIN",
-            "SUNPHARMA","TCS","TATACONSUM","TATAMOTORS","TATASTEEL",
-            "TECHM","TITAN","TRENT","ULTRACEMCO","WIPRO",
+            "ADANIENT",
+            "ADANIPORTS",
+            "APOLLOHOSP",
+            "ASIANPAINT",
+            "AXISBANK",
+            "BAJAJ-AUTO",
+            "BAJFINANCE",
+            "BAJAJFINSV",
+            "BPCL",
+            "BHARTIARTL",
+            "BRITANNIA",
+            "CIPLA",
+            "COALINDIA",
+            "DIVISLAB",
+            "DRREDDY",
+            "EICHERMOT",
+            "GRASIM",
+            "HCLTECH",
+            "HDFCBANK",
+            "HDFCLIFE",
+            "HEROMOTOCO",
+            "HINDALCO",
+            "HINDUNILVR",
+            "ICICIBANK",
+            "ITC",
+            "INDUSINDBK",
+            "INFY",
+            "JSWSTEEL",
+            "KOTAKBANK",
+            "LT",
+            "M&M",
+            "MARUTI",
+            "NTPC",
+            "NESTLEIND",
+            "ONGC",
+            "POWERGRID",
+            "RELIANCE",
+            "SBILIFE",
+            "SHRIRAMFIN",
+            "SBIN",
+            "SUNPHARMA",
+            "TCS",
+            "TATACONSUM",
+            "TATAMOTORS",
+            "TATASTEEL",
+            "TECHM",
+            "TITAN",
+            "TRENT",
+            "ULTRACEMCO",
+            "WIPRO",
         ]
 
     def get_fno_symbols(self) -> list:
@@ -197,15 +253,15 @@ class NSEDataFetcher:
         Returns dict with all inputs + final regime classification.
         """
         result = {
-            "regime":        "UNKNOWN",
-            "nifty_last":    None,
-            "nifty_52w_h":   None,
-            "nifty_52w_l":   None,
-            "vix":           None,
+            "regime": "UNKNOWN",
+            "nifty_last": None,
+            "nifty_52w_h": None,
+            "nifty_52w_l": None,
+            "vix": None,
             "pct_from_52wh": None,
-            "fii_net_cr":    None,
+            "fii_net_cr": None,
             "fii_sentiment": "UNKNOWN",
-            "timestamp":     datetime.now().isoformat(),
+            "timestamp": datetime.now().isoformat(),
         }
 
         # ── Nifty 50 live ─────────────────────────────────────────────────────
@@ -213,10 +269,10 @@ class NSEDataFetcher:
             try:
                 q = nse_get_index_quote("NIFTY 50")
                 if q:
-                    last   = float(q.get("last", 0))
-                    yh     = float(q.get("yearHigh", 0))
-                    yl     = float(q.get("yearLow", 0))
-                    result["nifty_last"]  = last
+                    last = float(q.get("last", 0))
+                    yh = float(q.get("yearHigh", 0))
+                    yl = float(q.get("yearLow", 0))
+                    result["nifty_last"] = last
                     result["nifty_52w_h"] = yh
                     result["nifty_52w_l"] = yl
                     result["pct_from_52wh"] = round((last - yh) / yh * 100, 2) if yh else None
@@ -231,9 +287,11 @@ class NSEDataFetcher:
                     idx = idx.xs("^NSEI", axis=1, level=1)
                 if not idx.empty:
                     dma200 = float(idx["Close"].rolling(min(200, len(idx))).mean().iloc[-1])
-                    dma200_sl = float(idx["Close"].rolling(min(200, len(idx))).mean().diff(5).iloc[-1])
+                    dma200_sl = float(
+                        idx["Close"].rolling(min(200, len(idx))).mean().diff(5).iloc[-1]
+                    )
                     last = float(idx["Close"].iloc[-1])
-                    result["dma200"]    = round(dma200, 2)
+                    result["dma200"] = round(dma200, 2)
                     result["dma200_sl"] = round(dma200_sl, 2)
                     if not result["nifty_last"]:
                         result["nifty_last"] = round(last, 2)
@@ -256,23 +314,26 @@ class NSEDataFetcher:
                 fii_df = nse_fiidii()
                 if isinstance(fii_df, pd.DataFrame) and not fii_df.empty:
                     # Sum recent FII net activity (last 5 sessions)
-                    net_col = next((c for c in fii_df.columns
-                                    if "net" in c.lower() and "fii" in c.lower()), None)
+                    net_col = next(
+                        (c for c in fii_df.columns if "net" in c.lower() and "fii" in c.lower()),
+                        None,
+                    )
                     if not net_col:
                         net_col = next((c for c in fii_df.columns if "net" in c.lower()), None)
                     if net_col:
                         recent = fii_df[net_col].dropna().head(5)
                         net_5d = float(recent.sum())
-                        result["fii_net_cr"]    = round(net_5d / 1e7, 2) \
-                                                   if abs(net_5d) > 1e6 else round(net_5d, 2)
+                        result["fii_net_cr"] = (
+                            round(net_5d / 1e7, 2) if abs(net_5d) > 1e6 else round(net_5d, 2)
+                        )
                         result["fii_sentiment"] = "BUYING" if net_5d > 0 else "SELLING"
             except Exception:
                 pass
 
         # ── Classify regime ────────────────────────────────────────────────────
-        vix  = result.get("vix") or 15
-        pct  = result.get("pct_from_dma200", 0) or 0
-        sl   = result.get("dma200_sl", 0) or 0
+        vix = result.get("vix") or 15
+        pct = result.get("pct_from_dma200", 0) or 0
+        result.get("dma200_sl", 0) or 0
 
         if abs(pct) <= 1.5:
             regime = "SIDEWAYS"
@@ -288,8 +349,9 @@ class NSEDataFetcher:
     # SECTION 3: HISTORICAL OHLC
     # ─────────────────────────────────────────────────────────────────────────
 
-    def get_ohlc(self, symbol: str, period: str = "1y",
-                 start: date = None, end: date = None) -> pd.DataFrame:
+    def get_ohlc(
+        self, symbol: str, period: str = "1y", start: date = None, end: date = None
+    ) -> pd.DataFrame:
         """
         Fetch OHLC history for one NSE stock.
 
@@ -307,7 +369,7 @@ class NSEDataFetcher:
             try:
                 df = _nsepy_get_history(symbol=symbol, start=start, end=end)
                 if df is not None and not df.empty:
-                    return df[["Open","High","Low","Close","Volume"]].sort_index()
+                    return df[["Open", "High", "Low", "Close", "Volume"]].sort_index()
             except Exception:
                 pass  # Fall through to yfinance
 
@@ -317,7 +379,7 @@ class NSEDataFetcher:
                 kwargs = {"auto_adjust": True, "progress": False}
                 if start and end:
                     kwargs["start"] = start
-                    kwargs["end"]   = end
+                    kwargs["end"] = end
                 else:
                     kwargs["period"] = period
 
@@ -325,14 +387,15 @@ class NSEDataFetcher:
                 if isinstance(df.columns, pd.MultiIndex):
                     df = df.xs(f"{symbol}.NS", axis=1, level=1)
                 if not df.empty:
-                    return df[["Open","High","Low","Close","Volume"]].dropna().sort_index()
+                    return df[["Open", "High", "Low", "Close", "Volume"]].dropna().sort_index()
             except Exception as e:
                 print(f"  yfinance failed for {symbol}: {e}")
 
         return pd.DataFrame()
 
-    def get_ohlc_bulk(self, symbols: list, period: str = "1y",
-                      batch_size: int = 100, sleep_sec: float = 2.0) -> dict:
+    def get_ohlc_bulk(
+        self, symbols: list, period: str = "1y", batch_size: int = 100, sleep_sec: float = 2.0
+    ) -> dict:
         """
         Bulk OHLC download for multiple symbols via yfinance.
         Returns {symbol: DataFrame}.
@@ -342,18 +405,22 @@ class NSEDataFetcher:
         """
         result = {}
         tickers = [f"{s}.NS" for s in symbols]
-        batches = [tickers[i:i+batch_size] for i in range(0, len(tickers), batch_size)]
-        print(f"  Bulk OHLC: {len(symbols)} stocks | {len(batches)} batches "
-              f"| period={period} | batch_size={batch_size}")
+        batches = [tickers[i : i + batch_size] for i in range(0, len(tickers), batch_size)]
+        print(
+            f"  Bulk OHLC: {len(symbols)} stocks | {len(batches)} batches "
+            f"| period={period} | batch_size={batch_size}"
+        )
 
         for idx, batch in enumerate(batches, 1):
             print(f"    Batch {idx}/{len(batches)} ({len(batch)}) …", end=" ", flush=True)
             for attempt in range(3):
                 try:
-                    raw = yf.download(batch, period=period, auto_adjust=True,
-                                      threads=True, progress=False)
+                    raw = yf.download(
+                        batch, period=period, auto_adjust=True, threads=True, progress=False
+                    )
                     if raw.empty:
-                        print("empty"); break
+                        print("empty")
+                        break
 
                     if isinstance(raw.columns, pd.MultiIndex):
                         for t in batch:
@@ -361,15 +428,15 @@ class NSEDataFetcher:
                             try:
                                 df = raw.xs(t, axis=1, level=1).dropna(how="all")
                                 if not df.empty and len(df) >= 30:
-                                    result[sym] = df[["Open","High","Low","Close","Volume"]]
+                                    result[sym] = df[["Open", "High", "Low", "Close", "Volume"]]
                             except KeyError:
                                 pass
                     else:
                         sym = batch[0].replace(".NS", "")
                         if not raw.empty:
-                            result[sym] = raw[["Open","High","Low","Close","Volume"]]
+                            result[sym] = raw[["Open", "High", "Low", "Close", "Volume"]]
 
-                    ok = sum(1 for t in batch if t.replace(".NS","") in result)
+                    ok = sum(1 for t in batch if t.replace(".NS", "") in result)
                     print(f"OK ({ok} usable)")
                     break
 
@@ -379,7 +446,8 @@ class NSEDataFetcher:
                         print(f"\n      Rate limited — waiting {wait}s …", end="", flush=True)
                         time.sleep(wait)
                     else:
-                        print(f"ERROR: {e}"); break
+                        print(f"ERROR: {e}")
+                        break
 
             if idx < len(batches):
                 time.sleep(sleep_sec)
@@ -414,13 +482,14 @@ class NSEDataFetcher:
             df = nse_events()
             if isinstance(df, pd.DataFrame) and not df.empty:
                 # Parse dates and filter to window
-                df["date_parsed"] = pd.to_datetime(df["date"], format="%d-%b-%Y",
-                                                    errors="coerce")
+                df["date_parsed"] = pd.to_datetime(df["date"], format="%d-%b-%Y", errors="coerce")
                 cutoff = datetime.today() + timedelta(days=days_ahead)
                 df = df[df["date_parsed"] <= cutoff].copy()
                 df["days_away"] = (df["date_parsed"] - datetime.today()).dt.days
                 df = df.sort_values("date_parsed")
-                return df[["symbol","company","purpose","date","days_away"]].reset_index(drop=True)
+                return df[["symbol", "company", "purpose", "date", "days_away"]].reset_index(
+                    drop=True
+                )
         except Exception as e:
             print(f"  nse_events error: {e}")
         return pd.DataFrame()
@@ -433,7 +502,7 @@ class NSEDataFetcher:
         ev = self.get_upcoming_events(days_ahead)
         if ev.empty:
             return ev
-        results_keywords = ["result", "financial", "quarterly", "annual", "q1","q2","q3","q4"]
+        results_keywords = ["result", "financial", "quarterly", "annual", "q1", "q2", "q3", "q4"]
         mask = ev["purpose"].str.lower().str.contains("|".join(results_keywords), na=False)
         return ev[mask].reset_index(drop=True)
 
@@ -517,16 +586,20 @@ class NSEDataFetcher:
             fii_df = self.get_fii_dii()
             if not fii_df.empty:
                 net_cols = [c for c in fii_df.columns if "net" in c.lower()]
-                fii_col  = next((c for c in net_cols if "fii" in c.lower()), None)
-                dii_col  = next((c for c in net_cols if "dii" in c.lower()), None)
+                fii_col = next((c for c in net_cols if "fii" in c.lower()), None)
+                dii_col = next((c for c in net_cols if "dii" in c.lower()), None)
                 if fii_col:
                     fii_net = float(fii_df[fii_col].dropna().head(5).sum())
-                    score  += 1 if fii_net > 0 else -1
-                    details["fii_5d_net_cr"] = round(fii_net / 1e7, 2) if abs(fii_net) > 1e6 else fii_net
+                    score += 1 if fii_net > 0 else -1
+                    details["fii_5d_net_cr"] = (
+                        round(fii_net / 1e7, 2) if abs(fii_net) > 1e6 else fii_net
+                    )
                 if dii_col:
                     dii_net = float(fii_df[dii_col].dropna().head(5).sum())
-                    score  += 1 if dii_net > 0 else -1
-                    details["dii_5d_net_cr"] = round(dii_net / 1e7, 2) if abs(dii_net) > 1e6 else dii_net
+                    score += 1 if dii_net > 0 else -1
+                    details["dii_5d_net_cr"] = (
+                        round(dii_net / 1e7, 2) if abs(dii_net) > 1e6 else dii_net
+                    )
         except Exception:
             pass
 
@@ -534,22 +607,27 @@ class NSEDataFetcher:
         try:
             bd = self.get_bulk_deals()
             if not bd.empty and "Buy/Sell" in bd.columns:
-                buys  = (bd["Buy/Sell"].str.upper() == "BUY").sum()
+                buys = (bd["Buy/Sell"].str.upper() == "BUY").sum()
                 sells = (bd["Buy/Sell"].str.upper() == "SELL").sum()
                 total = buys + sells
                 if total > 0:
                     buy_ratio = buys / total
                     score += 1 if buy_ratio > 0.6 else (-1 if buy_ratio < 0.4 else 0)
-                    details["bulk_buys"]  = int(buys)
+                    details["bulk_buys"] = int(buys)
                     details["bulk_sells"] = int(sells)
                     details["bulk_buy_ratio"] = round(buy_ratio * 100, 1)
         except Exception:
             pass
 
-        label = "STRONG_BUY" if score >= 3 else \
-                "BUY"        if score >= 1 else \
-                "NEUTRAL"    if score == 0 else \
-                "SELL"       if score >= -2 else "STRONG_SELL"
+        label = (
+            "STRONG_BUY"
+            if score >= 3
+            else (
+                "BUY"
+                if score >= 1
+                else "NEUTRAL" if score == 0 else "SELL" if score >= -2 else "STRONG_SELL"
+            )
+        )
 
         return {"score": score, "label": label, **details}
 
@@ -576,23 +654,26 @@ class NSEDataFetcher:
                 result["vix"] = round(float(vix), 2) if vix else None
                 if vix:
                     result["vix_regime"] = (
-                        "PANIC"        if vix > 30 else
-                        "HIGH_FEAR"    if vix > 22 else
-                        "ELEVATED"     if vix > 17 else
-                        "NORMAL"       if vix > 12 else
-                        "COMPLACENCY"
+                        "PANIC"
+                        if vix > 30
+                        else (
+                            "HIGH_FEAR"
+                            if vix > 22
+                            else "ELEVATED" if vix > 17 else "NORMAL" if vix > 12 else "COMPLACENCY"
+                        )
                     )
 
                 q = nse_get_index_quote("NIFTY 50")
                 if q:
-                    last, yh, yl = (float(q.get(k, 0) or 0)
-                                    for k in ("last","yearHigh","yearLow"))
+                    last, yh, yl = (
+                        float(q.get(k, 0) or 0) for k in ("last", "yearHigh", "yearLow")
+                    )
                     if yh and yl:
-                        result["nifty_last"]     = last
+                        result["nifty_last"] = last
                         result["nifty_52w_high"] = yh
-                        result["nifty_52w_low"]  = yl
-                        result["pct_from_52wh"]  = round((last - yh)/yh*100, 2)
-                        result["pct_from_52wl"]  = round((last - yl)/yl*100, 2)
+                        result["nifty_52w_low"] = yl
+                        result["pct_from_52wh"] = round((last - yh) / yh * 100, 2)
+                        result["pct_from_52wl"] = round((last - yl) / yl * 100, 2)
             except Exception:
                 pass
 
@@ -610,6 +691,7 @@ class NSEDataFetcher:
             age = datetime.now().timestamp() - cache_file.stat().st_mtime
             if age < self._cache_ttl:
                 import json
+
                 with open(cache_file) as f:
                     return json.load(f)
 
@@ -617,18 +699,20 @@ class NSEDataFetcher:
         if _NSEPY_OK:
             try:
                 from nsepython import index_pe_pb_div
+
                 today_str = datetime.today().strftime("%d-%m-%Y")
-                week_ago  = (datetime.today() - timedelta(days=7)).strftime("%d-%m-%Y")
+                week_ago = (datetime.today() - timedelta(days=7)).strftime("%d-%m-%Y")
                 df = index_pe_pb_div("NIFTY 50", week_ago, today_str)
                 if isinstance(df, pd.DataFrame) and not df.empty:
                     latest = df.iloc[-1]
                     result = {
-                        "pe":   float(latest.get("PE", 0)),
-                        "pb":   float(latest.get("PB", 0)),
+                        "pe": float(latest.get("PE", 0)),
+                        "pb": float(latest.get("PB", 0)),
                         "div_yield": float(latest.get("DivYield", 0)),
                         "date": str(df.index[-1]),
                     }
                     import json
+
                     with open(cache_file, "w") as f:
                         json.dump(result, f)
                     return result
@@ -668,18 +752,18 @@ class NSEDataFetcher:
 
         # Institutional score
         inst = self.get_institutional_activity_score()
-        context["institutional_score"]  = inst.get("score", 0)
-        context["institutional_label"]  = inst.get("label", "NEUTRAL")
-        context["bulk_buy_ratio"]        = inst.get("bulk_buy_ratio")
+        context["institutional_score"] = inst.get("score", 0)
+        context["institutional_label"] = inst.get("label", "NEUTRAL")
+        context["bulk_buy_ratio"] = inst.get("bulk_buy_ratio")
 
         # Upcoming results (next 7 days)
         results_cal = self.get_results_calendar(days_ahead=7)
-        context["results_next7d"]       = results_cal["symbol"].tolist() if not results_cal.empty else []
-        context["results_count_7d"]     = len(context["results_next7d"])
+        context["results_next7d"] = results_cal["symbol"].tolist() if not results_cal.empty else []
+        context["results_count_7d"] = len(context["results_next7d"])
 
         # Strategy recommendation matrix based on live context
         regime = context.get("regime", "UNKNOWN")
-        vix    = context.get("vix", 15) or 15
+        vix = context.get("vix", 15) or 15
         inst_s = context.get("institutional_score", 0)
 
         # Recommend best screener + horizon for today
@@ -698,37 +782,58 @@ class NSEDataFetcher:
 
         # Regime
         regime = ctx.get("regime", "UNKNOWN")
-        regime_emoji = {"BULL":"🟢","BEAR":"🔴","BEAR_EXTREME":"🔴🔴",
-                        "BULL_VOLATILE":"🟡","SIDEWAYS":"🟡"}.get(regime, "⚪")
+        regime_emoji = {
+            "BULL": "🟢",
+            "BEAR": "🔴",
+            "BEAR_EXTREME": "🔴🔴",
+            "BULL_VOLATILE": "🟡",
+            "SIDEWAYS": "🟡",
+        }.get(regime, "⚪")
         print(f"  Market Regime:  {regime_emoji} {regime}")
         print(f"  Nifty 50:       {ctx.get('nifty_last','—')}")
-        print(f"  200 DMA:        {ctx.get('dma200','—')}  "
-              f"({ctx.get('pct_from_dma200','—'):+.2f}% from DMA)" if ctx.get('pct_from_dma200') else "  200 DMA:        —")
+        print(
+            f"  200 DMA:        {ctx.get('dma200','—')}  "
+            f"({ctx.get('pct_from_dma200','—'):+.2f}% from DMA)"
+            if ctx.get("pct_from_dma200")
+            else "  200 DMA:        —"
+        )
         print(f"  52-wk range:    {ctx.get('nifty_52w_low','—')} – {ctx.get('nifty_52w_high','—')}")
-        print(f"  % from 52wH:    {ctx.get('pct_from_52wh','—'):+.2f}%" if ctx.get('pct_from_52wh') else "  % from 52wH:    —")
+        print(
+            f"  % from 52wH:    {ctx.get('pct_from_52wh','—'):+.2f}%"
+            if ctx.get("pct_from_52wh")
+            else "  % from 52wH:    —"
+        )
 
         # VIX
         vix = ctx.get("vix")
         vix_regime = ctx.get("vix_regime", "")
         vix_color = "🟢" if (vix and vix < 15) else "🟡" if (vix and vix < 22) else "🔴"
         print(f"\n  India VIX:      {vix_color} {vix}  [{vix_regime}]")
-        print(f"  Interpretation: {'Low volatility — trend-following works well' if vix and vix<15 else 'Elevated — widen stop-losses' if vix and vix<22 else 'HIGH FEAR — reduce position size'}")
+        print(
+            f"  Interpretation: {'Low volatility — trend-following works well' if vix and vix<15 else 'Elevated — widen stop-losses' if vix and vix<22 else 'HIGH FEAR — reduce position size'}"
+        )
 
         # FII/DII
-        print(f"\n  FII Sentiment:  {ctx.get('fii_sentiment','—')}"
-              f"  (5d net: ₹{ctx.get('fii_net_cr','—')} Cr)")
-        print(f"  Inst. Activity: {ctx.get('institutional_label','—')} "
-              f"(score={ctx.get('institutional_score',0):+d})")
+        print(
+            f"\n  FII Sentiment:  {ctx.get('fii_sentiment','—')}"
+            f"  (5d net: ₹{ctx.get('fii_net_cr','—')} Cr)"
+        )
+        print(
+            f"  Inst. Activity: {ctx.get('institutional_label','—')} "
+            f"(score={ctx.get('institutional_score',0):+d})"
+        )
         if ctx.get("bulk_buy_ratio"):
             print(f"  Bulk deal buy%: {ctx['bulk_buy_ratio']:.1f}%")
 
         # Upcoming results
         r7 = ctx.get("results_next7d", [])
-        print(f"\n  Results next 7d: {len(r7)} stocks — {', '.join(r7[:8])}{'...' if len(r7)>8 else ''}")
+        print(
+            f"\n  Results next 7d: {len(r7)} stocks — {', '.join(r7[:8])}{'...' if len(r7)>8 else ''}"
+        )
 
         # Recommendations
         recs = ctx.get("recommendations", [])
-        print(f"\n  ── TODAY'S STRATEGY RECOMMENDATIONS ──────────────────────")
+        print("\n  ── TODAY'S STRATEGY RECOMMENDATIONS ──────────────────────")
         for r in recs:
             print(f"  {r}")
 
@@ -752,6 +857,7 @@ class NSEDataFetcher:
 # ═══════════════════════════════════════════════════════════════════════════════
 # STRATEGY RECOMMENDATION ENGINE
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _get_strategy_recommendation(regime: str, vix: float, inst_score: int) -> list:
     """
@@ -816,9 +922,13 @@ def _get_strategy_recommendation(regime: str, vix: float, inst_score: int) -> li
 
     # Institutional score overlay
     if inst_score >= 2:
-        recs.append(f"   ✅ Institutional buying ({inst_score:+d}) — increase conviction on signals")
+        recs.append(
+            f"   ✅ Institutional buying ({inst_score:+d}) — increase conviction on signals"
+        )
     elif inst_score <= -2:
-        recs.append(f"   ❌ Institutional selling ({inst_score:+d}) — avoid new entries, protect gains")
+        recs.append(
+            f"   ❌ Institutional selling ({inst_score:+d}) — avoid new entries, protect gains"
+        )
 
     return recs
 
@@ -828,6 +938,7 @@ def _get_strategy_recommendation(regime: str, vix: float, inst_score: int) -> li
 # ═══════════════════════════════════════════════════════════════════════════════
 
 _fetcher = None
+
 
 def get_fetcher() -> NSEDataFetcher:
     """Get or create the singleton NSEDataFetcher."""
@@ -872,12 +983,13 @@ def get_institutional_confirmation(symbol: str) -> bool:
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="NSE live market context dashboard")
-    parser.add_argument("--regime",  action="store_true", help="Show market regime only")
+    parser.add_argument("--regime", action="store_true", help="Show market regime only")
     parser.add_argument("--symbols", action="store_true", help="Show NSE symbol count")
-    parser.add_argument("--events",  action="store_true", help="Show upcoming events (30d)")
-    parser.add_argument("--bulk",    action="store_true", help="Show today's bulk deals")
-    parser.add_argument("--full",    action="store_true", default=True, help="Full dashboard")
+    parser.add_argument("--events", action="store_true", help="Show upcoming events (30d)")
+    parser.add_argument("--bulk", action="store_true", help="Show today's bulk deals")
+    parser.add_argument("--full", action="store_true", default=True, help="Full dashboard")
     args = parser.parse_args()
 
     fetcher = NSEDataFetcher()
@@ -889,7 +1001,7 @@ if __name__ == "__main__":
 
     if args.events:
         ev = fetcher.get_upcoming_events(30)
-        print(f"\nUpcoming Events (30 days):")
+        print("\nUpcoming Events (30 days):")
         print(ev.to_string(index=False) if not ev.empty else "No events")
 
     if args.bulk:

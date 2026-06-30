@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 # Darvas Scan — price-volume breakout, within ~10% of 52-week high on heavy volume.
 from __future__ import annotations
-from .base import StockData, Result
 
-META = {"name": "Darvas Scan", "slug": "darvas", "category": "technical",
-        "description": "Price-volume breakout: near 52-week high with above-average "
-                       "volume (Darvas box breakout).",
-        "needs": "price"}
+from .base import Result, StockData
 
-NEAR_HIGH_PCT = 10.0     # within 10% of 52-week high
-VOL_MULT = 1.5           # volume >= 1.5x 20-day average
+META = {
+    "name": "Darvas Scan",
+    "slug": "darvas",
+    "category": "technical",
+    "description": "Price-volume breakout: near 52-week high with above-average "
+    "volume (Darvas box breakout).",
+    "needs": "price",
+}
+
+NEAR_HIGH_PCT = 10.0  # within 10% of 52-week high
+VOL_MULT = 1.5  # volume >= 1.5x 20-day average
 
 
 def screen(s: StockData) -> Result | None:
@@ -32,8 +37,16 @@ def screen(s: StockData) -> Result | None:
             vmult = round(vtoday / v20, 2)
             vol_ok = vtoday >= VOL_MULT * v20
     passed = near_high and vol_ok
-    return Result(s.symbol, META["slug"], passed=passed,
-                  score=round(-off_high, 2),     # closer to high ranks higher
-                  metrics={"LTP": round(ltp, 2), "High_52w": round(hi_52w, 2),
-                           "Off_High%": round(off_high, 2), "Vol_x20d": vmult},
-                  note="BREAKOUT" if passed else ("near_high" if near_high else ""))
+    return Result(
+        s.symbol,
+        META["slug"],
+        passed=passed,
+        score=round(-off_high, 2),  # closer to high ranks higher
+        metrics={
+            "LTP": round(ltp, 2),
+            "High_52w": round(hi_52w, 2),
+            "Off_High%": round(off_high, 2),
+            "Vol_x20d": vmult,
+        },
+        note="BREAKOUT" if passed else ("near_high" if near_high else ""),
+    )

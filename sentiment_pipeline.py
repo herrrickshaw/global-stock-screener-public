@@ -52,73 +52,112 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 warnings.filterwarnings("ignore")
 
 try:
     import requests
+
     _REQ_OK = True
 except ImportError:
     _REQ_OK = False
 
 try:
     from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
     _VADER = SentimentIntensityAnalyzer()
     # Finance-specific lexicon boosts (VADER is general-purpose)
-    _VADER.lexicon.update({
-        "beat": 2.5, "beats": 2.5, "surpass": 2.3, "upgrade": 2.5, "upgraded": 2.5,
-        "outperform": 2.4, "rally": 2.2, "surge": 2.6, "soar": 2.8, "jump": 1.8,
-        "record": 1.8, "profit": 1.5, "growth": 1.6, "bullish": 2.6, "buyback": 1.8,
-        "dividend": 1.2, "expansion": 1.5, "miss": -2.5, "misses": -2.5,
-        "downgrade": -2.5, "downgraded": -2.5, "underperform": -2.4, "plunge": -2.8,
-        "slump": -2.4, "crash": -3.0, "loss": -1.8, "losses": -2.0, "bearish": -2.6,
-        "lawsuit": -2.0, "fraud": -3.0, "default": -2.8, "downturn": -2.2,
-        "layoff": -2.0, "layoffs": -2.2, "probe": -1.8, "warning": -1.6,
-    })
+    _VADER.lexicon.update(
+        {
+            "beat": 2.5,
+            "beats": 2.5,
+            "surpass": 2.3,
+            "upgrade": 2.5,
+            "upgraded": 2.5,
+            "outperform": 2.4,
+            "rally": 2.2,
+            "surge": 2.6,
+            "soar": 2.8,
+            "jump": 1.8,
+            "record": 1.8,
+            "profit": 1.5,
+            "growth": 1.6,
+            "bullish": 2.6,
+            "buyback": 1.8,
+            "dividend": 1.2,
+            "expansion": 1.5,
+            "miss": -2.5,
+            "misses": -2.5,
+            "downgrade": -2.5,
+            "downgraded": -2.5,
+            "underperform": -2.4,
+            "plunge": -2.8,
+            "slump": -2.4,
+            "crash": -3.0,
+            "loss": -1.8,
+            "losses": -2.0,
+            "bearish": -2.6,
+            "lawsuit": -2.0,
+            "fraud": -3.0,
+            "default": -2.8,
+            "downturn": -2.2,
+            "layoff": -2.0,
+            "layoffs": -2.2,
+            "probe": -1.8,
+            "warning": -1.6,
+        }
+    )
     _VADER_OK = True
 except ImportError:
     _VADER = None
     _VADER_OK = False
 
 CACHE_FILE = Path.home() / "Downloads" / "market_cache" / "sentiment_cache.json"
-OUT_DIR    = Path("./sentiment_results"); OUT_DIR.mkdir(exist_ok=True)
+OUT_DIR = Path("./sentiment_results")
+OUT_DIR.mkdir(exist_ok=True)
 CACHE_TTL_HOURS = 6
 
-DISCLAIMER = ("⚠️  News sentiment is noisy, provider-dependent, and may lag or "
-              "lead price. Educational/research only. NOT investment advice.")
+DISCLAIMER = (
+    "⚠️  News sentiment is noisy, provider-dependent, and may lag or "
+    "lead price. Educational/research only. NOT investment advice."
+)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DATA MODEL
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class Article:
     """One news item with a sentiment score in [-1, +1]."""
-    title:       str
-    source:      str           # provider name
-    published:   str
-    sentiment:   float         # -1 (very negative) … +1 (very positive)
-    url:         str = ""
-    summary:     str = ""
+
+    title: str
+    source: str  # provider name
+    published: str
+    sentiment: float  # -1 (very negative) … +1 (very positive)
+    url: str = ""
+    summary: str = ""
 
 
 @dataclass
 class TickerSentiment:
     """Aggregated sentiment for one ticker."""
-    ticker:        str
-    score:         float        # weighted mean sentiment [-1, +1]
-    label:         str          # POSITIVE / NEUTRAL / NEGATIVE
-    n_articles:    int
-    providers:     list = field(default_factory=list)
+
+    ticker: str
+    score: float  # weighted mean sentiment [-1, +1]
+    label: str  # POSITIVE / NEUTRAL / NEGATIVE
+    n_articles: int
+    providers: list = field(default_factory=list)
     top_headlines: list = field(default_factory=list)
-    fetched_at:    str = ""
+    fetched_at: str = ""
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SENTIMENT SCORING
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def score_text(text: str) -> float:
     """Score a headline/summary in [-1, +1]. VADER with finance lexicon boost."""
@@ -128,8 +167,10 @@ def score_text(text: str) -> float:
 
 
 def label_of(score: float) -> str:
-    if score >= 0.15:  return "POSITIVE"
-    if score <= -0.15: return "NEGATIVE"
+    if score >= 0.15:
+        return "POSITIVE"
+    if score <= -0.15:
+        return "NEGATIVE"
     return "NEUTRAL"
 
 
@@ -137,14 +178,16 @@ def label_of(score: float) -> str:
 # PROVIDER ABSTRACTION (one adapter per news API)
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class NewsProvider(ABC):
     """Base class — each provider implements fetch_news()."""
+
     name: str = "base"
     env_key: str = ""
-    min_interval: float = 1.0   # seconds between calls (rate limit)
+    min_interval: float = 1.0  # seconds between calls (rate limit)
 
     def __init__(self):
-        self.api_key   = os.environ.get(self.env_key, "")
+        self.api_key = os.environ.get(self.env_key, "")
         self._last_call = 0.0
 
     @property
@@ -158,12 +201,12 @@ class NewsProvider(ABC):
         self._last_call = time.time()
 
     @abstractmethod
-    def fetch_news(self, ticker: str, market: str = "IN") -> List[Article]:
-        ...
+    def fetch_news(self, ticker: str, market: str = "IN") -> List[Article]: ...
 
 
 class MarketauxProvider(NewsProvider):
     """Marketaux — 100 req/day, 80+ global markets, native sentiment."""
+
     name = "Marketaux"
     env_key = "MARKETAUX_KEY"
     min_interval = 1.0
@@ -174,22 +217,41 @@ class MarketauxProvider(NewsProvider):
         self._throttle()
         sym = f"{ticker}.NS" if market == "IN" else ticker
         try:
-            r = requests.get("https://api.marketaux.com/v1/news/all", params={
-                "symbols": sym, "filter_entities": "true",
-                "language": "en", "api_token": self.api_key, "limit": 10,
-            }, timeout=15)
+            r = requests.get(
+                "https://api.marketaux.com/v1/news/all",
+                params={
+                    "symbols": sym,
+                    "filter_entities": "true",
+                    "language": "en",
+                    "api_token": self.api_key,
+                    "limit": 10,
+                },
+                timeout=15,
+            )
             data = r.json().get("data", [])
             out = []
             for a in data:
                 # Marketaux gives per-entity sentiment_score in [-1,1]
                 ent = a.get("entities", [{}])
-                sent = next((e.get("sentiment_score") for e in ent
-                             if e.get("symbol","").startswith(ticker)), None)
-                sent = sent if sent is not None else score_text(a.get("title",""))
-                out.append(Article(
-                    title=a.get("title",""), source=self.name,
-                    published=a.get("published_at",""), sentiment=float(sent),
-                    url=a.get("url",""), summary=a.get("description","")))
+                sent = next(
+                    (
+                        e.get("sentiment_score")
+                        for e in ent
+                        if e.get("symbol", "").startswith(ticker)
+                    ),
+                    None,
+                )
+                sent = sent if sent is not None else score_text(a.get("title", ""))
+                out.append(
+                    Article(
+                        title=a.get("title", ""),
+                        source=self.name,
+                        published=a.get("published_at", ""),
+                        sentiment=float(sent),
+                        url=a.get("url", ""),
+                        summary=a.get("description", ""),
+                    )
+                )
             return out
         except Exception:
             return []
@@ -197,9 +259,10 @@ class MarketauxProvider(NewsProvider):
 
 class AlphaVantageProvider(NewsProvider):
     """Alpha Vantage — 25 req/day, 200k+ tickers, native sentiment scores."""
+
     name = "AlphaVantage"
     env_key = "ALPHAVANTAGE_KEY"
-    min_interval = 13.0   # 25/day ≈ very sparse; also 5/min hard cap
+    min_interval = 13.0  # 25/day ≈ very sparse; also 5/min hard cap
 
     def fetch_news(self, ticker: str, market: str = "IN") -> List[Article]:
         if not self.available:
@@ -207,23 +270,40 @@ class AlphaVantageProvider(NewsProvider):
         self._throttle()
         sym = f"{ticker}.BSE" if market == "IN" else ticker
         try:
-            r = requests.get("https://www.alphavantage.co/query", params={
-                "function": "NEWS_SENTIMENT", "tickers": sym,
-                "apikey": self.api_key, "limit": 10,
-            }, timeout=15)
+            r = requests.get(
+                "https://www.alphavantage.co/query",
+                params={
+                    "function": "NEWS_SENTIMENT",
+                    "tickers": sym,
+                    "apikey": self.api_key,
+                    "limit": 10,
+                },
+                timeout=15,
+            )
             feed = r.json().get("feed", [])
             out = []
             for a in feed:
                 # AV provides ticker_sentiment_score per ticker
                 ts = a.get("ticker_sentiment", [])
-                sent = next((float(t["ticker_sentiment_score"]) for t in ts
-                             if t.get("ticker","").startswith(ticker)), None)
-                sent = sent if sent is not None else \
-                       float(a.get("overall_sentiment_score", 0) or 0)
-                out.append(Article(
-                    title=a.get("title",""), source=self.name,
-                    published=a.get("time_published",""), sentiment=sent,
-                    url=a.get("url",""), summary=a.get("summary","")))
+                sent = next(
+                    (
+                        float(t["ticker_sentiment_score"])
+                        for t in ts
+                        if t.get("ticker", "").startswith(ticker)
+                    ),
+                    None,
+                )
+                sent = sent if sent is not None else float(a.get("overall_sentiment_score", 0) or 0)
+                out.append(
+                    Article(
+                        title=a.get("title", ""),
+                        source=self.name,
+                        published=a.get("time_published", ""),
+                        sentiment=sent,
+                        url=a.get("url", ""),
+                        summary=a.get("summary", ""),
+                    )
+                )
             return out
         except Exception:
             return []
@@ -231,9 +311,10 @@ class AlphaVantageProvider(NewsProvider):
 
 class FinnhubProvider(NewsProvider):
     """Finnhub — 60 req/minute (generous), company news."""
+
     name = "Finnhub"
     env_key = "FINNHUB_KEY"
-    min_interval = 1.1   # 60/min
+    min_interval = 1.1  # 60/min
 
     def fetch_news(self, ticker: str, market: str = "IN") -> List[Article]:
         if not self.available:
@@ -242,21 +323,33 @@ class FinnhubProvider(NewsProvider):
         # Finnhub uses bare US tickers; Indian coverage limited (skip .NS mapping)
         sym = ticker if market == "US" else f"{ticker}.NS"
         today = datetime.today()
-        frm   = (today - timedelta(days=7)).strftime("%Y-%m-%d")
-        to    = today.strftime("%Y-%m-%d")
+        frm = (today - timedelta(days=7)).strftime("%Y-%m-%d")
+        to = today.strftime("%Y-%m-%d")
         try:
-            r = requests.get("https://finnhub.io/api/v1/company-news", params={
-                "symbol": sym, "from": frm, "to": to, "token": self.api_key,
-            }, timeout=15)
+            r = requests.get(
+                "https://finnhub.io/api/v1/company-news",
+                params={
+                    "symbol": sym,
+                    "from": frm,
+                    "to": to,
+                    "token": self.api_key,
+                },
+                timeout=15,
+            )
             data = r.json()
             out = []
             for a in (data if isinstance(data, list) else [])[:15]:
-                txt = a.get("headline","") + ". " + a.get("summary","")
-                out.append(Article(
-                    title=a.get("headline",""), source=self.name,
-                    published=str(a.get("datetime","")),
-                    sentiment=score_text(txt),          # Finnhub free = no sentiment
-                    url=a.get("url",""), summary=a.get("summary","")))
+                txt = a.get("headline", "") + ". " + a.get("summary", "")
+                out.append(
+                    Article(
+                        title=a.get("headline", ""),
+                        source=self.name,
+                        published=str(a.get("datetime", "")),
+                        sentiment=score_text(txt),  # Finnhub free = no sentiment
+                        url=a.get("url", ""),
+                        summary=a.get("summary", ""),
+                    )
+                )
             return out
         except Exception:
             return []
@@ -264,6 +357,7 @@ class FinnhubProvider(NewsProvider):
 
 class NewsDataProvider(NewsProvider):
     """NewsData.io — 1,000 req/month, multi-language, macro coverage."""
+
     name = "NewsData"
     env_key = "NEWSDATA_KEY"
     min_interval = 2.0
@@ -274,19 +368,31 @@ class NewsDataProvider(NewsProvider):
         self._throttle()
         country = "in" if market == "IN" else "us"
         try:
-            r = requests.get("https://newsdata.io/api/1/news", params={
-                "apikey": self.api_key, "q": ticker,
-                "country": country, "category": "business", "language": "en",
-            }, timeout=15)
+            r = requests.get(
+                "https://newsdata.io/api/1/news",
+                params={
+                    "apikey": self.api_key,
+                    "q": ticker,
+                    "country": country,
+                    "category": "business",
+                    "language": "en",
+                },
+                timeout=15,
+            )
             results = r.json().get("results", [])
             out = []
             for a in results[:15]:
-                txt = (a.get("title","") or "") + ". " + (a.get("description","") or "")
-                out.append(Article(
-                    title=a.get("title",""), source=self.name,
-                    published=a.get("pubDate",""),
-                    sentiment=score_text(txt),          # score via VADER
-                    url=a.get("link",""), summary=a.get("description","") or ""))
+                txt = (a.get("title", "") or "") + ". " + (a.get("description", "") or "")
+                out.append(
+                    Article(
+                        title=a.get("title", ""),
+                        source=self.name,
+                        published=a.get("pubDate", ""),
+                        sentiment=score_text(txt),  # score via VADER
+                        url=a.get("link", ""),
+                        summary=a.get("description", "") or "",
+                    )
+                )
             return out
         except Exception:
             return []
@@ -296,10 +402,43 @@ class NewsDataProvider(NewsProvider):
 # ticker alone produces false positives (e.g. DOLLAR↔"dollar", STAR↔"star").
 # These require a company name to match a headline.
 _COMMON_WORD_TICKERS = {
-    "DOLLAR","STAR","WORTH","BENCHMARK","SMALLCAP","MARK","WHEELS","NATURAL",
-    "ICON","WORLD","POWER","ACE","GOLD","SILVER","ANG","BIL","TIL","MIL","SEL",
-    "DEN","RAL","NH","LAL","STEL","WEL","SETL","HIGH","ADVANCE","CONTROL","WORLD",
-    "EMERGENT","RESPONSE","DOLLAR","ALPHA","GLOBAL","VECTOR","BENCHMARK",
+    "DOLLAR",
+    "STAR",
+    "WORTH",
+    "BENCHMARK",
+    "SMALLCAP",
+    "MARK",
+    "WHEELS",
+    "NATURAL",
+    "ICON",
+    "WORLD",
+    "POWER",
+    "ACE",
+    "GOLD",
+    "SILVER",
+    "ANG",
+    "BIL",
+    "TIL",
+    "MIL",
+    "SEL",
+    "DEN",
+    "RAL",
+    "NH",
+    "LAL",
+    "STEL",
+    "WEL",
+    "SETL",
+    "HIGH",
+    "ADVANCE",
+    "CONTROL",
+    "WORLD",
+    "EMERGENT",
+    "RESPONSE",
+    "DOLLAR",
+    "ALPHA",
+    "GLOBAL",
+    "VECTOR",
+    "BENCHMARK",
 }
 
 
@@ -315,8 +454,9 @@ class IndianRSSProvider(NewsProvider):
       - score each matched headline with the finance-tuned VADER
     Also exposes market-wide feed sentiment via fetch_market_mood().
     """
+
     name = "IndianRSS"
-    env_key = ""          # no key needed
+    env_key = ""  # no key needed
     min_interval = 0.5
 
     FEEDS = {
@@ -341,39 +481,42 @@ class IndianRSSProvider(NewsProvider):
         super().__init__()
         try:
             import feedparser  # noqa
+
             self._fp_ok = True
         except ImportError:
             self._fp_ok = False
-        self._feed_cache = {}   # url -> entries (within a run)
+        self._feed_cache = {}  # url -> entries (within a run)
 
     @property
     def available(self) -> bool:
-        return self._fp_ok      # RSS needs no key, just feedparser
+        return self._fp_ok  # RSS needs no key, just feedparser
 
     def _all_entries(self) -> list:
         """Fetch + cache all feed entries once per run (market-wide pool)."""
         if self._feed_cache:
             return [e for v in self._feed_cache.values() for e in v]
         import feedparser
+
         for outlet, urls in self.FEEDS.items():
             for url in urls:
                 try:
                     self._throttle()
                     d = feedparser.parse(url)
                     self._feed_cache[url] = [
-                        {"title": e.get("title",""),
-                         "summary": e.get("summary", e.get("description","")),
-                         "link": e.get("link",""),
-                         "published": e.get("published",""),
-                         "outlet": outlet}
+                        {
+                            "title": e.get("title", ""),
+                            "summary": e.get("summary", e.get("description", "")),
+                            "link": e.get("link", ""),
+                            "published": e.get("published", ""),
+                            "outlet": outlet,
+                        }
                         for e in d.entries
                     ]
                 except Exception:
                     self._feed_cache[url] = []
         return [e for v in self._feed_cache.values() for e in v]
 
-    def fetch_news(self, ticker: str, market: str = "IN",
-                   company_name: str = "") -> List[Article]:
+    def fetch_news(self, ticker: str, market: str = "IN", company_name: str = "") -> List[Article]:
         """
         Match feed entries by COMPANY NAME (preferred) rather than ticker.
 
@@ -386,6 +529,7 @@ class IndianRSSProvider(NewsProvider):
         and the ticker is neither too short nor a common English word.
         """
         import re
+
         if not self._fp_ok or market != "IN":
             return []
 
@@ -393,6 +537,7 @@ class IndianRSSProvider(NewsProvider):
         if not company_name:
             try:
                 from symbol_master import clean_name_for
+
                 company_name = clean_name_for(ticker)
             except Exception:
                 company_name = ""
@@ -422,11 +567,16 @@ class IndianRSSProvider(NewsProvider):
         for e in self._all_entries():
             up = f"{e['title']} {e['summary']}".upper()
             if pattern.search(up):
-                out.append(Article(
-                    title=e["title"], source=f"{self.name}:{e['outlet']}",
-                    published=e["published"],
-                    sentiment=score_text(f"{e['title']}. {e['summary']}"),
-                    url=e["link"], summary=e["summary"][:200]))
+                out.append(
+                    Article(
+                        title=e["title"],
+                        source=f"{self.name}:{e['outlet']}",
+                        published=e["published"],
+                        sentiment=score_text(f"{e['title']}. {e['summary']}"),
+                        url=e["link"],
+                        summary=e["summary"][:200],
+                    )
+                )
         return out[:15]
 
     def fetch_market_mood(self) -> dict:
@@ -441,9 +591,12 @@ class IndianRSSProvider(NewsProvider):
         if not scores:
             return {"mood": "NEUTRAL", "score": 0.0, "n": len(entries)}
         avg = sum(scores) / len(scores)
-        return {"mood": label_of(avg), "score": round(avg, 3),
-                "n_articles": len(entries),
-                "by_outlet": {o: len(self.FEEDS[o]) for o in self.FEEDS}}
+        return {
+            "mood": label_of(avg),
+            "score": round(avg, 3),
+            "n_articles": len(entries),
+            "by_outlet": {o: len(self.FEEDS[o]) for o in self.FEEDS},
+        }
 
 
 class USRSSProvider(IndianRSSProvider):
@@ -453,12 +606,13 @@ class USRSSProvider(IndianRSSProvider):
     market pulse, real-time, bulletins). Same name-based matching as the Indian
     provider (company name looked up from the symbol master).
     """
+
     name = "USRSS"
     FEEDS = {
         "CNBC": [
             "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114",  # top news
-            "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=20910258",   # markets
-            "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10000664",   # finance
+            "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=20910258",  # markets
+            "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10000664",  # finance
         ],
         "MarketWatch": [
             "https://feeds.content.dowjones.io/public/rss/mw_topstories",
@@ -467,8 +621,7 @@ class USRSSProvider(IndianRSSProvider):
         ],
     }
 
-    def fetch_news(self, ticker: str, market: str = "US",
-                   company_name: str = "") -> List[Article]:
+    def fetch_news(self, ticker: str, market: str = "US", company_name: str = "") -> List[Article]:
         # Reuse the parent's name-based matching but for the US market/feeds.
         if market != "US":
             return []
@@ -487,6 +640,7 @@ class USRSSProvider(IndianRSSProvider):
 # PIPELINE ORCHESTRATOR
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class SentimentPipeline:
     """
     Orchestrates all providers, aggregates per-ticker sentiment, caches results.
@@ -494,27 +648,35 @@ class SentimentPipeline:
     Provider quota weights (more generous/reliable sources weighted higher when
     averaging multiple providers' scores for the same ticker).
     """
+
     PROVIDER_WEIGHT = {
-        "Marketaux": 1.2,      # native sentiment, global
-        "AlphaVantage": 1.2,   # native sentiment
-        "Finnhub": 1.0,        # headline-scored, generous quota
-        "NewsData": 0.8,       # headline-scored, macro
-        "IndianRSS": 1.1,      # Moneycontrol/ET/BusinessLine — free, India-native
-        "USRSS": 1.1,          # CNBC/MarketWatch — free, US-native
+        "Marketaux": 1.2,  # native sentiment, global
+        "AlphaVantage": 1.2,  # native sentiment
+        "Finnhub": 1.0,  # headline-scored, generous quota
+        "NewsData": 0.8,  # headline-scored, macro
+        "IndianRSS": 1.1,  # Moneycontrol/ET/BusinessLine — free, India-native
+        "USRSS": 1.1,  # CNBC/MarketWatch — free, US-native
     }
 
     def __init__(self):
-        self.providers = [MarketauxProvider(), AlphaVantageProvider(),
-                          FinnhubProvider(), NewsDataProvider(),
-                          IndianRSSProvider(),   # free, no key — India sources
-                          USRSSProvider()]       # free, no key — US sources (CNBC/MarketWatch)
+        self.providers = [
+            MarketauxProvider(),
+            AlphaVantageProvider(),
+            FinnhubProvider(),
+            NewsDataProvider(),
+            IndianRSSProvider(),  # free, no key — India sources
+            USRSSProvider(),
+        ]  # free, no key — US sources (CNBC/MarketWatch)
         self.active = [p for p in self.providers if p.available]
         self._cache = self._load_cache()
         # Handles to the RSS providers for market-mood queries (by market)
-        self._rss_in = next((p for p in self.providers
-                             if type(p).__name__ == "IndianRSSProvider" and p.available), None)
-        self._rss_us = next((p for p in self.providers
-                             if type(p).__name__ == "USRSSProvider" and p.available), None)
+        self._rss_in = next(
+            (p for p in self.providers if type(p).__name__ == "IndianRSSProvider" and p.available),
+            None,
+        )
+        self._rss_us = next(
+            (p for p in self.providers if type(p).__name__ == "USRSSProvider" and p.available), None
+        )
 
     def get_market_mood(self, market: str = "IN") -> dict:
         """Overall market news sentiment (regime gauge) for the given market."""
@@ -523,8 +685,10 @@ class SentimentPipeline:
 
     def _load_cache(self) -> dict:
         if CACHE_FILE.exists():
-            try: return json.loads(CACHE_FILE.read_text())
-            except Exception: pass
+            try:
+                return json.loads(CACHE_FILE.read_text())
+            except Exception:
+                pass
         return {}
 
     def _save_cache(self):
@@ -532,7 +696,8 @@ class SentimentPipeline:
 
     def _is_fresh(self, key: str) -> bool:
         e = self._cache.get(key)
-        if not e: return False
+        if not e:
+            return False
         try:
             age = datetime.now() - datetime.fromisoformat(e["fetched_at"])
             return age < timedelta(hours=CACHE_TTL_HOURS)
@@ -544,8 +709,15 @@ class SentimentPipeline:
         key = f"{market}:{ticker}"
         if self._is_fresh(key):
             c = self._cache[key]
-            return TickerSentiment(ticker, c["score"], c["label"], c["n_articles"],
-                                   c["providers"], c["top_headlines"], c["fetched_at"])
+            return TickerSentiment(
+                ticker,
+                c["score"],
+                c["label"],
+                c["n_articles"],
+                c["providers"],
+                c["top_headlines"],
+                c["fetched_at"],
+            )
 
         all_articles, providers_used = [], []
         for p in self.active:
@@ -558,21 +730,27 @@ class SentimentPipeline:
                     all_articles.append((a, w))
 
         if not all_articles:
-            return TickerSentiment(ticker, 0.0, "NO_DATA", 0, [], [],
-                                   datetime.now().isoformat())
+            return TickerSentiment(ticker, 0.0, "NO_DATA", 0, [], [], datetime.now().isoformat())
 
         # Weighted mean sentiment
         num = sum(a.sentiment * w for a, w in all_articles)
         den = sum(w for _, w in all_articles)
         score = round(num / den, 4) if den else 0.0
         top = sorted(all_articles, key=lambda x: abs(x[0].sentiment), reverse=True)[:5]
-        top_head = [{"title": a.title[:90], "sentiment": round(a.sentiment,2),
-                     "source": a.source} for a, _ in top]
+        top_head = [
+            {"title": a.title[:90], "sentiment": round(a.sentiment, 2), "source": a.source}
+            for a, _ in top
+        ]
 
         ts = TickerSentiment(
-            ticker=ticker, score=score, label=label_of(score),
-            n_articles=len(all_articles), providers=providers_used,
-            top_headlines=top_head, fetched_at=datetime.now().isoformat())
+            ticker=ticker,
+            score=score,
+            label=label_of(score),
+            n_articles=len(all_articles),
+            providers=providers_used,
+            top_headlines=top_head,
+            fetched_at=datetime.now().isoformat(),
+        )
 
         self._cache[key] = ts.__dict__
         self._save_cache()
@@ -590,22 +768,27 @@ class SentimentPipeline:
 
     def status(self) -> str:
         if not self.active:
-            return ("No providers active. Set API keys: MARKETAUX_KEY, "
-                    "ALPHAVANTAGE_KEY, FINNHUB_KEY, NEWSDATA_KEY")
+            return (
+                "No providers active. Set API keys: MARKETAUX_KEY, "
+                "ALPHAVANTAGE_KEY, FINNHUB_KEY, NEWSDATA_KEY"
+            )
         return f"Active providers: {', '.join(p.name for p in self.active)}"
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
+
 def main():
     p = argparse.ArgumentParser(description="Multi-source news sentiment pipeline")
     p.add_argument("--tickers", nargs="+", required=True)
-    p.add_argument("--market", choices=["IN","US"], default="IN")
+    p.add_argument("--market", choices=["IN", "US"], default="IN")
     args = p.parse_args()
 
     print(f"\n{'#'*72}\n  NEWS SENTIMENT INGESTION PIPELINE\n{'#'*72}")
     print(f"  {DISCLAIMER}\n")
-    print(f"  VADER scoring: {'available' if _VADER_OK else 'MISSING (pip install vaderSentiment)'}")
+    print(
+        f"  VADER scoring: {'available' if _VADER_OK else 'MISSING (pip install vaderSentiment)'}"
+    )
 
     sp = SentimentPipeline()
     print(f"  {sp.status()}\n")
@@ -613,21 +796,23 @@ def main():
         print("  Demo mode (VADER on sample headlines, no live API):")
         samples = {
             "RELIANCE": "Reliance beats Q3 profit estimates, announces record buyback",
-            "YESBANK":  "Yes Bank plunges on fraud probe and rating downgrade",
-            "TCS":      "TCS reports steady growth amid cautious IT spending outlook",
+            "YESBANK": "Yes Bank plunges on fraud probe and rating downgrade",
+            "TCS": "TCS reports steady growth amid cautious IT spending outlook",
         }
         for tk, hl in samples.items():
             s = score_text(hl)
-            print(f"    {tk:<10} {label_of(s):<9} ({s:+.2f})  \"{hl[:55]}…\"")
-        print(f"\n  → Set the API keys above to fetch live news. See file header.")
+            print(f'    {tk:<10} {label_of(s):<9} ({s:+.2f})  "{hl[:55]}…"')
+        print("\n  → Set the API keys above to fetch live news. See file header.")
         return
 
     res = sp.get_batch(args.tickers, args.market)
     print(f"\n  {'Ticker':<12} {'Sentiment':<10} {'Score':>7} {'Articles':>9} {'Sources'}")
-    print("  " + "─"*60)
+    print("  " + "─" * 60)
     for tk, s in res.items():
-        print(f"  {tk:<12} {s.label:<10} {s.score:>+7.3f} {s.n_articles:>9} "
-              f"{','.join(s.providers)}")
+        print(
+            f"  {tk:<12} {s.label:<10} {s.score:>+7.3f} {s.n_articles:>9} "
+            f"{','.join(s.providers)}"
+        )
         for h in s.top_headlines[:2]:
             print(f"      [{h['sentiment']:+.2f} {h['source']}] {h['title'][:70]}")
 

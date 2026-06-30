@@ -108,13 +108,16 @@
 # EDUCATIONAL and RESEARCH purposes only — NOT investment advice.
 # ─────────────────────────────────────────────────────────────────────────────
 
+from __future__ import annotations
+
 import argparse
 import sys
 import time
 import warnings
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
+from typing import List, Optional
 
 import numpy as np
 import pandas as pd
@@ -127,25 +130,25 @@ except ImportError:
     sys.exit("❌  pip install yfinance")
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-DOWNLOAD_DIR  = Path("./backtest_results")
+DOWNLOAD_DIR = Path("./backtest_results")
 DOWNLOAD_DIR.mkdir(exist_ok=True)
 
-LOOKBACK_DAYS = 252          # 1 trading year of history
-DARVAS_CONFIRM = 3           # days to confirm Darvas box top/bottom
-COOLDOWN_BARS  = 10          # min bars between two Darvas signals for same stock
-MAX_WORKERS    = 8
+LOOKBACK_DAYS = 252  # 1 trading year of history
+DARVAS_CONFIRM = 3  # days to confirm Darvas box top/bottom
+COOLDOWN_BARS = 10  # min bars between two Darvas signals for same stock
+MAX_WORKERS = 8
 
 HORIZONS = {
-    "T+1d":  1,
-    "T+3d":  3,
+    "T+1d": 1,
+    "T+3d": 3,
     "T+1wk": 5,
     "T+1mo": 21,
     "T+3mo": 63,
 }
 
 INDICES = {
-    "IN": "^NSEI",    # Nifty 50
-    "US": "^GSPC",    # S&P 500
+    "IN": "^NSEI",  # Nifty 50
+    "US": "^GSPC",  # S&P 500
 }
 
 DISCLAIMER = (
@@ -160,38 +163,58 @@ DISCLAIMER = (
 #         Liu & Zhu (2024) — Kalman Filter market efficiency;
 #         Dhanus & Amutha (2025) — Super Trend Nifty backtest
 
-TRANSACTION_COST_PCT = 0.002   # 0.2% round-trip: STT 0.1% + brokerage ~0.1%
-                                # Source: JIER 2024 — "transaction cost and impact cost
-                                # not considered" flagged as limitation; US literature
-                                # uses 0.1-0.5% depending on market
+TRANSACTION_COST_PCT = 0.002  # 0.2% round-trip: STT 0.1% + brokerage ~0.1%
+# Source: JIER 2024 — "transaction cost and impact cost
+# not considered" flagged as limitation; US literature
+# uses 0.1-0.5% depending on market
 
-MIN_SIGNAL_THRESHOLD = 20      # Minimum signals needed for statistical inference
-                                # Source: Bailey et al. (2014) — false positive risk
-                                # when n_trials is small
+MIN_SIGNAL_THRESHOLD = 20  # Minimum signals needed for statistical inference
+# Source: Bailey et al. (2014) — false positive risk
+# when n_trials is small
 
 # Financial sector keywords — exclude for fundamental screeners
 # Source: Preet et al. (2021) — "Financial companies removed because ROCE data
 # cannot be obtained and high leverage has different interpretation for financial firms"
 FINANCIAL_KEYWORDS = {
-    "bank", "finance", "financial", "insurance", "nbfc", "housing",
-    "capital", "leasing", "asset management", "wealth", "credit",
-    "hdfc", "icici", "kotak", "axis", "sbi", "bajaj fin", "shriram",
-    "muthoot", "manappuram", "lic", "sbi life", "hdfc life",
+    "bank",
+    "finance",
+    "financial",
+    "insurance",
+    "nbfc",
+    "housing",
+    "capital",
+    "leasing",
+    "asset management",
+    "wealth",
+    "credit",
+    "hdfc",
+    "icici",
+    "kotak",
+    "axis",
+    "sbi",
+    "bajaj fin",
+    "shriram",
+    "muthoot",
+    "manappuram",
+    "lic",
+    "sbi life",
+    "hdfc life",
 }
 
 # Magic Formula signal date: first working day of July
 # Source: Preet et al. (2021) — "almost all annual reports released by June-end;
 # application on 1st July eliminates forward-looking bias"
-MAGIC_FORMULA_SIGNAL_MONTH = 7   # July
+MAGIC_FORMULA_SIGNAL_MONTH = 7  # July
 
 
 # ── yfinance helpers ──────────────────────────────────────────────────────────
 
 # Shared helpers (see stock_utils.py) — aliased to keep existing call sites.
-from stock_utils import first_df as _first_df, row as _row
-
+from stock_utils import first_df as _first_df
+from stock_utils import row as _row
 
 # ── Market index + regime ─────────────────────────────────────────────────────
+
 
 def download_index(market: str = "IN", period: str = "2y") -> pd.DataFrame:
     """
@@ -206,8 +229,8 @@ def download_index(market: str = "IN", period: str = "2y") -> pd.DataFrame:
             df = df.xs(sym, axis=1, level=1)
         df = df.dropna()
         # 200 DMA + slope
-        df["dma200"]    = df["Close"].rolling(200).mean()
-        df["dma200_sl"] = df["dma200"].diff(5)   # 5-bar slope
+        df["dma200"] = df["Close"].rolling(200).mean()
+        df["dma200_sl"] = df["dma200"].diff(5)  # 5-bar slope
         print(f"OK ({len(df)} bars)")
         return df
     except Exception as e:
@@ -227,13 +250,12 @@ def classify_regime(date: pd.Timestamp, index_df: pd.DataFrame) -> str:
     idx = index_df.index.searchsorted(date, side="right") - 1
     if idx < 0 or idx >= len(index_df):
         return "UNKNOWN"
-    row   = index_df.iloc[idx]
+    row = index_df.iloc[idx]
     close = row.get("Close", np.nan)
-    dma   = row.get("dma200", np.nan)
+    dma = row.get("dma200", np.nan)
     slope = row.get("dma200_sl", np.nan)
     if any(np.isnan(x) for x in [close, dma, slope]):
         return "UNKNOWN"
-    pct_from_dma = (close - dma) / dma * 100
     if close > dma and slope > 0:
         return "BULL"
     if close < dma and slope < 0:
@@ -242,6 +264,7 @@ def classify_regime(date: pd.Timestamp, index_df: pd.DataFrame) -> str:
 
 
 # ── Forward return calculator ─────────────────────────────────────────────────
+
 
 def compute_forward_returns(
     df: pd.DataFrame,
@@ -261,8 +284,8 @@ def compute_forward_returns(
     Cost deducted symmetrically (0.1% on entry + 0.1% on exit).
     """
     closes = df["Close"].values
-    n      = len(closes)
-    cost   = TRANSACTION_COST_PCT if apply_costs else 0.0
+    n = len(closes)
+    cost = TRANSACTION_COST_PCT if apply_costs else 0.0
     result = {}
     for label, offset in HORIZONS.items():
         exit_idx = signal_idx + offset
@@ -270,8 +293,8 @@ def compute_forward_returns(
             result[label] = np.nan
         else:
             exit_price = closes[exit_idx]
-            gross_ret  = (exit_price - entry_price) / entry_price * 100
-            result[label] = gross_ret - cost * 100   # deduct round-trip cost
+            gross_ret = (exit_price - entry_price) / entry_price * 100
+            result[label] = gross_ret - cost * 100  # deduct round-trip cost
     return result
 
 
@@ -285,7 +308,11 @@ def compute_index_returns(index_df: pd.DataFrame, signal_date: pd.Timestamp) -> 
         return {h: np.nan for h in HORIZONS}
     try:
         idx_ts = index_df.index.tz_localize(None) if index_df.index.tz else index_df.index
-        sig_ts = signal_date.tz_localize(None) if hasattr(signal_date, 'tz') and signal_date.tz else signal_date
+        sig_ts = (
+            signal_date.tz_localize(None)
+            if hasattr(signal_date, "tz") and signal_date.tz
+            else signal_date
+        )
         si = idx_ts.searchsorted(sig_ts, side="right") - 1
         if si < 0 or si >= len(index_df):
             return {h: np.nan for h in HORIZONS}
@@ -316,8 +343,10 @@ def is_financial_stock(symbol: str, info: dict = None) -> bool:
     if info:
         sector = (info.get("sector") or "").lower()
         industry = (info.get("industry") or "").lower()
-        if any(kw in sector or kw in industry
-               for kw in ("bank", "financial", "insurance", "capital markets")):
+        if any(
+            kw in sector or kw in industry
+            for kw in ("bank", "financial", "insurance", "capital markets")
+        ):
             return True
     return False
 
@@ -328,9 +357,13 @@ def is_financial_stock(symbol: str, info: dict = None) -> bool:
 
 # ── 1. Darvas Box — walk-forward, no lookahead ────────────────────────────────
 
-def detect_darvas_signals(df: pd.DataFrame, confirm: int = DARVAS_CONFIRM,
-                          cooldown: int = COOLDOWN_BARS,
-                          require_volume: bool = True) -> "List[dict]":
+
+def detect_darvas_signals(
+    df: pd.DataFrame,
+    confirm: int = DARVAS_CONFIRM,
+    cooldown: int = COOLDOWN_BARS,
+    require_volume: bool = True,
+) -> "list[dict]":
     """
     Walk through OHLC bar-by-bar. At each bar i, compute the Darvas Box
     using only data from bars 0..i-1 (no lookahead). A BREAKOUT signal
@@ -341,30 +374,29 @@ def detect_darvas_signals(df: pd.DataFrame, confirm: int = DARVAS_CONFIRM,
     if df is None or df.empty or len(df) < 210:
         return []
 
-    highs  = df["High"].values.astype(float)
-    lows   = df["Low"].values.astype(float)
+    highs = df["High"].values.astype(float)
+    lows = df["Low"].values.astype(float)
     closes = df["Close"].values.astype(float)
-    dates  = df.index
+    dates = df.index
 
-    signals      = []
-    last_signal  = -cooldown - 1
+    signals = []
+    last_signal = -cooldown - 1
 
     for i in range(confirm + 20, len(closes)):
         # Only use bars strictly before i for box formation
-        h  = highs[:i]
-        lo = lows[:i]
-        n  = len(h)
+        h = highs[:i]
+        lows[:i]
+        n = len(h)
 
         # Find most recent confirmed box top in the last 60 bars
-        box_top = box_top_idx = None
+        box_top = None
         search_from = max(0, n - 60)
         for j in range(n - confirm - 1, search_from - 1, -1):
             if h[j] == 0:
                 continue
-            win = h[j + 1: j + 1 + confirm]
+            win = h[j + 1 : j + 1 + confirm]
             if len(win) == confirm and all(x < h[j] for x in win):
                 box_top = h[j]
-                box_top_idx = j
                 break
 
         if box_top is None:
@@ -382,23 +414,26 @@ def detect_darvas_signals(df: pd.DataFrame, confirm: int = DARVAS_CONFIRM,
                 vol_confirmed = True
                 if require_volume and "Volume" in df.columns and i >= 20:
                     vols = df["Volume"].values.astype(float)
-                    avg_vol = np.mean(vols[i - 20:i])
-                    vol_confirmed = (vols[i] >= avg_vol * 1.2)  # 20% above avg
+                    avg_vol = np.mean(vols[i - 20 : i])
+                    vol_confirmed = vols[i] >= avg_vol * 1.2  # 20% above avg
 
                 if vol_confirmed:
-                    signals.append({
-                        "date":         dates[i],
-                        "entry_price":  curr_close,
-                        "box_top":      round(box_top, 2),
-                        "signal_idx":   i,
-                        "vol_confirm":  True,
-                    })
+                    signals.append(
+                        {
+                            "date": dates[i],
+                            "entry_price": curr_close,
+                            "box_top": round(box_top, 2),
+                            "signal_idx": i,
+                            "vol_confirm": True,
+                        }
+                    )
                     last_signal = i
 
     return signals
 
 
 # ── 2. Golden Crossover — walk-forward ────────────────────────────────────────
+
 
 def detect_golden_cross_signals(df: pd.DataFrame) -> "List[dict]":
     """
@@ -410,7 +445,7 @@ def detect_golden_cross_signals(df: pd.DataFrame) -> "List[dict]":
         return []
 
     closes = df["Close"].astype(float)
-    dma50  = closes.rolling(50).mean()
+    dma50 = closes.rolling(50).mean()
     dma200 = closes.rolling(200).mean()
 
     signals = []
@@ -418,22 +453,25 @@ def detect_golden_cross_signals(df: pd.DataFrame) -> "List[dict]":
     start = max(0, len(closes) - LOOKBACK_DAYS)
 
     for i in range(max(1, start), len(closes)):
-        d50_t, d200_t = dma50.iloc[i],   dma200.iloc[i]
-        d50_p, d200_p = dma50.iloc[i-1], dma200.iloc[i-1]
+        d50_t, d200_t = dma50.iloc[i], dma200.iloc[i]
+        d50_p, d200_p = dma50.iloc[i - 1], dma200.iloc[i - 1]
         if any(pd.isna(x) for x in [d50_t, d200_t, d50_p, d200_p]):
             continue
-        if d50_p < d200_p and d50_t > d200_t:   # cross happened today
-            signals.append({
-                "date":         df.index[i],
-                "entry_price":  float(closes.iloc[i]),
-                "dma50":        round(float(d50_t), 2),
-                "dma200":       round(float(d200_t), 2),
-                "signal_idx":   i,
-            })
+        if d50_p < d200_p and d50_t > d200_t:  # cross happened today
+            signals.append(
+                {
+                    "date": df.index[i],
+                    "entry_price": float(closes.iloc[i]),
+                    "dma50": round(float(d50_t), 2),
+                    "dma200": round(float(d200_t), 2),
+                    "signal_idx": i,
+                }
+            )
     return signals
 
 
 # ── 3. Fundamental screeners — event-study ────────────────────────────────────
+
 
 def get_fundamental_signal_date(ticker_obj, freq: str = "annual") -> "Optional[pd.Timestamp]":
     """
@@ -454,8 +492,9 @@ def get_fundamental_signal_date(ticker_obj, freq: str = "annual") -> "Optional[p
     return None
 
 
-def fetch_fundamental_signal(symbol: str, suffix: str, screener: str,
-                             ohlc_df: pd.DataFrame) -> "Optional[dict]":
+def fetch_fundamental_signal(
+    symbol: str, suffix: str, screener: str, ohlc_df: pd.DataFrame
+) -> "Optional[dict]":
     """
     For fundamental screeners, return one signal dict per qualifying stock.
     Signal date = most recent annual or quarterly report publication date.
@@ -464,9 +503,9 @@ def fetch_fundamental_signal(symbol: str, suffix: str, screener: str,
     freq = "quarterly" if screener == "bull_cartel" else "annual"
     try:
         ticker = yf.Ticker(f"{symbol}{suffix}")
-        inc    = _first_df(ticker, "income_stmt", "financials")
-        bal    = _first_df(ticker, "balance_sheet")
-        cf     = _first_df(ticker, "cash_flow", "cashflow")
+        inc = _first_df(ticker, "income_stmt", "financials")
+        bal = _first_df(ticker, "balance_sheet")
+        cf = _first_df(ticker, "cash_flow", "cashflow")
         # Skip financial companies for ROCE/ROIC-based screeners
         # Source: Preet et al. (2021) — financial firms use high leverage normally;
         # ROCE not comparable; Magic Formula specifically excludes them
@@ -478,8 +517,12 @@ def fetch_fundamental_signal(symbol: str, suffix: str, screener: str,
             except Exception:
                 if is_financial_stock(symbol):
                     return None
-        inc_q  = _first_df(ticker, "quarterly_income_stmt", "quarterly_financials") if freq == "quarterly" else None
-        info   = {}
+        inc_q = (
+            _first_df(ticker, "quarterly_income_stmt", "quarterly_financials")
+            if freq == "quarterly"
+            else None
+        )
+        info = {}
         try:
             info = ticker.info or {}
         except Exception:
@@ -499,56 +542,76 @@ def fetch_fundamental_signal(symbol: str, suffix: str, screener: str,
 
     # ── Piotroski ────────────────────────────────────────────────────────────
     if screener == "piotroski" and inc is not None:
-        ni0 = _row(inc, "Net Income", col=0); a0 = _row(bal, "Total Assets", col=0)
-        ni1 = _row(inc, "Net Income", col=1); a1 = _row(bal, "Total Assets", col=1)
-        roa0 = (ni0/a0) if (ni0 and a0) else None
-        roa1 = (ni1/a1) if (ni1 and a1) else None
+        ni0 = _row(inc, "Net Income", col=0)
+        a0 = _row(bal, "Total Assets", col=0)
+        ni1 = _row(inc, "Net Income", col=1)
+        a1 = _row(bal, "Total Assets", col=1)
+        roa0 = (ni0 / a0) if (ni0 and a0) else None
+        roa1 = (ni1 / a1) if (ni1 and a1) else None
         ocf0 = _row(cf, "Operating Cash Flow", "Total Cash From Operating Activities")
         ltd0 = _row(bal, "Long Term Debt", col=0) or 0
         ltd1 = _row(bal, "Long Term Debt", col=1) or 0
-        ca0  = _row(bal, "Current Assets", "Total Current Assets", col=0)
-        cl0  = _row(bal, "Current Liabilities", "Total Current Liabilities", col=0)
-        ca1  = _row(bal, "Current Assets", "Total Current Assets", col=1)
-        cl1  = _row(bal, "Current Liabilities", "Total Current Liabilities", col=1)
-        sh0  = _row(bal, "Share Issued", col=0); sh1 = _row(bal, "Share Issued", col=1)
-        rev0 = _row(inc, "Total Revenue", col=0); gp0 = _row(inc, "Gross Profit", col=0)
-        rev1 = _row(inc, "Total Revenue", col=1); gp1 = _row(inc, "Gross Profit", col=1)
+        ca0 = _row(bal, "Current Assets", "Total Current Assets", col=0)
+        cl0 = _row(bal, "Current Liabilities", "Total Current Liabilities", col=0)
+        ca1 = _row(bal, "Current Assets", "Total Current Assets", col=1)
+        cl1 = _row(bal, "Current Liabilities", "Total Current Liabilities", col=1)
+        sh0 = _row(bal, "Share Issued", col=0)
+        sh1 = _row(bal, "Share Issued", col=1)
+        rev0 = _row(inc, "Total Revenue", col=0)
+        gp0 = _row(inc, "Gross Profit", col=0)
+        rev1 = _row(inc, "Total Revenue", col=1)
+        gp1 = _row(inc, "Gross Profit", col=1)
         f_score = (
-            (1 if (roa0 and roa0 > 0) else 0) +
-            (1 if (ocf0 and ocf0 > 0) else 0) +
-            (1 if (roa0 and roa1 and roa0 > roa1) else 0) +
-            (1 if (ocf0 and a0 and roa0 and (ocf0/a0) > roa0) else 0) +
-            (1 if (a0 and a1 and (ltd0/a0) < (ltd1/a1)) else 0) +
-            (1 if (ca0 and cl0 and ca1 and cl1 and (ca0/cl0) > (ca1/cl1)) else 0) +
-            ((1 if sh0 <= sh1 else 0) if (sh0 and sh1) else 1) +
-            (1 if (gp0 and rev0 and gp1 and rev1 and (gp0/rev0) > (gp1/rev1)) else 0) +
-            (1 if (rev0 and a0 and rev1 and a1 and (rev0/a0) > (rev1/a1)) else 0)
+            (1 if (roa0 and roa0 > 0) else 0)
+            + (1 if (ocf0 and ocf0 > 0) else 0)
+            + (1 if (roa0 and roa1 and roa0 > roa1) else 0)
+            + (1 if (ocf0 and a0 and roa0 and (ocf0 / a0) > roa0) else 0)
+            + (1 if (a0 and a1 and (ltd0 / a0) < (ltd1 / a1)) else 0)
+            + (1 if (ca0 and cl0 and ca1 and cl1 and (ca0 / cl0) > (ca1 / cl1)) else 0)
+            + ((1 if sh0 <= sh1 else 0) if (sh0 and sh1) else 1)
+            + (1 if (gp0 and rev0 and gp1 and rev1 and (gp0 / rev0) > (gp1 / rev1)) else 0)
+            + (1 if (rev0 and a0 and rev1 and a1 and (rev0 / a0) > (rev1 / a1)) else 0)
         )
         qualifies = f_score >= 7
 
     # ── Coffee Can ───────────────────────────────────────────────────────────
     elif screener == "coffee_can" and inc is not None:
+
         def series(df, *rows):
             for name in rows:
                 if df is not None and name in df.index:
                     return [float(v) for v in df.loc[name].dropna() if pd.notna(v)]
             return []
+
         revs = series(inc, "Total Revenue")
-        cagr = ((revs[0]/revs[-1])**(1/(len(revs)-1))-1)*100 if len(revs)>=2 and revs[-1]>0 else None
+        cagr = (
+            ((revs[0] / revs[-1]) ** (1 / (len(revs) - 1)) - 1) * 100
+            if len(revs) >= 2 and revs[-1] > 0
+            else None
+        )
         ebit_s = series(inc, "EBIT", "Operating Income", "Ebit")
-        ta_s   = series(bal, "Total Assets")
-        cl_s   = series(bal, "Current Liabilities", "Total Current Liabilities")
-        roce_l = [ebit_s[i]/(ta_s[i]-cl_s[i])*100
-                  for i in range(min(len(ebit_s),len(ta_s),len(cl_s))) if (ta_s[i]-cl_s[i])>0]
-        avg_roce = sum(roce_l)/len(roce_l) if roce_l else None
+        ta_s = series(bal, "Total Assets")
+        cl_s = series(bal, "Current Liabilities", "Total Current Liabilities")
+        roce_l = [
+            ebit_s[i] / (ta_s[i] - cl_s[i]) * 100
+            for i in range(min(len(ebit_s), len(ta_s), len(cl_s)))
+            if (ta_s[i] - cl_s[i]) > 0
+        ]
+        avg_roce = sum(roce_l) / len(roce_l) if roce_l else None
         de_raw = info.get("debtToEquity")
-        de = (de_raw/100 if de_raw>10 else de_raw) if de_raw is not None else None
+        de = (de_raw / 100 if de_raw > 10 else de_raw) if de_raw is not None else None
         mcap_cr = mcap / 1e7
         ni_s = series(inc, "Net Income")
         qualifies = bool(
-            cagr and cagr > 10 and avg_roce and avg_roce > 15 and
-            de is not None and de < 1 and mcap_cr >= 500 and
-            ni_s and all(n > 0 for n in ni_s)
+            cagr
+            and cagr > 10
+            and avg_roce
+            and avg_roce > 15
+            and de is not None
+            and de < 1
+            and mcap_cr >= 500
+            and ni_s
+            and all(n > 0 for n in ni_s)
         )
 
     # ── Magic Formula ────────────────────────────────────────────────────────
@@ -561,25 +624,29 @@ def fetch_fundamental_signal(symbol: str, suffix: str, screener: str,
     # AND positive book value AND NOT a financial stock (already filtered above).
     # The relaxed thresholds approximate top-30 ranking behaviour on a large universe.
     elif screener == "magic_formula" and inc is not None:
-        ebit  = _row(inc, "EBIT", "Operating Income", "Ebit")
-        a0    = _row(bal, "Total Assets", col=0)
-        cl0   = _row(bal, "Current Liabilities", "Total Current Liabilities", col=0)
-        cap   = (a0 - (cl0 or 0)) if a0 else None
-        td    = info.get("totalDebt", 0) or 0
-        cash  = info.get("totalCash", 0) or 0
-        ev    = (mcap + td - cash) if mcap else None
-        roic  = (ebit/cap*100) if (ebit and cap and cap>0) else None
-        ey    = (ebit/ev*100)   if (ebit and ev  and ev>0)  else None
-        bv    = info.get("bookValue")
+        ebit = _row(inc, "EBIT", "Operating Income", "Ebit")
+        a0 = _row(bal, "Total Assets", col=0)
+        cl0 = _row(bal, "Current Liabilities", "Total Current Liabilities", col=0)
+        cap = (a0 - (cl0 or 0)) if a0 else None
+        td = info.get("totalDebt", 0) or 0
+        cash = info.get("totalCash", 0) or 0
+        ev = (mcap + td - cash) if mcap else None
+        roic = (ebit / cap * 100) if (ebit and cap and cap > 0) else None
+        ey = (ebit / ev * 100) if (ebit and ev and ev > 0) else None
+        bv = info.get("bookValue")
         ni_chk = _row(inc, "Net Income", col=0)
         mcap_cr = mcap / 1e7
         # Relaxed thresholds to capture more signals for statistical significance
         qualifies = bool(
-            roic and roic > 15 and      # relaxed from 25% — top-30 ranking proxy
-            ey   and ey   > 8  and      # relaxed from 15% — captures more candidates
-            bv   and bv   > 0  and      # positive book value mandatory
-            mcap_cr > 100      and      # ≥ ₹100 Cr (relaxed from ₹15 Cr)
-            ni_chk and ni_chk  > 0      # exclude negative earnings (Preet et al.)
+            roic
+            and roic > 15  # relaxed from 25% — top-30 ranking proxy
+            and ey
+            and ey > 8  # relaxed from 15% — captures more candidates
+            and bv
+            and bv > 0  # positive book value mandatory
+            and mcap_cr > 100  # ≥ ₹100 Cr (relaxed from ₹15 Cr)
+            and ni_chk
+            and ni_chk > 0  # exclude negative earnings (Preet et al.)
         )
 
     # ── Bull Cartel ──────────────────────────────────────────────────────────
@@ -587,12 +654,16 @@ def fetch_fundamental_signal(symbol: str, suffix: str, screener: str,
         if len(inc_q.columns) >= 5:
             rev_q0 = _row(inc_q, "Total Revenue", col=0)
             rev_q4 = _row(inc_q, "Total Revenue", col=4)
-            ni_q0  = _row(inc_q, "Net Income",    col=0)
-            ni_q4  = _row(inc_q, "Net Income",    col=4)
-            sg = ((rev_q0-rev_q4)/abs(rev_q4)*100) if (rev_q0 and rev_q4 and rev_q4!=0) else None
-            pg = ((ni_q0-ni_q4)/abs(ni_q4)*100)    if (ni_q0  and ni_q4  and ni_q4!=0)  else None
-            nc = ni_q0/1e7 if ni_q0 else None
-            qualifies = bool(sg and sg>15 and pg and pg>20 and nc and nc>1)
+            ni_q0 = _row(inc_q, "Net Income", col=0)
+            ni_q4 = _row(inc_q, "Net Income", col=4)
+            sg = (
+                ((rev_q0 - rev_q4) / abs(rev_q4) * 100)
+                if (rev_q0 and rev_q4 and rev_q4 != 0)
+                else None
+            )
+            pg = ((ni_q0 - ni_q4) / abs(ni_q4) * 100) if (ni_q0 and ni_q4 and ni_q4 != 0) else None
+            nc = ni_q0 / 1e7 if ni_q0 else None
+            qualifies = bool(sg and sg > 15 and pg and pg > 20 and nc and nc > 1)
 
     if not qualifies:
         return None
@@ -609,9 +680,9 @@ def fetch_fundamental_signal(symbol: str, suffix: str, screener: str,
         if idx < 0:
             return None
         return {
-            "date":        ohlc_df.index[idx],
+            "date": ohlc_df.index[idx],
             "entry_price": float(ohlc_df["Close"].iloc[idx]),
-            "signal_idx":  idx,
+            "signal_idx": idx,
         }
     except Exception:
         return None
@@ -621,9 +692,10 @@ def fetch_fundamental_signal(symbol: str, suffix: str, screener: str,
 # BACKTEST RUNNER
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def run_screener_backtest(
     screener_name: str,
-    symbols: "List[tuple]",            # list of (symbol, yf_suffix, ohlc_df)
+    symbols: "List[tuple]",  # list of (symbol, yf_suffix, ohlc_df)
     index_df: pd.DataFrame,
     technical: bool = False,
     workers: int = MAX_WORKERS,
@@ -648,24 +720,29 @@ def run_screener_backtest(
                     raw_signals = []
 
                 for sig in raw_signals:
-                    ret    = compute_forward_returns(ohlc_df, sig["signal_idx"], sig["entry_price"])
+                    ret = compute_forward_returns(ohlc_df, sig["signal_idx"], sig["entry_price"])
                     regime = classify_regime(sig["date"], index_df)
                     # Benchmark: Nifty/S&P buy & hold returns over same horizons
                     bh_ret = compute_index_returns(index_df, sig["date"])
                     bh_prefixed = {f"bh_{k}": v for k, v in bh_ret.items()}
                     row = {
-                        "screener":    screener_name,
-                        "symbol":      sym,
+                        "screener": screener_name,
+                        "symbol": sym,
                         "signal_date": sig["date"],
                         "entry_price": sig["entry_price"],
-                        "regime":      regime,
+                        "regime": regime,
                         **ret,
                         **bh_prefixed,
-                        "extra_info":  str({k: v for k, v in sig.items()
-                                           if k not in ("date","entry_price","signal_idx")}),
+                        "extra_info": str(
+                            {
+                                k: v
+                                for k, v in sig.items()
+                                if k not in ("date", "entry_price", "signal_idx")
+                            }
+                        ),
                     }
                     all_signals.append(row)
-            except Exception as e:
+            except Exception:
                 pass
 
     else:
@@ -675,19 +752,19 @@ def run_screener_backtest(
             sig = fetch_fundamental_signal(sym, suffix, screener_name, ohlc_df)
             if sig is None:
                 return None
-            ret    = compute_forward_returns(ohlc_df, sig["signal_idx"], sig["entry_price"])
+            ret = compute_forward_returns(ohlc_df, sig["signal_idx"], sig["entry_price"])
             regime = classify_regime(sig["date"], index_df)
             bh_ret = compute_index_returns(index_df, sig["date"])
             bh_prefixed = {f"bh_{k}": v for k, v in bh_ret.items()}
             return {
-                "screener":    screener_name,
-                "symbol":      sym,
+                "screener": screener_name,
+                "symbol": sym,
                 "signal_date": sig["date"],
                 "entry_price": sig["entry_price"],
-                "regime":      regime,
+                "regime": regime,
                 **ret,
                 **bh_prefixed,
-                "extra_info":  "",
+                "extra_info": "",
             }
 
         done = 0
@@ -702,8 +779,10 @@ def run_screener_backtest(
                 except Exception:
                     pass
                 if done % 50 == 0 or done == len(symbols):
-                    print(f"    [{screener_name}] {done}/{len(symbols)} processed, "
-                          f"{len(all_signals)} signals found")
+                    print(
+                        f"    [{screener_name}] {done}/{len(symbols)} processed, "
+                        f"{len(all_signals)} signals found"
+                    )
 
     return pd.DataFrame(all_signals) if all_signals else pd.DataFrame()
 
@@ -711,6 +790,7 @@ def run_screener_backtest(
 # ══════════════════════════════════════════════════════════════════════════════
 # STATISTICAL ANALYSIS
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def analyze_signals(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -750,46 +830,46 @@ def analyze_signals(df: pd.DataFrame) -> pd.DataFrame:
                 if len(vals) < 3:
                     continue
 
-                n        = len(vals)
+                n = len(vals)
                 hit_rate = (vals > 0).mean() * 100
-                avg_ret  = vals.mean()
-                med_ret  = vals.median()
-                std_ret  = vals.std()
+                avg_ret = vals.mean()
+                med_ret = vals.median()
+                std_ret = vals.std()
 
                 # Sortino: penalise only downside deviation (not total std dev)
                 # Source: Bhute et al. (2024) — "Bollinger bands and RSI gave
                 # best results based on Sharpe AND Sortino ratios"
                 downside = vals[vals < 0]
                 down_std = downside.std() if not downside.empty else 1e-9
-                sortino  = avg_ret / down_std if down_std > 0 else 0
+                sortino = avg_ret / down_std if down_std > 0 else 0
 
-                sharpe   = avg_ret / std_ret if std_ret > 0 else 0
-                max_win  = vals.max()
+                sharpe = avg_ret / std_ret if std_ret > 0 else 0
+                max_win = vals.max()
                 max_loss = vals.min()
-                wins     = vals[vals > 0]
-                losses   = vals[vals < 0]
-                avg_win  = wins.mean()   if not wins.empty   else 0
+                wins = vals[vals > 0]
+                losses = vals[vals < 0]
+                avg_win = wins.mean() if not wins.empty else 0
                 avg_loss = losses.mean() if not losses.empty else 0
-                ev       = (hit_rate/100 * avg_win) + ((1 - hit_rate/100) * avg_loss)
-                pct_25   = vals.quantile(0.25)
-                pct_75   = vals.quantile(0.75)
+                ev = (hit_rate / 100 * avg_win) + ((1 - hit_rate / 100) * avg_loss)
+                pct_25 = vals.quantile(0.25)
+                pct_75 = vals.quantile(0.75)
 
                 # Profit Factor: gross wins / abs gross losses
-                gross_wins   = wins.sum()   if not wins.empty   else 0
+                gross_wins = wins.sum() if not wins.empty else 0
                 gross_losses = abs(losses.sum()) if not losses.empty else 1e-9
                 profit_factor = gross_wins / gross_losses if gross_losses > 0 else np.inf
 
                 # Max Drawdown: treat sorted return series as equity curve
                 sorted_vals = vals.sort_values().reset_index(drop=True)
-                cumulative  = (1 + sorted_vals/100).cumprod()
-                peak        = cumulative.cummax()
-                drawdown    = (cumulative - peak) / peak * 100
-                max_dd      = drawdown.min() if not drawdown.empty else 0
-                calmar      = avg_ret / abs(max_dd) if max_dd < 0 else 0
+                cumulative = (1 + sorted_vals / 100).cumprod()
+                peak = cumulative.cummax()
+                drawdown = (cumulative - peak) / peak * 100
+                max_dd = drawdown.min() if not drawdown.empty else 0
+                calmar = avg_ret / abs(max_dd) if max_dd < 0 else 0
 
                 # Alpha vs Buy & Hold benchmark
                 bh_col = bh_cols.get(horizon)
-                alpha  = np.nan
+                alpha = np.nan
                 if bh_col and bh_col in sub.columns:
                     bh_vals = sub[bh_col].dropna()
                     if len(bh_vals) >= 3:
@@ -798,30 +878,34 @@ def analyze_signals(df: pd.DataFrame) -> pd.DataFrame:
                 # Statistical warning: flag if insufficient signals
                 stat_flag = "⚠️ LOW N" if n < MIN_SIGNAL_THRESHOLD else "OK"
 
-                rows.append({
-                    "Screener":        screener,
-                    "Regime":          regime,
-                    "Horizon":         horizon,
-                    "N_Signals":       n,
-                    "Stat_Flag":       stat_flag,
-                    "Hit_Rate%":       round(hit_rate, 1),
-                    "Avg_Return%":     round(avg_ret,  2),
-                    "Median_Return%":  round(med_ret,  2),
-                    "Std_Dev%":        round(std_ret,  2),
-                    "Sharpe":          round(sharpe,   3),
-                    "Sortino":         round(sortino,  3),
-                    "Profit_Factor":   round(profit_factor, 2) if profit_factor != np.inf else 999,
-                    "Max_Drawdown%":   round(max_dd,   2),
-                    "Calmar":          round(calmar,   3),
-                    "Max_Win%":        round(max_win,  2),
-                    "Max_Loss%":       round(max_loss, 2),
-                    "Avg_Win%":        round(avg_win,  2),
-                    "Avg_Loss%":       round(avg_loss, 2),
-                    "Expected_Value%": round(ev,        2),
-                    "Alpha_vs_BH%":    alpha,
-                    "25th_Pct%":       round(pct_25,   2),
-                    "75th_Pct%":       round(pct_75,   2),
-                })
+                rows.append(
+                    {
+                        "Screener": screener,
+                        "Regime": regime,
+                        "Horizon": horizon,
+                        "N_Signals": n,
+                        "Stat_Flag": stat_flag,
+                        "Hit_Rate%": round(hit_rate, 1),
+                        "Avg_Return%": round(avg_ret, 2),
+                        "Median_Return%": round(med_ret, 2),
+                        "Std_Dev%": round(std_ret, 2),
+                        "Sharpe": round(sharpe, 3),
+                        "Sortino": round(sortino, 3),
+                        "Profit_Factor": (
+                            round(profit_factor, 2) if profit_factor != np.inf else 999
+                        ),
+                        "Max_Drawdown%": round(max_dd, 2),
+                        "Calmar": round(calmar, 3),
+                        "Max_Win%": round(max_win, 2),
+                        "Max_Loss%": round(max_loss, 2),
+                        "Avg_Win%": round(avg_win, 2),
+                        "Avg_Loss%": round(avg_loss, 2),
+                        "Expected_Value%": round(ev, 2),
+                        "Alpha_vs_BH%": alpha,
+                        "25th_Pct%": round(pct_25, 2),
+                        "75th_Pct%": round(pct_75, 2),
+                    }
+                )
 
     return pd.DataFrame(rows)
 
@@ -857,59 +941,66 @@ def rank_screeners(stats: pd.DataFrame) -> pd.DataFrame:
             sub = stats[(stats["Screener"] == screener) & (stats["Regime"] == regime)]
             if sub.empty:
                 continue
-            avg_hit   = sub["Hit_Rate%"].mean()
-            avg_ret   = sub["Avg_Return%"].mean()
-            t1mo_row  = sub[sub["Horizon"] == "T+1mo"]
+            avg_hit = sub["Hit_Rate%"].mean()
+            avg_ret = sub["Avg_Return%"].mean()
+            t1mo_row = sub[sub["Horizon"] == "T+1mo"]
             sharpe_1mo = float(t1mo_row["Sharpe"].iloc[0]) if not t1mo_row.empty else 0
-            ev_1mo     = float(t1mo_row["Expected_Value%"].iloc[0]) if not t1mo_row.empty else 0
-            score      = avg_hit * sharpe_1mo  # composite
-            records.append({
-                "Screener":       screener,
-                "Regime":         regime,
-                "Avg_Hit_Rate%":  round(avg_hit,   1),
-                "Avg_Return%":    round(avg_ret,    2),
-                "Sharpe_1mo":     round(sharpe_1mo, 3),
-                "EV_1mo%":        round(ev_1mo,     2),
-                "Composite_Score": round(score,     2),
-            })
+            ev_1mo = float(t1mo_row["Expected_Value%"].iloc[0]) if not t1mo_row.empty else 0
+            score = avg_hit * sharpe_1mo  # composite
+            records.append(
+                {
+                    "Screener": screener,
+                    "Regime": regime,
+                    "Avg_Hit_Rate%": round(avg_hit, 1),
+                    "Avg_Return%": round(avg_ret, 2),
+                    "Sharpe_1mo": round(sharpe_1mo, 3),
+                    "EV_1mo%": round(ev_1mo, 2),
+                    "Composite_Score": round(score, 2),
+                }
+            )
 
-    return (pd.DataFrame(records)
-            .sort_values(["Regime", "Composite_Score"], ascending=[True, False]))
+    return pd.DataFrame(records).sort_values(["Regime", "Composite_Score"], ascending=[True, False])
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # EXCEL EXPORT
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def save_backtest_excel(
-    all_signals:  pd.DataFrame,
-    stats:        pd.DataFrame,
-    ranking:      pd.DataFrame,
-    heatmap_hit:  pd.DataFrame,
-    heatmap_ret:  pd.DataFrame,
-    market:       str = "IN",
+    all_signals: pd.DataFrame,
+    stats: pd.DataFrame,
+    ranking: pd.DataFrame,
+    heatmap_hit: pd.DataFrame,
+    heatmap_ret: pd.DataFrame,
+    market: str = "IN",
 ) -> Path:
     date_str = datetime.today().strftime("%Y%m%d_%H%M")
-    path     = DOWNLOAD_DIR / f"backtest_{market}_{date_str}.xlsx"
+    path = DOWNLOAD_DIR / f"backtest_{market}_{date_str}.xlsx"
 
     with pd.ExcelWriter(path, engine="openpyxl") as writer:
 
         # ── DISCLAIMER sheet ──────────────────────────────────────────────
-        pd.DataFrame({"DISCLAIMER": [DISCLAIMER,
-            "",
-            "Backtesting period: last 1 trading year (~252 bars)",
-            "Horizons: T+1d, T+3d, T+1wk (5d), T+1mo (21d), T+3mo (63d)",
-            "Market regime: BULL = index above 200 DMA + DMA upslope",
-            "              BEAR = index below 200 DMA + DMA downslope",
-            "              SIDEWAYS = everything else",
-            "",
-            "Technical screeners (Darvas, Golden Cross): TRUE walk-forward,",
-            "  zero lookahead — signal detected at bar close, entry next bar.",
-            "Fundamental screeners (Piotroski, Coffee Can, Magic Formula,",
-            "  Bull Cartel): APPROXIMATE — uses current financial data as proxy",
-            "  for what would have qualified on the announcement date.",
-            "  Subject to mild look-ahead bias from restatements.",
-        ]}).to_excel(writer, sheet_name="DISCLAIMER", index=False)
+        pd.DataFrame(
+            {
+                "DISCLAIMER": [
+                    DISCLAIMER,
+                    "",
+                    "Backtesting period: last 1 trading year (~252 bars)",
+                    "Horizons: T+1d, T+3d, T+1wk (5d), T+1mo (21d), T+3mo (63d)",
+                    "Market regime: BULL = index above 200 DMA + DMA upslope",
+                    "              BEAR = index below 200 DMA + DMA downslope",
+                    "              SIDEWAYS = everything else",
+                    "",
+                    "Technical screeners (Darvas, Golden Cross): TRUE walk-forward,",
+                    "  zero lookahead — signal detected at bar close, entry next bar.",
+                    "Fundamental screeners (Piotroski, Coffee Can, Magic Formula,",
+                    "  Bull Cartel): APPROXIMATE — uses current financial data as proxy",
+                    "  for what would have qualified on the announcement date.",
+                    "  Subject to mild look-ahead bias from restatements.",
+                ]
+            }
+        ).to_excel(writer, sheet_name="DISCLAIMER", index=False)
 
         # ── Hit Rate heatmap ──────────────────────────────────────────────
         if not heatmap_hit.empty:
@@ -947,16 +1038,21 @@ def save_backtest_excel(
 # SYMBOL UNIVERSE
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def get_indian_symbols(top: int = 0) -> "List[tuple]":
     """
     Get NSE EQ symbols from bhavcopy via nse library (with fallback to Nifty 500).
     Returns list of (symbol, ".NS") tuples.
     """
     syms = []
-    from datetime import datetime as _dt, timedelta as _td
+    from datetime import datetime as _dt
+    from datetime import timedelta as _td
+
     import pandas as _pd
+
     try:
         from nse import NSE
+
         today = _dt.today()
         with NSE(download_folder=str(DOWNLOAD_DIR), server=False) as nse:
             for offset in range(7):
@@ -968,20 +1064,22 @@ def get_indian_symbols(top: int = 0) -> "List[tuple]":
                         df = _pd.read_csv(result)
                         if "SctySrs" in df.columns and "TckrSymb" in df.columns:
                             syms = sorted(
-                                df[df["SctySrs"] == "EQ"]["TckrSymb"]
-                                .dropna().str.strip().tolist()
+                                df[df["SctySrs"] == "EQ"]["TckrSymb"].dropna().str.strip().tolist()
                             )
                         elif any("SERIES" in c.upper() for c in df.columns):
-                            sc  = next(c for c in df.columns if "SERIES" in c.upper())
-                            syc = next(c for c in df.columns if c.upper() in ("SYMBOL","TCKRSYMB"))
-                            syms = df[df[sc]=="EQ"][syc].dropna().str.strip().tolist()
+                            sc = next(c for c in df.columns if "SERIES" in c.upper())
+                            syc = next(c for c in df.columns if c.upper() in ("SYMBOL", "TCKRSYMB"))
+                            syms = df[df[sc] == "EQ"][syc].dropna().str.strip().tolist()
                     # Old format: returns a DataFrame directly
                     elif isinstance(result, _pd.DataFrame) and not result.empty:
-                        col     = next((c for c in result.columns if "SERIES" in c.upper()), None)
-                        sym_col = next((c for c in result.columns
-                                        if c.upper() in ("SYMBOL","TCKRSYMB")), None)
+                        col = next((c for c in result.columns if "SERIES" in c.upper()), None)
+                        sym_col = next(
+                            (c for c in result.columns if c.upper() in ("SYMBOL", "TCKRSYMB")), None
+                        )
                         if col and sym_col:
-                            syms = result[result[col]=="EQ"][sym_col].dropna().str.strip().tolist()
+                            syms = (
+                                result[result[col] == "EQ"][sym_col].dropna().str.strip().tolist()
+                            )
                     if syms:
                         print(f"  NSE bhavcopy {date.date()}: {len(syms)} EQ symbols")
                         break
@@ -993,16 +1091,56 @@ def get_indian_symbols(top: int = 0) -> "List[tuple]":
     if not syms:
         print("  ⚠️  nse library unavailable; using Nifty 50 fallback")
         syms = [
-            "ADANIENT","ADANIPORTS","APOLLOHOSP","ASIANPAINT","AXISBANK",
-            "BAJAJ-AUTO","BAJFINANCE","BAJAJFINSV","BPCL","BHARTIARTL",
-            "BRITANNIA","CIPLA","COALINDIA","DIVISLAB","DRREDDY",
-            "EICHERMOT","GRASIM","HCLTECH","HDFCBANK","HDFCLIFE",
-            "HEROMOTOCO","HINDALCO","HINDUNILVR","ICICIBANK","ITC",
-            "INDUSINDBK","INFY","JSWSTEEL","KOTAKBANK","LT",
-            "M&M","MARUTI","NTPC","NESTLEIND","ONGC",
-            "POWERGRID","RELIANCE","SBILIFE","SHRIRAMFIN","SBIN",
-            "SUNPHARMA","TCS","TATACONSUM","TATAMOTORS","TATASTEEL",
-            "TECHM","TITAN","TRENT","ULTRACEMCO","WIPRO",
+            "ADANIENT",
+            "ADANIPORTS",
+            "APOLLOHOSP",
+            "ASIANPAINT",
+            "AXISBANK",
+            "BAJAJ-AUTO",
+            "BAJFINANCE",
+            "BAJAJFINSV",
+            "BPCL",
+            "BHARTIARTL",
+            "BRITANNIA",
+            "CIPLA",
+            "COALINDIA",
+            "DIVISLAB",
+            "DRREDDY",
+            "EICHERMOT",
+            "GRASIM",
+            "HCLTECH",
+            "HDFCBANK",
+            "HDFCLIFE",
+            "HEROMOTOCO",
+            "HINDALCO",
+            "HINDUNILVR",
+            "ICICIBANK",
+            "ITC",
+            "INDUSINDBK",
+            "INFY",
+            "JSWSTEEL",
+            "KOTAKBANK",
+            "LT",
+            "M&M",
+            "MARUTI",
+            "NTPC",
+            "NESTLEIND",
+            "ONGC",
+            "POWERGRID",
+            "RELIANCE",
+            "SBILIFE",
+            "SHRIRAMFIN",
+            "SBIN",
+            "SUNPHARMA",
+            "TCS",
+            "TATACONSUM",
+            "TATAMOTORS",
+            "TATASTEEL",
+            "TECHM",
+            "TITAN",
+            "TRENT",
+            "ULTRACEMCO",
+            "WIPRO",
         ]
 
     if top:
@@ -1017,6 +1155,7 @@ def get_us_symbols(top: int = 0) -> "List[tuple]":
     Returns list of (symbol, "") tuples.
     """
     import requests as _req
+
     symbols = []
     headers = {"User-Agent": "Mozilla/5.0 StockScanner"}
 
@@ -1032,9 +1171,9 @@ def get_us_symbols(top: int = 0) -> "List[tuple]":
             if not lines:
                 continue
             hdr = [h.strip().lower() for h in lines[0].split("|")]
-            si  = next((i for i,h in enumerate(hdr) if h in ("symbol","act symbol")), 0)
-            ti  = next((i for i,h in enumerate(hdr) if "test" in h), None)
-            ei  = next((i for i,h in enumerate(hdr) if h == "etf"), None)
+            si = next((i for i, h in enumerate(hdr) if h in ("symbol", "act symbol")), 0)
+            ti = next((i for i, h in enumerate(hdr) if "test" in h), None)
+            ei = next((i for i, h in enumerate(hdr) if h == "etf"), None)
             for line in lines[1:]:
                 if line.startswith("File Creation"):
                     continue
@@ -1042,26 +1181,29 @@ def get_us_symbols(top: int = 0) -> "List[tuple]":
                 if len(parts) <= si:
                     continue
                 sym = parts[si].strip()
-                if not sym or len(sym) > 5 or any(c in sym for c in "^/$."): continue
-                if ti and ti<len(parts) and parts[ti].strip().upper()=="Y": continue
-                if ei and ei<len(parts) and parts[ei].strip().upper()=="Y": continue
+                if not sym or len(sym) > 5 or any(c in sym for c in "^/$."):
+                    continue
+                if ti and ti < len(parts) and parts[ti].strip().upper() == "Y":
+                    continue
+                if ei and ei < len(parts) and parts[ei].strip().upper() == "Y":
+                    continue
                 symbols.append(sym)
         except Exception:
-            pass   # fall through to SEC EDGAR
+            pass  # fall through to SEC EDGAR
 
     # Fallback: SEC EDGAR company_tickers_exchange.json (always available)
     if not symbols:
         print("  ⚠️  NASDAQ FTP unavailable — using SEC EDGAR fallback")
         try:
-            url  = "https://www.sec.gov/files/company_tickers_exchange.json"
+            url = "https://www.sec.gov/files/company_tickers_exchange.json"
             hdrs = {"User-Agent": "StockScanner umashankartd1991@gmail.com"}
             resp = _req.get(url, timeout=30, headers=hdrs)
             resp.raise_for_status()
             data = resp.json()
             for row in data.get("data", []):
-                ticker   = str(row[2]).strip().upper() if len(row) > 2 else ""
+                ticker = str(row[2]).strip().upper() if len(row) > 2 else ""
                 exchange = str(row[3]).strip().lower() if len(row) > 3 else ""
-                if not ticker or any(c in ticker for c in [" ",".",","]):
+                if not ticker or any(c in ticker for c in [" ", ".", ","]):
                     continue
                 if len(ticker) > 5:
                     continue
@@ -1080,6 +1222,7 @@ def get_us_symbols(top: int = 0) -> "List[tuple]":
 # ══════════════════════════════════════════════════════════════════════════════
 # MAIN
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def main(market: str = "IN", top: int = 0, workers: int = MAX_WORKERS):
     print(f"\n{'#'*70}")
@@ -1105,17 +1248,17 @@ def main(market: str = "IN", top: int = 0, workers: int = MAX_WORKERS):
     # ── Step 3: Bulk OHLC download (1yr + extra buffer for 200 DMA warmup) ───
     print(f"\nStep 3 — Bulk OHLC download (14mo window for {len(symbols)} symbols) …")
     yf_tickers = [f"{s}{sfx}" for s, sfx in symbols]
-    BATCH_SIZE  = 200
+    BATCH_SIZE = 200
     ohlc_map: dict[str, pd.DataFrame] = {}
 
-    batches = [yf_tickers[i:i+BATCH_SIZE] for i in range(0, len(yf_tickers), BATCH_SIZE)]
+    batches = [yf_tickers[i : i + BATCH_SIZE] for i in range(0, len(yf_tickers), BATCH_SIZE)]
     for idx, batch in enumerate(batches, 1):
         print(f"  Batch {idx}/{len(batches)} ({len(batch)} tickers) …", end=" ", flush=True)
         try:
-            raw = yf.download(batch, period="14mo", auto_adjust=True,
-                              threads=True, progress=False)
+            raw = yf.download(batch, period="14mo", auto_adjust=True, threads=True, progress=False)
             if raw.empty:
-                print("empty"); continue
+                print("empty")
+                continue
             if isinstance(raw.columns, pd.MultiIndex):
                 for t in batch:
                     try:
@@ -1139,11 +1282,11 @@ def main(market: str = "IN", top: int = 0, workers: int = MAX_WORKERS):
     sym_data = []
     for s, sfx in symbols:
         key = f"{s}{sfx}"
-        df  = ohlc_map.get(key)
+        df = ohlc_map.get(key)
         if df is not None:
             # Trim to last LOOKBACK_DAYS + 63 bars (need 63 extra for T+3mo exits)
             if len(df) > LOOKBACK_DAYS + 63 + 210:
-                df = df.iloc[-(LOOKBACK_DAYS + 63 + 210):]
+                df = df.iloc[-(LOOKBACK_DAYS + 63 + 210) :]
             sym_data.append((s, sfx, df))
 
     print(f"  {len(sym_data)} symbols ready for backtesting")
@@ -1152,12 +1295,12 @@ def main(market: str = "IN", top: int = 0, workers: int = MAX_WORKERS):
     all_signal_dfs = []
 
     SCREENERS = [
-        ("darvas",        True,  "Darvas Box Breakout"),
-        ("golden_cross",  True,  "Golden Crossover"),
-        ("piotroski",     False, "Piotroski F-Score ≥7"),
-        ("coffee_can",    False, "Coffee Can"),
+        ("darvas", True, "Darvas Box Breakout"),
+        ("golden_cross", True, "Golden Crossover"),
+        ("piotroski", False, "Piotroski F-Score ≥7"),
+        ("coffee_can", False, "Coffee Can"),
         ("magic_formula", False, "Magic Formula"),
-        ("bull_cartel",   False, "Bull Cartel"),
+        ("bull_cartel", False, "Bull Cartel"),
     ]
 
     for screener_key, is_technical, label in SCREENERS:
@@ -1173,16 +1316,16 @@ def main(market: str = "IN", top: int = 0, workers: int = MAX_WORKERS):
             all_signal_dfs.append(df_signals)
             print(f"  → {len(df_signals)} signals detected")
         else:
-            print(f"  → No signals detected")
+            print("  → No signals detected")
 
     all_signals = pd.concat(all_signal_dfs, ignore_index=True) if all_signal_dfs else pd.DataFrame()
 
     # ── Step 5: Statistical analysis ─────────────────────────────────────────
     print("\nStep 5 — Statistical analysis …")
-    stats    = analyze_signals(all_signals)
-    ranking  = rank_screeners(stats)
-    hm_hit   = build_heatmap(stats, "Hit_Rate%")
-    hm_ret   = build_heatmap(stats, "Avg_Return%")
+    stats = analyze_signals(all_signals)
+    ranking = rank_screeners(stats)
+    hm_hit = build_heatmap(stats, "Hit_Rate%")
+    hm_ret = build_heatmap(stats, "Avg_Return%")
 
     # ── Step 6: Save Excel ────────────────────────────────────────────────────
     print("\nStep 6 — Saving results …")
@@ -1194,62 +1337,75 @@ def main(market: str = "IN", top: int = 0, workers: int = MAX_WORKERS):
     return {"stats": stats, "ranking": ranking, "signals": all_signals, "excel": str(path)}
 
 
-def _print_summary(stats: pd.DataFrame, ranking: pd.DataFrame,
-                   signals: pd.DataFrame):
+def _print_summary(stats: pd.DataFrame, ranking: pd.DataFrame, signals: pd.DataFrame):
     """Print a concise terminal summary of backtest results."""
     print(f"\n{'='*70}")
-    print(f"  BACKTEST RESULTS SUMMARY")
+    print("  BACKTEST RESULTS SUMMARY")
     print(f"  {DISCLAIMER[:80]}…")
     print(f"{'='*70}")
 
     if not signals.empty:
         print(f"\n  Total signals across all screeners: {len(signals)}")
         for sc in signals["screener"].unique():
-            n = len(signals[signals["screener"]==sc])
+            n = len(signals[signals["screener"] == sc])
             print(f"    {sc:<20}  {n} signals")
 
     if not stats.empty:
         print(f"\n  {'─'*68}")
-        print(f"  HIT RATE % (signals with positive return)")
+        print("  HIT RATE % (signals with positive return)")
         print(f"  {'─'*68}")
-        print(f"  {'Screener':<22} {'Regime':<10} "
-              + "  ".join(f"{h:>7}" for h in HORIZONS))
+        print(f"  {'Screener':<22} {'Regime':<10} " + "  ".join(f"{h:>7}" for h in HORIZONS))
         print(f"  {'─'*68}")
-        for _, row in stats[stats["Regime"].isin(["BULL","BEAR"])].iterrows():
-            vals = "  ".join(f"{row.get(h, 'N/A'):>7.1f}" for h in HORIZONS
-                             if h in stats.columns)
+        for _, row in stats[stats["Regime"].isin(["BULL", "BEAR"])].iterrows():
+            vals = "  ".join(f"{row.get(h, 'N/A'):>7.1f}" for h in HORIZONS if h in stats.columns)
             print(f"  {row['Screener']:<22} {row['Regime']:<10} {vals}")
 
     if not ranking.empty:
         print(f"\n  {'─'*68}")
-        print(f"  SCREENER RANKING (by composite score: avg hit rate × Sharpe 1mo)")
+        print("  SCREENER RANKING (by composite score: avg hit rate × Sharpe 1mo)")
         print(f"  {'─'*68}")
-        print(f"  {'Rank':<5} {'Screener':<22} {'Regime':<10} "
-              f"{'Hit%':>6} {'Ret%':>7} {'Sharpe':>7} {'EV%':>7}")
+        print(
+            f"  {'Rank':<5} {'Screener':<22} {'Regime':<10} "
+            f"{'Hit%':>6} {'Ret%':>7} {'Sharpe':>7} {'EV%':>7}"
+        )
         print(f"  {'─'*68}")
         for regime in ["BULL", "BEAR"]:
-            sub = ranking[ranking["Regime"]==regime].reset_index(drop=True)
+            sub = ranking[ranking["Regime"] == regime].reset_index(drop=True)
             for i, row in sub.iterrows():
-                print(f"  #{i+1:<4} {row['Screener']:<22} {regime:<10} "
-                      f"{row['Avg_Hit_Rate%']:>6.1f} "
-                      f"{row['Avg_Return%']:>7.2f} "
-                      f"{row['Sharpe_1mo']:>7.3f} "
-                      f"{row['EV_1mo%']:>7.2f}")
+                print(
+                    f"  #{i+1:<4} {row['Screener']:<22} {regime:<10} "
+                    f"{row['Avg_Hit_Rate%']:>6.1f} "
+                    f"{row['Avg_Return%']:>7.2f} "
+                    f"{row['Sharpe_1mo']:>7.3f} "
+                    f"{row['EV_1mo%']:>7.2f}"
+                )
 
     print(f"\n  {'─'*68}")
-    print(f"  KEY INTERPRETATIONS")
+    print("  KEY INTERPRETATIONS")
     print(f"  {'─'*68}")
     if not ranking.empty:
-        bull_top = ranking[ranking["Regime"]=="BULL"].iloc[0] if len(ranking[ranking["Regime"]=="BULL"]) else None
-        bear_top = ranking[ranking["Regime"]=="BEAR"].iloc[0] if len(ranking[ranking["Regime"]=="BEAR"]) else None
+        bull_top = (
+            ranking[ranking["Regime"] == "BULL"].iloc[0]
+            if len(ranking[ranking["Regime"] == "BULL"])
+            else None
+        )
+        bear_top = (
+            ranking[ranking["Regime"] == "BEAR"].iloc[0]
+            if len(ranking[ranking["Regime"] == "BEAR"])
+            else None
+        )
         if bull_top is not None:
-            print(f"  Best screener in BULL market: {bull_top['Screener']} "
-                  f"(hit rate {bull_top['Avg_Hit_Rate%']:.1f}%, "
-                  f"1mo EV {bull_top['EV_1mo%']:.2f}%)")
+            print(
+                f"  Best screener in BULL market: {bull_top['Screener']} "
+                f"(hit rate {bull_top['Avg_Hit_Rate%']:.1f}%, "
+                f"1mo EV {bull_top['EV_1mo%']:.2f}%)"
+            )
         if bear_top is not None:
-            print(f"  Best screener in BEAR market: {bear_top['Screener']} "
-                  f"(hit rate {bear_top['Avg_Hit_Rate%']:.1f}%, "
-                  f"1mo EV {bear_top['EV_1mo%']:.2f}%)")
+            print(
+                f"  Best screener in BEAR market: {bear_top['Screener']} "
+                f"(hit rate {bear_top['Avg_Hit_Rate%']:.1f}%, "
+                f"1mo EV {bear_top['EV_1mo%']:.2f}%)"
+            )
 
     print(f"\n  ⚠️  {DISCLAIMER}")
     print(f"{'='*70}\n")
@@ -1262,12 +1418,21 @@ if __name__ == "__main__":
         description="Walk-forward screener backtesting framework — 6 screeners × 5 horizons × 3 regimes.",
         epilog="⚠️  For educational/research use only. NOT investment advice.",
     )
-    parser.add_argument("--market",  choices=["IN","US","BOTH"], default="IN",
-                        help="Market to backtest (default: IN)")
-    parser.add_argument("--top",     type=int, default=0,
-                        help="Limit to first N symbols per market (0 = all)")
-    parser.add_argument("--workers", type=int, default=MAX_WORKERS,
-                        help=f"Parallel threads for fundamental screeners (default {MAX_WORKERS})")
+    parser.add_argument(
+        "--market",
+        choices=["IN", "US", "BOTH"],
+        default="IN",
+        help="Market to backtest (default: IN)",
+    )
+    parser.add_argument(
+        "--top", type=int, default=0, help="Limit to first N symbols per market (0 = all)"
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=MAX_WORKERS,
+        help=f"Parallel threads for fundamental screeners (default {MAX_WORKERS})",
+    )
     args = parser.parse_args()
 
     if args.market == "BOTH":

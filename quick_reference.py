@@ -376,21 +376,21 @@ if __name__ == "__main__":
         MARKET_HOURS,
         RISK_LIMITS,
         QUICK_FORMULAS,
-        TROUBLESHOOTING
+        TROUBLESHOOTING,
     ]
-    
-    print("\n" + "="*70)
+
+    print("\n" + "=" * 70)
     print("MOMENTUM TRADING STRATEGY - QUICK REFERENCE")
-    print("="*70)
-    
+    print("=" * 70)
+
     for material in reference_materials:
         print(material)
-    
+
     # Save to file
-    with open('/mnt/user-data/outputs/quick_reference.txt', 'w') as f:
+    with open("/mnt/user-data/outputs/quick_reference.txt", "w") as f:
         f.write("MOMENTUM TRADING STRATEGY - QUICK REFERENCE CARD\n")
-        f.write("="*70 + "\n\n")
+        f.write("=" * 70 + "\n\n")
         for material in reference_materials:
             f.write(material + "\n")
-    
+
     print("\n✓ Quick reference saved to quick_reference.txt")

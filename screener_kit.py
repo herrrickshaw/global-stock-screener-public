@@ -28,16 +28,34 @@ import pandas as pd
 
 warnings.filterwarnings("ignore")
 
-from strategies.base import StockData
-import strategies as st
 import custom_screener as cs
+import strategies as st
+from strategies.base import StockData
 
-MARKETS = ["IN", "US", "JP", "KR", "CN", "SG", "EU",        # core official feeds
-           "HK", "TW", "CA", "AU", "UK", "DE", "SA",        # major exchanges added
-           "BR", "CH", "ZA", "SE", "FI", "DK"]              # (Wikipedia top-20)
+MARKETS = [
+    "IN",
+    "US",
+    "JP",
+    "KR",
+    "CN",
+    "SG",
+    "EU",  # core official feeds
+    "HK",
+    "TW",
+    "CA",
+    "AU",
+    "UK",
+    "DE",
+    "SA",  # major exchanges added
+    "BR",
+    "CH",
+    "ZA",
+    "SE",
+    "FI",
+    "DK",
+]  # (Wikipedia top-20)
 SEED_DIR = Path(__file__).parent / "cache_seed"
-CACHE = Path(os.environ.get("BHAV_CACHE",
-                            Path.home() / "Downloads" / "data" / "bhavcopy_cache"))
+CACHE = Path(os.environ.get("BHAV_CACHE", Path.home() / "Downloads" / "data" / "bhavcopy_cache"))
 CACHE.mkdir(parents=True, exist_ok=True)
 
 
@@ -61,11 +79,13 @@ def bootstrap(rebuild_store: bool = True, verbose: bool = True) -> dict:
         seed = SEED_DIR / _seed_name(mkt)
         live = CACHE / _seed_name(mkt)
         if seed.exists() and not live.exists():
-            shutil.copy2(seed, live); copied.append(mkt)
+            shutil.copy2(seed, live)
+            copied.append(mkt)
     if verbose:
         print(f"  bootstrap: seeded {len(copied)} markets into {CACHE} ({copied})")
     if rebuild_store:
         import bhavcopy_store as store
+
         n = store.build(verbose=verbose)
         if verbose:
             print(f"  store ready: {n} symbols")
@@ -90,6 +110,7 @@ def load(market: str, min_turnover_usd: float = 0.0) -> Dict[str, pd.DataFrame]:
     if min_turnover_usd and min_turnover_usd > 0:
         try:
             from liquidity import liquid_symbols
+
             keep = set(liquid_symbols(market, min_usd=min_turnover_usd))
         except Exception:
             keep = None
@@ -99,8 +120,7 @@ def load(market: str, min_turnover_usd: float = 0.0) -> Dict[str, pd.DataFrame]:
         long = long[long["Symbol"].isin(keep)]
     out = {}
     for sym, g in long.groupby("Symbol"):
-        out[str(sym)] = g.set_index("Date").sort_index()[
-            ["Open", "High", "Low", "Close", "Volume"]]
+        out[str(sym)] = g.set_index("Date").sort_index()[["Open", "High", "Low", "Close", "Volume"]]
     return out
 
 
@@ -108,6 +128,7 @@ def get(symbol: str) -> Optional[pd.DataFrame]:
     """Fast single-symbol OHLCV from the NoSQL store (falls back to seeds)."""
     try:
         import bhavcopy_store as store
+
         d = store.get(symbol)
         if d is not None:
             return d
@@ -128,11 +149,13 @@ def update(market: str, verbose: bool = True) -> dict:
     Others → recent bars via the redundant source chain, merged into the seed."""
     if market == "IN":
         from bhavcopy_history import fetch_history
-        fetch_history(verbose=verbose)              # appends new days + rebuilds store
+
+        fetch_history(verbose=verbose)  # appends new days + rebuilds store
         return {"market": "IN", "source": "bhavcopy"}
 
     from data_sources import fetch as multi_fetch
     from stock_utils import clean_ohlcv
+
     base = load(market)
     if not base:
         return {"market": market, "error": "no seed; run a full fetch first"}
@@ -142,9 +165,12 @@ def update(market: str, verbose: bool = True) -> dict:
         gap = (pd.Timestamp.today().normalize() - last).days
         period = "5d" if gap <= 7 else ("1mo" if gap <= 35 else "3mo")
     if verbose:
-        print(f"  update {market}: {len(base)} symbols, last bar {None if last is None else last.date()}, fetching {period}")
-    fresh = multi_fetch(list(base.keys()), order=("yahoo", "stooq"),
-                        period=period, min_bars=1, verbose=verbose)
+        print(
+            f"  update {market}: {len(base)} symbols, last bar {None if last is None else last.date()}, fetching {period}"
+        )
+    fresh = multi_fetch(
+        list(base.keys()), order=("yahoo", "stooq"), period=period, min_bars=1, verbose=verbose
+    )
     # merge fresh bars into the baseline
     merged_rows, updated = [], 0
     for sym, old in base.items():
@@ -155,15 +181,18 @@ def update(market: str, verbose: bool = True) -> dict:
             df = clean_ohlcv(df, ticker=sym, min_bars=1) or df
             if len(df) > len(old):
                 updated += 1
-        g = df.reset_index(); g.columns = ["Date", "Open", "High", "Low", "Close", "Volume"]
+        g = df.reset_index()
+        g.columns = ["Date", "Open", "High", "Low", "Close", "Volume"]
         for c in ("Open", "High", "Low", "Close"):
             g[c] = g[c].astype("float32")
         g["Volume"] = pd.to_numeric(g["Volume"], errors="coerce").fillna(0).astype("int64")
         g["Symbol"] = sym
         merged_rows.append(g)
     pd.concat(merged_rows, ignore_index=True).to_parquet(
-        CACHE / _seed_name(market), compression="zstd", index=False)
+        CACHE / _seed_name(market), compression="zstd", index=False
+    )
     import bhavcopy_store as store
+
     store.build(verbose=False)
     if verbose:
         print(f"  update {market}: {updated} symbols got new bars; store rebuilt")
@@ -175,7 +204,8 @@ def _india_ccc() -> dict:
     """{symbol: CCC days} from the screener.in India CCC screen (cached best-effort)."""
     try:
         from screener_in import ccc_map
-        return {k: v for k, v in ccc_map().items() if v == v}   # drop NaN
+
+        return {k: v for k, v in ccc_map().items() if v == v}  # drop NaN
     except Exception:
         return {}
 
@@ -191,8 +221,9 @@ def _stocks(market: str, min_turnover_usd: float = 0.0) -> List[StockData]:
     return out
 
 
-def screen(strategy_slug: str, market: str = "IN", top: Optional[int] = None,
-           min_turnover_usd: float = 0.0) -> pd.DataFrame:
+def screen(
+    strategy_slug: str, market: str = "IN", top: Optional[int] = None, min_turnover_usd: float = 0.0
+) -> pd.DataFrame:
     """Run one of the 10 built-in strategies across a market's cached stocks."""
     if strategy_slug not in st.STRATEGIES:
         raise ValueError(f"unknown strategy; choose from {list(st.STRATEGIES)}")
@@ -212,12 +243,24 @@ def screen(strategy_slug: str, market: str = "IN", top: Optional[int] = None,
     return df.head(top).reset_index(drop=True) if top else df.reset_index(drop=True)
 
 
-def custom_screen(criteria, market: str = "IN", rank_by: Optional[str] = None,
-                  top: Optional[int] = 50, ascending: bool = False,
-                  show: Optional[List[str]] = None, min_turnover_usd: float = 0.0) -> pd.DataFrame:
+def custom_screen(
+    criteria,
+    market: str = "IN",
+    rank_by: Optional[str] = None,
+    top: Optional[int] = 50,
+    ascending: bool = False,
+    show: Optional[List[str]] = None,
+    min_turnover_usd: float = 0.0,
+) -> pd.DataFrame:
     """Screen a market on YOUR parameters (see custom_screener for metric names)."""
-    out = cs.screen(_stocks(market, min_turnover_usd), criteria, rank_by=rank_by, top=top,
-                    ascending=ascending, show=show)
+    out = cs.screen(
+        _stocks(market, min_turnover_usd),
+        criteria,
+        rank_by=rank_by,
+        top=top,
+        ascending=ascending,
+        show=show,
+    )
     return _add_liquidity(out)
 
 
@@ -225,6 +268,7 @@ def _add_liquidity(df):
     """Append Turnover_USD + Liquidity (High/Medium/Low) columns to a result frame."""
     try:
         from liquidity import annotate
+
         return annotate(df)
     except Exception:
         return df
@@ -235,6 +279,12 @@ if __name__ == "__main__":
     print("\nDarvas breakouts (IN, top 10):")
     print(screen("darvas", "IN", top=10).to_string(index=False))
     print("\ncustom: US momentum (above 200-DMA, RSI<65, near highs):")
-    print(custom_screen({"above_200dma": ("==", True), "rsi14": ("<", 65),
-                         "dist_52w_high": ("<", 10)}, "US", rank_by="ret_126", top=10,
-                        show=["ltp", "ret_126", "rsi14", "dist_52w_high"]).to_string(index=False))
+    print(
+        custom_screen(
+            {"above_200dma": ("==", True), "rsi14": ("<", 65), "dist_52w_high": ("<", 10)},
+            "US",
+            rank_by="ret_126",
+            top=10,
+            show=["ltp", "ret_126", "rsi14", "dist_52w_high"],
+        ).to_string(index=False)
+    )

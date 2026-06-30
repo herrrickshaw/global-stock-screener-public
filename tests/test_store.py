@@ -1,5 +1,5 @@
 """bhavcopy_store — LMDB build / get round-trip on an isolated temp cache."""
-import os
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -8,16 +8,21 @@ import pytest
 @pytest.fixture
 def store(tmp_path, monkeypatch):
     monkeypatch.setenv("BHAV_CACHE", str(tmp_path))
-    import importlib, bhavcopy_store
-    importlib.reload(bhavcopy_store)        # pick up the temp BHAV_CACHE
+    import importlib
+
+    import bhavcopy_store
+
+    importlib.reload(bhavcopy_store)  # pick up the temp BHAV_CACHE
     return bhavcopy_store
 
 
 def _frame(n=120, start=100.0):
     idx = pd.date_range("2024-01-01", periods=n, freq="D")
     c = np.linspace(start, start * 1.3, n)
-    return pd.DataFrame({"Open": c, "High": c * 1.01, "Low": c * 0.99,
-                         "Close": c, "Volume": np.full(n, 50_000)}, index=idx)
+    return pd.DataFrame(
+        {"Open": c, "High": c * 1.01, "Low": c * 0.99, "Close": c, "Volume": np.full(n, 50_000)},
+        index=idx,
+    )
 
 
 def test_build_get_roundtrip(store):
@@ -31,7 +36,7 @@ def test_build_get_roundtrip(store):
     assert list(d.columns) == ["Open", "High", "Low", "Close", "Volume"]
     # prices restored to float64 and values preserved within float32 tolerance
     assert abs(float(d["Close"].iloc[-1]) - 130.0) < 0.1
-    assert store.get("ZZZ") is None             # missing key
+    assert store.get("ZZZ") is None  # missing key
     assert set(store.symbols()) == {"AAA", "BBB.NS"}
 
 

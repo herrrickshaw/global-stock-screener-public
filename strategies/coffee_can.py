@@ -2,21 +2,26 @@
 # Coffee Can Portfolio — Saurabh Mukherjea: long-term consistency, high ROE,
 # steady revenue growth, low leverage. "Buy and forget" quality compounders.
 from __future__ import annotations
-from .base import StockData, Result, safe, cagr
 
-META = {"name": "Coffee Can Portfolio", "slug": "coffee_can", "category": "fundamental",
-        "description": "Consistent high-ROE compounders with steady revenue growth and "
-                       "low debt (Saurabh Mukherjea philosophy).",
-        "needs": "fundamentals"}
-ROE_MIN = 15.0          # %
-REV_GROWTH_MIN = 10.0   # % CAGR
+from .base import Result, StockData, cagr, safe
+
+META = {
+    "name": "Coffee Can Portfolio",
+    "slug": "coffee_can",
+    "category": "fundamental",
+    "description": "Consistent high-ROE compounders with steady revenue growth and "
+    "low debt (Saurabh Mukherjea philosophy).",
+    "needs": "fundamentals",
+}
+ROE_MIN = 15.0  # %
+REV_GROWTH_MIN = 10.0  # % CAGR
 DE_MAX = 1.0
 
 
 def screen(s: StockData) -> Result | None:
     g = s.f
     roe = safe(g("roe"))
-    roe_hist = g("roe_history") or []        # list of yearly ROE, newest-first
+    roe_hist = g("roe_history") or []  # list of yearly ROE, newest-first
     rev, rev_old = safe(g("revenue")), safe(g("revenue_5y_ago"))
     de = safe(g("debt_to_equity"))
     if roe is None and not roe_hist:
@@ -31,8 +36,16 @@ def screen(s: StockData) -> Result | None:
         "DE<=1": int(de is not None and de <= DE_MAX),
     }
     passed = checks["ROE>=15"] and checks["RevCAGR>=10"] and checks["DE<=1"]
-    return Result(s.symbol, META["slug"], passed=bool(passed),
-                  score=round(roe or 0, 2),
-                  metrics={"ROE": roe, "RevCAGR5y": round(rev_cagr, 1) if rev_cagr else None,
-                           "DE": de, **checks},
-                  note="quality compounder" if passed else "")
+    return Result(
+        s.symbol,
+        META["slug"],
+        passed=bool(passed),
+        score=round(roe or 0, 2),
+        metrics={
+            "ROE": roe,
+            "RevCAGR5y": round(rev_cagr, 1) if rev_cagr else None,
+            "DE": de,
+            **checks,
+        },
+        note="quality compounder" if passed else "",
+    )

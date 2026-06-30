@@ -1,4 +1,5 @@
 """Shared pytest fixtures + path setup so `import screener_kit` etc. resolve."""
+
 import sys
 from pathlib import Path
 
@@ -15,10 +16,16 @@ def _ohlcv(closes, vols=None):
     closes = np.asarray(closes, dtype=float)
     if vols is None:
         vols = np.full(len(closes), 100_000)
-    return pd.DataFrame({
-        "Open": closes, "High": closes * 1.01, "Low": closes * 0.99,
-        "Close": closes, "Volume": vols,
-    }, index=idx)
+    return pd.DataFrame(
+        {
+            "Open": closes,
+            "High": closes * 1.01,
+            "Low": closes * 0.99,
+            "Close": closes,
+            "Volume": vols,
+        },
+        index=idx,
+    )
 
 
 @pytest.fixture

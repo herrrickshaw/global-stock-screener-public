@@ -23,8 +23,14 @@ import pandas as pd
 
 from strategies.base import StockData
 
-OPS = {">": operator.gt, ">=": operator.ge, "<": operator.lt, "<=": operator.le,
-       "==": operator.eq, "!=": operator.ne}
+OPS = {
+    ">": operator.gt,
+    ">=": operator.ge,
+    "<": operator.lt,
+    "<=": operator.le,
+    "==": operator.eq,
+    "!=": operator.ne,
+}
 
 # technical metrics derived from OHLCV (documented for users)
 METRICS = {
@@ -70,8 +76,10 @@ def _ccc(f: dict):
     """Cash Conversion Cycle (days) = DIO + DSO - DPO, if inputs present."""
     inv, rec, pay = f.get("inventory"), f.get("receivables"), f.get("payables")
     cogs, rev = f.get("cogs"), f.get("revenue")
+
     def d(n, dn):
         return (n / dn * 365.0) if (n is not None and dn not in (None, 0)) else 0
+
     if all(x is None for x in (inv, rec, pay)):
         return f.get("ccc")
     return d(inv, cogs) + d(rec, rev) - d(pay, cogs)
@@ -79,8 +87,8 @@ def _ccc(f: dict):
 
 def compute_metrics(stock: StockData) -> Dict[str, float]:
     """All technical metrics from OHLCV + the stock's fundamentals merged in."""
-    m: Dict[str, float] = dict(stock.fundamentals)   # fundamentals first
-    ccc = _ccc(stock.fundamentals)                   # expose CCC as a metric
+    m: Dict[str, float] = dict(stock.fundamentals)  # fundamentals first
+    ccc = _ccc(stock.fundamentals)  # expose CCC as a metric
     if ccc is not None:
         m["ccc"] = round(ccc, 1)
     df = stock.ohlcv
@@ -99,10 +107,12 @@ def compute_metrics(stock: StockData) -> Dict[str, float]:
         roll_max = close.cummax()
         m["max_drawdown"] = round(float(((close - roll_max) / roll_max).min() * 100), 2)
     if len(close) >= 50:
-        s50 = float(close.tail(50).mean()); m["sma50"] = round(s50, 2)
+        s50 = float(close.tail(50).mean())
+        m["sma50"] = round(s50, 2)
         m["above_50dma"] = bool(ltp > s50)
     if len(close) >= 200:
-        s200 = float(close.tail(200).mean()); m["sma200"] = round(s200, 2)
+        s200 = float(close.tail(200).mean())
+        m["sma200"] = round(s200, 2)
         m["above_200dma"] = bool(ltp > s200)
     r = _rsi(close)
     if r is not None:
@@ -156,9 +166,14 @@ def evaluate(stock: StockData, criteria: Criteria) -> tuple[bool, Dict]:
     return True, m
 
 
-def screen(stocks: Iterable[StockData], criteria: Criteria,
-           rank_by: Optional[str] = None, top: Optional[int] = None,
-           ascending: bool = False, show: Optional[List[str]] = None) -> pd.DataFrame:
+def screen(
+    stocks: Iterable[StockData],
+    criteria: Criteria,
+    rank_by: Optional[str] = None,
+    top: Optional[int] = None,
+    ascending: bool = False,
+    show: Optional[List[str]] = None,
+) -> pd.DataFrame:
     """Evaluate every stock; return a DataFrame of the ones that pass.
 
     rank_by — metric to sort by (default: keep input order)
@@ -186,11 +201,21 @@ def screen(stocks: Iterable[StockData], criteria: Criteria,
 if __name__ == "__main__":
     # demo on real cached data: oversold-but-uptrend momentum screen
     import bhavcopy_store as store
+
     syms = store.symbols()[:800]
     stocks = [StockData(s, "IN", ohlcv=d) for s, d in store.get_many(syms).items()]
     print(f"loaded {len(stocks)} stocks")
-    rules = {"above_200dma": ("==", True), "rsi14": ("<", 60),
-             "dist_52w_high": ("<", 12), "ret_126": (">", 5)}
-    out = screen(stocks, rules, rank_by="ret_126", top=15,
-                 show=["ltp", "ret_126", "rsi14", "dist_52w_high", "above_200dma"])
+    rules = {
+        "above_200dma": ("==", True),
+        "rsi14": ("<", 60),
+        "dist_52w_high": ("<", 12),
+        "ret_126": (">", 5),
+    }
+    out = screen(
+        stocks,
+        rules,
+        rank_by="ret_126",
+        top=15,
+        show=["ltp", "ret_126", "rsi14", "dist_52w_high", "above_200dma"],
+    )
     print(out.to_string(index=False))

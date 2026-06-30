@@ -28,6 +28,7 @@ warnings.filterwarnings("ignore")
 
 try:
     import yfinance as yf
+
     _YF_OK = True
 except ImportError:
     _YF_OK = False
@@ -36,6 +37,7 @@ except ImportError:
 # ══════════════════════════════════════════════════════════════════════════════
 # FINANCIAL STATEMENT HELPERS  (replaces _first_df / _row / _series everywhere)
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def first_df(ticker, *attrs) -> Optional[pd.DataFrame]:
     """Return the first non-empty DataFrame among the ticker's named attributes.
@@ -81,8 +83,9 @@ def series(df: Optional[pd.DataFrame], *names) -> List[float]:
     return []
 
 
-def fin_metric(df, name_variants: tuple, col: int = 0,
-               default: Optional[float] = None) -> Optional[float]:
+def fin_metric(
+    df, name_variants: tuple, col: int = 0, default: Optional[float] = None
+) -> Optional[float]:
     """Convenience wrapper: row() with an explicit default fallback."""
     val = row(df, *name_variants, col=col)
     return val if val is not None else default
@@ -109,9 +112,13 @@ OHLCV_COLS = ["Open", "High", "Low", "Close", "Volume"]
 MAX_DAILY_MOVE = 0.60
 
 
-def clean_ohlcv(df: Optional[pd.DataFrame], ticker: str = "",
-                max_daily_move: float = MAX_DAILY_MOVE,
-                min_bars: int = 1, verbose: bool = False) -> Optional[pd.DataFrame]:
+def clean_ohlcv(
+    df: Optional[pd.DataFrame],
+    ticker: str = "",
+    max_daily_move: float = MAX_DAILY_MOVE,
+    min_bars: int = 1,
+    verbose: bool = False,
+) -> Optional[pd.DataFrame]:
     """Clean a single OHLCV frame. Returns None if nothing usable survives.
 
     Steps (in order):
@@ -182,8 +189,10 @@ def clean_ohlcv(df: Optional[pd.DataFrame], ticker: str = "",
     df = df.dropna(how="all")
     dropped = before - len(df)
     if verbose and (dropped or n_bad):
-        print(f"    clean_ohlcv[{ticker or '?'}]: dropped {dropped} rows, "
-              f"neutralised {n_bad} bad-print bars -> {len(df)} clean bars")
+        print(
+            f"    clean_ohlcv[{ticker or '?'}]: dropped {dropped} rows, "
+            f"neutralised {n_bad} bad-print bars -> {len(df)} clean bars"
+        )
     if df.empty or len(df) < min_bars:
         return None
     return df
@@ -203,7 +212,7 @@ def clean_financials(df: Optional[pd.DataFrame]) -> Optional[pd.DataFrame]:
     df = df.dropna(axis=1, how="all")
     if df.empty:
         return None
-    try:                                  # newest reporting period first
+    try:  # newest reporting period first
         if list(df.columns) != sorted(df.columns, reverse=True):
             df = df.reindex(sorted(df.columns, reverse=True), axis=1)
     except TypeError:
@@ -211,8 +220,9 @@ def clean_financials(df: Optional[pd.DataFrame]) -> Optional[pd.DataFrame]:
     return df
 
 
-def extract_ticker_df(raw: pd.DataFrame, ticker: str,
-                      min_bars: int = 1, clean: bool = True) -> Optional[pd.DataFrame]:
+def extract_ticker_df(
+    raw: pd.DataFrame, ticker: str, min_bars: int = 1, clean: bool = True
+) -> Optional[pd.DataFrame]:
     """Pull one ticker's OHLCV frame out of a yfinance bulk-download result.
 
     Handles both MultiIndex (bulk) and flat (single) column layouts, then runs
@@ -242,10 +252,16 @@ def is_rate_limited(err: Exception) -> bool:
     return any(k in s for k in ("Rate", "429", "Too Many", "Crumb"))
 
 
-def bulk_download(tickers: List[str], period: str = "1y",
-                  batch_size: int = 100, sleep_between: float = 1.5,
-                  max_retries: int = 3, min_bars: int = 30,
-                  start=None, verbose: bool = True) -> Dict[str, pd.DataFrame]:
+def bulk_download(
+    tickers: List[str],
+    period: str = "1y",
+    batch_size: int = 100,
+    sleep_between: float = 1.5,
+    max_retries: int = 3,
+    min_bars: int = 30,
+    start=None,
+    verbose: bool = True,
+) -> Dict[str, pd.DataFrame]:
     """Batch yfinance download with rate-limit retry + back-off.
 
     Single implementation replacing the bulk-download loop copy-pasted in
@@ -257,10 +273,12 @@ def bulk_download(tickers: List[str], period: str = "1y",
     if not _YF_OK:
         return {}
     result: Dict[str, pd.DataFrame] = {}
-    batches = [tickers[i:i + batch_size] for i in range(0, len(tickers), batch_size)]
+    batches = [tickers[i : i + batch_size] for i in range(0, len(tickers), batch_size)]
     if verbose:
-        print(f"  bulk_download: {len(tickers)} tickers, {len(batches)} batches "
-              f"(size={batch_size}, period={period})")
+        print(
+            f"  bulk_download: {len(tickers)} tickers, {len(batches)} batches "
+            f"(size={batch_size}, period={period})"
+        )
 
     for idx, batch in enumerate(batches, 1):
         if verbose:
@@ -274,22 +292,26 @@ def bulk_download(tickers: List[str], period: str = "1y",
                     kwargs["period"] = period
                 raw = yf.download(batch, **kwargs)
                 if raw is None or raw.empty:
-                    if verbose: print("empty")
+                    if verbose:
+                        print("empty")
                     break
                 for tkr in batch:
                     df = extract_ticker_df(raw, tkr, min_bars=min_bars)
                     if df is not None:
                         result[_strip_suffix(tkr)] = df
                 ok = sum(1 for t in batch if _strip_suffix(t) in result)
-                if verbose: print(f"OK ({ok}/{len(batch)})")
+                if verbose:
+                    print(f"OK ({ok}/{len(batch)})")
                 break
             except Exception as e:
                 if is_rate_limited(e) and attempt < max_retries - 1:
                     wait = 20 * (attempt + 1)
-                    if verbose: print(f"\n      rate-limited, wait {wait}s …", end="", flush=True)
+                    if verbose:
+                        print(f"\n      rate-limited, wait {wait}s …", end="", flush=True)
                     time.sleep(wait)
                 else:
-                    if verbose: print(f"ERROR: {str(e)[:50]}")
+                    if verbose:
+                        print(f"ERROR: {str(e)[:50]}")
                     break
         if idx < len(batches):
             time.sleep(sleep_between)
@@ -308,9 +330,15 @@ def _strip_suffix(ticker: str) -> str:
 # PARALLEL EXECUTION  (replaces ThreadPoolExecutor boilerplate in 8 files)
 # ══════════════════════════════════════════════════════════════════════════════
 
-def parallel_map(fn: Callable, items: list, workers: int = 8,
-                 progress_every: int = 100, label: str = "items",
-                 verbose: bool = True) -> list:
+
+def parallel_map(
+    fn: Callable,
+    items: list,
+    workers: int = 8,
+    progress_every: int = 100,
+    label: str = "items",
+    verbose: bool = True,
+) -> list:
     """Run fn over items in a thread pool, collecting non-None results.
 
     Replaces the repeated ThreadPoolExecutor + as_completed + progress-print
@@ -335,6 +363,7 @@ def parallel_map(fn: Callable, items: list, workers: int = 8,
 # ══════════════════════════════════════════════════════════════════════════════
 # NUMERIC / NORMALISATION HELPERS  (small repeated formulas)
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def pct_change(new: float, old: float) -> Optional[float]:
     """Percentage change with safe division. Replaces inline (a-b)/b*100."""
