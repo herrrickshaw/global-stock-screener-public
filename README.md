@@ -62,6 +62,14 @@ Exchange bhavcopy (NSE/BSE), SEC EDGAR (US fundamentals), JPX/KRX/SGX/Euronext/
 Eastmoney (universes), Yahoo→Stooq (prices, with fallback), Damodaran & Fama-French
 (reference), screener.in (India CCC), RSS + VADER (news sentiment — not an LLM).
 
+## Tests
+
+```bash
+pip install pytest && pytest -q      # 20 tests, no network — pure logic
+```
+Covers data cleaning, all strategy modules, liquidity tiers, the custom screener,
+and the LMDB store (round-trip on a temp cache).
+
 ## Documentation
 
 | Doc | What's inside |

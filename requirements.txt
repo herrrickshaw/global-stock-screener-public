@@ -32,3 +32,6 @@ scipy>=1.10
 matplotlib>=3.7
 tqdm>=4.65
 # note: deoldify.py (image experiment) needs torch/fastai — install separately if used.
+
+# tests (dev):  pip install pytest  &&  pytest -q
+pytest>=8.0
