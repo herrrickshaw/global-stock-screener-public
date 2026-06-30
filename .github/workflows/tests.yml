@@ -14,7 +14,7 @@ jobs:
         with: { lfs: false }
       - uses: actions/setup-python@v5
         with: { python-version: "3.11", cache: pip }
-      - run: pip install ruff black
+      - run: pip install ruff==0.15.20 black==25.11.0   # pin to match local & pre-commit
       - name: Ruff (lint / dead code)
         run: ruff check .
       - name: Black (format check)
