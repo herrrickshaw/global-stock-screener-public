@@ -206,7 +206,26 @@ def _bse_session() -> requests.Session:
 
 
 def fetch_bse_only_symbols(nse_set: set) -> list[str]:
-    """Return BSE Active Equity symbols not in the NSE universe, via bseindia."""
+    """Return BSE Active Equity symbols not in the NSE universe, via bseindia.
+
+    Symbol-list notes (verified 2026-06-30 against the live libraries; adapted &
+    corrected from a Colab-notebook change-log whose functions don't live here):
+      • This function reads the BSE securities API CSV directly — its columns are
+        title-cased with spaces: 'Security Id', 'Status', 'Instrument'
+        (we filter Status=='Active' & Instrument=='Equity').
+      • The alternative helper bseindia.libutil.all_listed_securities() returns
+        DIFFERENT, lowercase columns — VERIFIED: security_code, issuer_name, symbol,
+        security_name, status, group, face_value, isin_no, instrument. So uppercase
+        SCRIP_CD / STATUS / GROUP / SCRIP_NAME are WRONG for that path; use
+        security_code / status / group / security_name.
+      • NSE bhavcopy date handling: today's file isn't published intraday and
+        weekends/holidays have none, so a fetcher must fall back to earlier days.
+        Here NSE symbols come from nse_eq_symbols() (no date); bhavcopy_history.py
+        does the date fall-back via market_calendar + a negative-date cache
+        (a hardcoded date is a fragile workaround, not needed).
+      • Legacy NSE bhavcopy columns were 'SYMBOL' / ' SERIES' (leading space) /
+        'NAME OF COMPANY'; the 2024+ unified bhavcopy uses TckrSymb / SctySrs.
+    """
     for attempt in range(3):
         try:
             sess = _bse_session()
