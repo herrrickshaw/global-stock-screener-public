@@ -14,7 +14,7 @@ FROM python:3.11-slim AS base
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    BHAV_CACHE=/app/cache
+    BHAV_CACHE=/app/cache_seed
 
 LABEL org.opencontainers.image.title="global-stock-screener" \
       org.opencontainers.image.version="1.0.0" \
@@ -27,12 +27,14 @@ WORKDIR /app
 COPY requirements-docker.txt .
 RUN pip install --no-cache-dir -r requirements-docker.txt
 
-# application code
+# application code (top-level modules + the strategies package)
 COPY *.py ./
+COPY strategies/ ./strategies/
 
-# seed the cache and build the LMDB store inside the image
-COPY cache_seed/ /app/cache/
+# committed seeds live at cache_seed/ (module-relative readers + BHAV_CACHE both
+# point here); build the LMDB store into it at image time → ready offline.
+COPY cache_seed/ ./cache_seed/
 RUN python bhavcopy_store.py --build && rm -rf /root/.cache
 
-# default: run the full bhavcopy screener (uses the shipped cache offline)
-CMD ["python", "scan_bhavcopy.py"]
+# default: run the screener and print results (uses the shipped cache offline)
+CMD ["python", "run.py", "--strategy", "darvas", "--market", "IN"]
