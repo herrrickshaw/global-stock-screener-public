@@ -227,6 +227,18 @@ def update_all(
     if verbose:
         mode = "CREATE 5y backfill" if create else f"daily update (period={period})"
         print(f"[{ts}] market memory — {mode} for {len(markets)} markets")
+    # skip markets closed today (weekend/holiday) — no wasted fetch/processing
+    try:
+        from market_holidays import is_market_open_today
+
+        open_markets = [m for m in markets if create or is_market_open_today(m)]
+        skipped = [m for m in markets if m not in open_markets]
+        if skipped and verbose:
+            print(f"  holiday/weekend — skipping closed markets: {skipped}")
+        markets = open_markets
+    except Exception:
+        pass
+
     out = []
     for m in markets:
         try:

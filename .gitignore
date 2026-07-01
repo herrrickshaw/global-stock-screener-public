@@ -39,3 +39,6 @@ cache_seed/cdc/
 
 # secrets — never commit real credentials
 .env
+
+# auto-screener recommendation outputs (regenerated)
+cache_seed/discovered_screens/
