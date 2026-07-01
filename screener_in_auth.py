@@ -130,13 +130,45 @@ def company_export_bytes(symbol: str) -> Optional[bytes]:
     return None
 
 
-def company_financials(symbol: str) -> dict:
-    """Parse the screener.in export into a strategy-ready fundamentals dict.
+_RATIO_KEYS = {
+    "market cap": "market_cap_cr",
+    "current price": "current_price",
+    "stock p/e": "pe",
+    "p/e": "pe",
+    "dividend yield": "dividend_yield",
+    "roce": "roce_page",
+    "roe": "roe_page",
+    "book value": "book_value",
+    "face value": "face_value",
+}
 
-    Returns {} if not logged in / no export. The export's 'Data Sheet' holds P&L,
-    balance-sheet and cash-flow rows keyed by year — enough for the fundamental
-    strategies (net income, ROE/ROCE, debt, current ratio, inventory/receivables/
-    payables for CCC, dividends, EPS growth)."""
+
+def page_ratios(symbol: str) -> dict:
+    """Top-of-page ratios from the company page (market cap, P/E, ROE, ROCE,
+    dividend yield, current price) — the market/valuation inputs the export lacks."""
+    try:
+        html = session().get(f"{BASE}/company/{symbol}/", timeout=25).text
+    except Exception:
+        return {}
+    out = {}
+    for name, num in re.findall(
+        r'<span class="name">\s*([^<]+?)\s*</span>.*?<span class="(?:nowrap )?value">(.*?)</span>',
+        html,
+        re.S,
+    ):
+        key = _RATIO_KEYS.get(name.strip().lower())
+        if not key:
+            continue
+        v = _num(re.sub(r"<[^>]+>", "", num))
+        if v is not None:
+            out[key] = v
+    return out
+
+
+def company_financials(symbol: str) -> dict:
+    """Parse the screener.in export + company-page ratios into a strategy-ready
+    fundamentals dict covering all 11 screeners (what each field can be derived
+    from; missing inputs simply make a given screener skip that stock)."""
     raw = company_export_bytes(symbol)
     if not raw:
         return {}
@@ -160,34 +192,111 @@ def company_financials(symbol: str) -> dict:
                     return vals
         return []
 
-    ni = row("Net profit", "Net Profit")
-    rev = row("Sales", "Revenue", "Total Revenue")
-    debt = row("Borrowings", "Total Debt")
-    inv = row("Inventory", "Inventories")
-    recv = row("Trade receivables", "Debtors", "Receivables")
-    pay = row("Trade Payables", "Creditors", "Payables")
-    div = row("Dividend Amount", "Dividend Paid")
-    eps = row("EPS in Rs", "EPS")
-
     def g(lst, i=0):
         return lst[i] if len(lst) > i else None
 
     def pct(a, b):
         return (a - b) / abs(b) * 100 if (a is not None and b not in (None, 0)) else None
 
+    ni = row("Net profit", "Net Profit")
+    rev = row("Sales", "Sales+", "Revenue", "Total Revenue")
+    opprofit = row("Operating Profit")
+    interest = row("Interest")
+    pbt = row("Profit before tax", "Profit Before Tax")
+    eps = row("EPS in Rs", "Adjusted EPS in Rs", "EPS")
+    debt = row("Borrowings", "Borrowings+", "Total Debt")
+    reserves = row("Reserves")
+    capital = row("Equity Capital", "Equity Share Capital", "Share Capital")
+    other_liab = row("Other Liabilities", "Other Liabilities+")
+    net_block = row("Net Block", "Fixed Assets")
+    other_assets = row("Other Assets", "Other Assets+")
+    inv = row("Inventory", "Inventories")
+    recv = row("Trade receivables", "Debtors", "Receivables")
+    cash = row("Cash & Bank", "Cash Equivalents")
+    cfo = row("Cash from Operating Activity", "Cash from Operating Activity+")
+    shares = row("No. of Equity Shares", "No of Equity Shares")
+    div = row("Dividend Amount", "Dividend Paid", "Dividend Payout")
+
+    # equity, assets, derived ratios (statement-based)
+    eq = (
+        [
+            (capital[i] if i < len(capital) else 0) + (reserves[i] if i < len(reserves) else 0)
+            for i in range(max(len(capital), len(reserves)))
+        ]
+        if (capital or reserves)
+        else []
+    )
+    assets_tot = (
+        [
+            (eq[i] if i < len(eq) else 0)
+            + (debt[i] if i < len(debt) else 0)
+            + (other_liab[i] if i < len(other_liab) else 0)
+            for i in range(max(len(eq), len(debt), len(other_liab)))
+        ]
+        if eq
+        else []
+    )
+    roe_hist = [round(ni[i] / eq[i] * 100, 1) for i in range(min(len(ni), len(eq))) if eq[i]]
+    ebit = (g(pbt) or 0) + (g(interest) or 0) if (pbt or interest) else None
+
+    r = page_ratios(symbol)
     out = {
         "source": "screener.in",
+        # profitability
         "net_income": g(ni),
         "net_income_prev": g(ni, 1),
+        "profit_growth": pct(g(ni), g(ni, 1)),
         "revenue": g(rev),
-        "revenue_5y_ago": g(rev, -1) if rev else None,
-        "debt_history": debt or None,
+        "revenue_5y_ago": g(rev, 5) or (rev[-1] if rev else None),
         "eps_ttm": g(eps),
         "eps_growth": pct(g(eps), g(eps, 1)),
+        "cfo": g(cfo),
+        "ebit": ebit,
+        # returns / leverage
+        "roe": r.get("roe_page") or (round(g(ni) / g(eq) * 100, 1) if g(eq) else None),
+        "roce": r.get("roce_page"),
+        "roc": r.get("roce_page"),
+        "roe_history": roe_hist or None,
+        "roa": (round(g(ni) / g(assets_tot) * 100, 1) if g(assets_tot) else None),
+        "roa_prev": (round(g(ni, 1) / g(assets_tot, 1) * 100, 1) if g(assets_tot, 1) else None),
+        "debt_to_equity": (round(g(debt) / g(eq), 2) if g(eq) else None),
+        "debt_to_assets": (round(g(debt) / g(assets_tot), 2) if g(assets_tot) else None),
+        "debt_to_assets_prev": (
+            round(g(debt, 1) / g(assets_tot, 1), 2) if g(assets_tot, 1) else None
+        ),
+        "asset_turnover": (round(g(rev) / g(assets_tot), 2) if g(assets_tot) else None),
+        "asset_turnover_prev": (
+            round(g(rev, 1) / g(assets_tot, 1), 2) if g(assets_tot, 1) else None
+        ),
+        "shares": g(shares),
+        "shares_prev": g(shares, 1),
+        "debt_history": debt or None,
+        "capex_history": net_block or None,
+        # working capital + CCC inputs (payables absent in export → CCC via the screen)
         "inventory": g(inv),
         "receivables": g(recv),
-        "payables": g(pay),
+        "cash": g(cash),
+        # income / valuation (page)
+        "market_cap_cr": r.get("market_cap_cr"),
+        "current_price": r.get("current_price"),
+        "pe": r.get("pe"),
+        "book_value": r.get("book_value"),
+        "dividend_yield": r.get("dividend_yield"),
         "dividend_history": div or None,
+        "dividend_pay_years": sum(1 for x in (div or []) if x and x > 0) or None,
+        # magic formula
+        "enterprise_value": (
+            ((r.get("market_cap_cr") or 0) + (g(debt) or 0) - (g(cash) or 0))
+            if r.get("market_cap_cr")
+            else None
+        ),
+        "earnings_yield": (
+            round(ebit / ((r.get("market_cap_cr") or 0) + (g(debt) or 0) - (g(cash) or 0)) * 100, 2)
+            if (ebit and r.get("market_cap_cr"))
+            else None
+        ),
+        # turnaround (annual NI as a coarse proxy; quarterly parse is a TODO)
+        "quarterly_net_income": ni or None,
     }
     return {k: v for k, v in out.items() if v is not None}
 
