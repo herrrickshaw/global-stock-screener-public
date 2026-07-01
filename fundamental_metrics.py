@@ -74,15 +74,27 @@ def _prices(market: str) -> Dict[str, float]:
     return dict(zip(df["Symbol"], df["Close"])) if not df.empty else {}
 
 
-def load_fundamentals(market: str, limit: int = 40, verbose: bool = True) -> pd.DataFrame:
-    """Fetch fundamentals for the top-`limit` liquid names not yet cached, merge with
-    the cache, and return a per-symbol fundamentals frame (+ price/market cap)."""
+def load_fundamentals(market: str, limit: int = 40, verbose: bool = True,
+                      symbols: Optional[List[str]] = None) -> pd.DataFrame:
+    """Fetch fundamentals for `symbols` (else the top-`limit` liquid names) not yet
+    cached, merge with the cache, and return a per-symbol fundamentals frame
+    (+ price/market cap). `symbols` lets the pipeline target its filter-clearing
+    watchlist so expensive fetches stay bounded."""
     path = CACHE / f"{market}.parquet"
     cached = pd.read_parquet(path) if path.exists() else pd.DataFrame()
     have = set(cached["Symbol"]) if not cached.empty else set()
-    want = [s for s in _liquid_symbols(market, limit * 3) if s not in have][:limit]
+    pool = symbols if symbols is not None else _liquid_symbols(market, limit * 3)
+    want = [s for s in pool if s not in have][:limit]
 
-    rows = []
+    rows: List[dict] = []
+
+    def _flush(buf):
+        if not buf:
+            return
+        base = pd.read_parquet(path) if path.exists() else pd.DataFrame()
+        merged = pd.concat([base, pd.DataFrame(buf)], ignore_index=True)
+        merged.drop_duplicates("Symbol", keep="last").to_parquet(path, index=False)
+
     for i, sym in enumerate(want):
         f = _fetch_one(market, sym)
         if f:
@@ -90,13 +102,13 @@ def load_fundamentals(market: str, limit: int = 40, verbose: bool = True) -> pd.
             rows.append(f)
         if market == "US":
             time.sleep(0.12)  # SEC politeness (<10 req/s)
-        if verbose and (i + 1) % 20 == 0:
-            print(f"  fetched {i+1}/{len(want)} …")
-    fresh = pd.DataFrame(rows)
-    out = pd.concat([cached, fresh], ignore_index=True) if not fresh.empty else cached
-    if not out.empty:
-        out = out.drop_duplicates("Symbol", keep="last")
-        out.to_parquet(path, index=False)
+        if (i + 1) % 25 == 0:
+            _flush(rows)          # checkpoint so progress is durable/resumable
+            rows = []
+            if verbose:
+                print(f"  fetched {i+1}/{len(want)} …")
+    _flush(rows)
+    out = pd.read_parquet(path) if path.exists() else pd.DataFrame()
     if verbose:
         print(f"  fundamentals[{market}]: +{len(fresh)} fetched, {len(out)} total cached")
     # attach market cap from latest price × shares
