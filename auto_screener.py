@@ -85,6 +85,13 @@ def known_good(market: str) -> set:
         good |= known_universe(market)
     except Exception:
         pass
+    # fold in names passing the FUNDAMENTAL screen formulas on real financials
+    # (cached SEC/screener.in data — no network here). Grounds the anchor in
+    # quality/value fundamentals, not just price gates.
+    try:
+        good |= fundamental_anchor(market)
+    except Exception:
+        pass
     if market == "IN":
         try:
             from datalink import ccc_map_cached
@@ -92,6 +99,27 @@ def known_good(market: str) -> set:
             good |= set(ccc_map_cached().keys())
         except Exception:
             pass
+    return good
+
+
+def fundamental_anchor(market: str) -> set:
+    """Names passing the fundamental screen formulas on cached financials (Piotroski,
+    Magic Formula, ROCE, ROE, coffee-can). Empty until fundamentals are fetched
+    (fundamental_metrics.py); read-only/offline here."""
+    import fundamental_metrics as fmet
+
+    path = fmet.CACHE / f"{market}.parquet"
+    if not path.exists():
+        return set()
+    df = fmet._enrich(pd.read_parquet(path))
+    if df.empty:
+        return set()
+    good: set = set()
+    for name in ("piotroski_9", "high_roce", "high_roe", "magic_formula", "coffee_can"):
+        try:
+            good |= set(df.loc[fmet.FUND_SCREENS[name](df).fillna(False), "Symbol"])
+        except Exception:
+            continue
     return good
 
 
