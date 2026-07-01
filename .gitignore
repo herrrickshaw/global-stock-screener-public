@@ -54,3 +54,6 @@ cache_seed/pipeline_state.json
 cache_seed/cleaned_long.parquet
 cache_seed/cleaned_long_*.parquet
 KARZ_DEPLOYMENT_FINAL_SUMMARY.md
+
+# delivery-% cache (fetched locally by delivery_signal.py --fetch)
+cache_seed/delivery/

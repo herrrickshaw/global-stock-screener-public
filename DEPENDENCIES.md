@@ -47,7 +47,7 @@ missed — treat §1/§2 (imports) as exact.
 | `universe_sources` | `fetch_market_ohlc`, `ipo_monitor`, `market_memory` |
 | `validation` | `auto_screener`, `pipeline`, `portfolio_evaluator` |
 
-**Leaf modules** (nothing imports them — safe to change in isolation): `__init__`, `base`, `bluest_blue_chips`, `build_market_seeds`, `cash_conversion_cycle`, `coffee_can`, `darvas`, `debt_reduction`, `dep_map`, `dividend_yield`, `export_company_list`, `fetch_market_ohlc`, `garp`, `golden_crossover`, `india_public`, `integrity`, `ipo_monitor`, `loss_to_profit`, `magic_formula`, `ml_signal_engine`, `pattern_discovery`, `piotroski`, `pipeline`, `portfolio_evaluator`, `preflight`, `rl_trader`, `run`, `send_mailer`, `update_bhavcopy_daily`
+**Leaf modules** (nothing imports them — safe to change in isolation): `__init__`, `base`, `bluest_blue_chips`, `build_market_seeds`, `cash_conversion_cycle`, `coffee_can`, `darvas`, `debt_reduction`, `delivery_signal`, `dep_map`, `dividend_yield`, `export_company_list`, `fetch_market_ohlc`, `garp`, `golden_crossover`, `india_public`, `integrity`, `ipo_monitor`, `loss_to_profit`, `magic_formula`, `ml_signal_engine`, `pattern_discovery`, `piotroski`, `pipeline`, `portfolio_evaluator`, `preflight`, `rl_trader`, `run`, `send_mailer`, `update_bhavcopy_daily`
 
 ## 2. Code — dependencies (what each module needs)
 
