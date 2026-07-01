@@ -85,6 +85,7 @@ and the LMDB store (round-trip on a temp cache).
 | `colab_quickstart.ipynb` | run-top-to-bottom Colab notebook |
 | `notebooks/` | **Colab checkpoint notebooks** for the data / screening / ML layers |
 | `BRANCHES.md` | branch map (core on `main`, legacy on `archive/*`) |
+| `DEPENDENCIES.md` | **code+data interdependency map** (blast radius for fixes) — `dep_map.py` |
 
 ## Repo layout
 
