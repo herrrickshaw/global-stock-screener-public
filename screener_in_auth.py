@@ -99,17 +99,35 @@ def _num(x):
 
 
 def company_export_bytes(symbol: str) -> Optional[bytes]:
-    """Download the authenticated 'Export to Excel' workbook for a company."""
+    """Download the authenticated 'Export to Excel' workbook for a company.
+
+    The button is a POST form: <button formaction="/user/company/export/<id>/">.
+    We read that action + the CSRF token and POST to it."""
     s = session()
     page = s.get(f"{BASE}/company/{symbol}/", timeout=25)
-    href = re.search(r'href=["\']([^"\']*/export/[^"\']*)["\']', page.text)
-    if not href:
+    m = re.search(
+        r'(?:formaction|action|href)=["\']([^"\']*company/export/\d+/?[^"\']*)["\']', page.text
+    )
+    if not m:
         return None
-    url = href.group(1)
+    url = m.group(1)
     if url.startswith("/"):
         url = BASE + url
-    r = s.get(url, timeout=40)
-    return r.content if r.status_code == 200 and len(r.content) > 1000 else None
+    mt = re.search(r'name=["\']csrfmiddlewaretoken["\'] value=["\']([^"\']+)', page.text)
+    tok = mt.group(1) if mt else s.cookies.get("csrftoken")
+    headers = {"Referer": f"{BASE}/company/{symbol}/"}
+    # try POST (with CSRF) then GET
+    for how in ("post", "get"):
+        try:
+            if how == "post":
+                r = s.post(url, data={"csrfmiddlewaretoken": tok}, headers=headers, timeout=40)
+            else:
+                r = s.get(url, headers=headers, timeout=40)
+            if r.status_code == 200 and r.content[:2] == b"PK":  # xlsx = zip (PK)
+                return r.content
+        except Exception:
+            continue
+    return None
 
 
 def company_financials(symbol: str) -> dict:
@@ -196,9 +214,12 @@ if __name__ == "__main__":
     import sys
 
     try:
-        s = session()
+        session()
         print("logged in ✓")
-        for t in sys.argv[1:] or ["RELIANCE"]:
-            print(t, company_financials(t))
+        for t in [a for a in sys.argv[1:] if a.isalnum()] or ["RELIANCE"]:
+            raw = company_export_bytes(t)
+            print(f"{t}: export bytes = {0 if not raw else len(raw)}")
+            f = company_financials(t)
+            print(f"{t}: {f if f else '(empty — export not found/parsed)'}")
     except AuthError as e:
         print("AUTH:", e)
