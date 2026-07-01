@@ -26,3 +26,5 @@ launchd_out.log
 launchd_err.log
 
 results/
+results_top150_global.csv
+full_report.html
