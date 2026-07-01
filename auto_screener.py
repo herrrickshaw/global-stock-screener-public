@@ -58,15 +58,26 @@ def known_good(market: str) -> set:
     from the deep serving view using each strategy's published gates (a faithful,
     fast proxy for darvas / golden_crossover / coffee_can-momentum). For IN it also
     folds in the live screener.in CCC screen. This is the supervised anchor the
-    unsupervised discovery is measured against."""
+    unsupervised discovery is measured against.
+
+    If a trained supervised model (ml_supervised, doc Layer 1) exists for the market,
+    its predicted Buy/Strong-Buy names are folded in as additional labels."""
     df = sl.serving(market)
     if df.empty:
         return set()
+    supervised: set = set()
+    try:
+        from ml_supervised import known_good_supervised
+
+        supervised = known_good_supervised(market)
+    except Exception:
+        pass
     liq = df["Liquidity"].isin(LIQ_GOOD) if "Liquidity" in df else True
     darvas = df["Above200DMA"] & (df["PctFromHigh"] > -5) & (df["Ret126"] > 0)  # near-high breakout
     golden = df["GoldenCross"] & df["Above200DMA"]                              # golden crossover
     quality = (df["Ret252"] > 15) & df["Above200DMA"]                          # coffee-can momentum
     good = set(df[liq & (darvas | golden | quality)]["Symbol"])
+    good |= supervised
     if market == "IN":
         try:
             from datalink import ccc_map_cached
