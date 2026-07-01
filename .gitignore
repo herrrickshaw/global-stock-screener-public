@@ -28,3 +28,6 @@ launchd_err.log
 results/
 results_top150_global.csv
 full_report.html
+
+# secrets — never commit real credentials
+.env

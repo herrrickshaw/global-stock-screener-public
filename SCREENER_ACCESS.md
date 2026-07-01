@@ -8,7 +8,16 @@ are read **only** from environment variables — never hard-code, paste, or comm
 Sign up / log in at **screener.in** (a free account already unlocks the per-company
 "Export to Excel" this uses). Prefer a **dedicated password** for this account.
 
-## 2. Set the env vars
+## 2. Set the credentials
+
+**Easiest — a local `.env` file (gitignored, never committed):**
+```bash
+cp .env.example .env      # then open .env and paste your real password
+python screener_in_auth.py RELIANCE   # expect: logged in ✓
+```
+`screener_in_auth` auto-loads `.env`, so nothing else is needed.
+
+**Or export env vars directly**
 
 **Local (macOS/Linux):**
 ```bash

@@ -40,9 +40,29 @@ class AuthError(RuntimeError):
     pass
 
 
+def _load_dotenv() -> None:
+    """Load SCREENER_* from a local, gitignored .env (KEY=VALUE lines) into the
+    environment if not already set. Keeps the password out of code and chat."""
+    from pathlib import Path
+
+    envf = Path(__file__).parent / ".env"
+    if not envf.exists():
+        return
+    for line in envf.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, val = line.partition("=")
+        key, val = key.strip(), val.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = val
+
+
 @lru_cache(maxsize=1)
 def session() -> requests.Session:
-    """Return a logged-in session (cached). Reads SCREENER_EMAIL / SCREENER_PASSWORD."""
+    """Return a logged-in session (cached). Reads SCREENER_EMAIL / SCREENER_PASSWORD
+    from the environment or a local .env file."""
+    _load_dotenv()
     email = os.environ.get("SCREENER_EMAIL")
     pw = os.environ.get("SCREENER_PASSWORD")
     if not (email and pw):
