@@ -112,6 +112,11 @@ stocks**, bounding fetch/compute time. See `MEMORY_ARCHITECTURE.md`, `DATA_LINKA
 
 *Grain:* one row per (Symbol, Date). LTM = trailing 5y, STM = trailing 1y slice of LTM.
 
+> **Storage note (dedup):** only the **LTM is committed** — the STM seeds
+> (`cleaned_long*.parquet`) are 100% contained in the LTM, so they are **derived on
+> first use** via `market_memory.ensure_stm_seeds()` rather than committed. This
+> removed ~120 MB of duplicated data from the repo.
+
 ### 3.2 LMDB store — `ohlcv.lmdb`
 | key | value |
 |-----|-------|

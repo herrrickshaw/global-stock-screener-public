@@ -117,6 +117,23 @@ def _derive_stm(ltm_long: pd.DataFrame, market: str) -> int:
     return _write(stm, _stm_path(market))
 
 
+def ensure_stm_seeds(markets: Optional[List[str]] = None, force: bool = False,
+                     verbose: bool = True) -> int:
+    """Derive any missing STM seed (cleaned_long[_MKT].parquet) from the committed
+    5y LTM. The repo ships only the LTM (source of truth); the 1y STM is a trailing
+    slice of it, so shipping both duplicates ~120 MB. This regenerates the STM
+    seeds locally on first use. Returns the number derived."""
+    n = 0
+    for m in markets or MARKETS:
+        stm, ltm = _stm_path(m), _ltm_path(m)
+        if ltm.exists() and (force or not stm.exists()):
+            _derive_stm(_read_long(ltm), m)
+            n += 1
+    if verbose and n:
+        print(f"  derived {n} STM seed(s) from LTM")
+    return n
+
+
 def commit(market: str, new_long: pd.DataFrame, verbose: bool = True) -> dict:
     """The write half of every operation: upsert new_long into LTM, evict past
     5y, persist LTM, then re-derive the 1y STM. Returns per-tier row counts."""

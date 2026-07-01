@@ -75,6 +75,14 @@ def _live_path(market: str) -> Path:
 def bootstrap(rebuild_store: bool = True, verbose: bool = True) -> dict:
     """Copy committed seeds into the working cache and build the NoSQL store.
     Run once after cloning — gives you the full multi-market baseline offline."""
+    # the repo ships only the 5y LTM; derive any missing 1y STM seeds from it
+    # (STM ⊂ LTM, so shipping both would duplicate ~120 MB).
+    try:
+        from market_memory import ensure_stm_seeds
+
+        ensure_stm_seeds(verbose=verbose)
+    except Exception:
+        pass
     copied = []
     for mkt in MARKETS:
         seed = SEED_DIR / _seed_name(mkt)

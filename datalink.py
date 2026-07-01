@@ -60,9 +60,20 @@ def _seed_name(market: str) -> str:
 
 
 def _stm_path(market: str) -> Path:
-    """Prefer the live working cache; fall back to the committed seed."""
+    """Prefer the live working cache; else the committed seed; else derive the STM
+    seed from the committed LTM (the repo ships only LTM, STM = trailing 1y slice)."""
     live = LIVE_CACHE / _seed_name(market)
-    return live if live.exists() else SEED_DIR / _seed_name(market)
+    if live.exists():
+        return live
+    seed = SEED_DIR / _seed_name(market)
+    if not seed.exists() and _ltm_path(market).exists():
+        try:
+            from market_memory import ensure_stm_seeds
+
+            ensure_stm_seeds([market], verbose=False)
+        except Exception:
+            pass
+    return seed
 
 
 def _ltm_path(market: str) -> Path:
