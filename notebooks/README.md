@@ -8,6 +8,7 @@ Runnable checkpoints for the system's big functions — each clones the repo, pu
 | [01_data_layer.ipynb](01_data_layer.ipynb) | LFS data → `market_memory` (LTM/STM), `datalink` (manifest/store), `serving_layer` (views + CDC), `export_company_list` |
 | [02_screening.ipynb](02_screening.ipynb) | `screener_kit`/`strategies`, `screen_metrics`, fast serving screens, `validation` |
 | [03_ml_and_crud.ipynb](03_ml_and_crud.ipynb) | `ml_supervised` (L1), `auto_screener` (L2), `rl_trader` (L3), `pipeline` (CRUD) |
-| [04_portfolio_evaluator.ipynb](04_portfolio_evaluator.ipynb) | **upload holdings / tax-P&L → Buy/Hold/Sell by P/E** (`portfolio_evaluator`) |
+| [04_portfolio_evaluator.ipynb](04_portfolio_evaluator.ipynb) | **upload holdings / tax-P&L → Buy/Hold/Sell** (`portfolio_evaluator`) |
+| [05_names_and_manual.ipynb](05_names_and_manual.ipynb) | **name→ticker matching + manual ticker/price entry** → Buy/Hold/Sell (`name_matcher`) |
 
 Open any notebook and click the **Open in Colab** badge, then Runtime → Run all.

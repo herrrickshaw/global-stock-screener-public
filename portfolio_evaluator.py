@@ -277,25 +277,112 @@ def evaluate(
     return out
 
 
+def resolve_names(names: List[str], market: str = "IN", verbose: bool = True) -> List[str]:
+    """Company names → tickers (for tax statements that show only names)."""
+    from name_matcher import resolve
+
+    hits, misses = resolve(names, market)
+    if verbose:
+        for n, (tk, sc) in hits.items():
+            print(f"  {n[:34]:34} → {tk}  ({sc})")
+        if misses:
+            print(f"  unmatched (skipped): {misses}")
+    return list(dict.fromkeys(tk for tk, _ in hits.values()))
+
+
+def evaluate_from_file(path: str, market: str = "IN", verbose: bool = True) -> pd.DataFrame:
+    """Parse a holdings/tax file — resolve by ticker if present, else by NAME."""
+    tickers = parse_file(path)
+    if not tickers:  # no ticker column → try the name column
+        for hdr in (0, 1, 2, 3):
+            try:
+                df = (
+                    pd.read_excel(path, header=hdr)
+                    if path.lower().endswith(("xls", "xlsx"))
+                    else pd.read_csv(path, on_bad_lines="skip")
+                )
+            except Exception:
+                continue
+            col = _ticker_col(df)
+            if col is not None:
+                tickers = resolve_names([str(x) for x in df[col].dropna()], market, verbose)
+                break
+    if verbose:
+        print(f"  resolved {len(tickers)} tickers from {path}")
+    return evaluate(tickers, market, verbose=verbose)
+
+
+def _row_from_manual(rec: dict) -> tuple:
+    """Build a serving-style row + P/E from user-entered price/valuation inputs.
+    Accepts: price, pe, high_52w, low_52w, sma200, ret_1y, roe, liquidity."""
+    price = rec.get("price")
+    hi, lo, sma200 = rec.get("high_52w"), rec.get("low_52w"), rec.get("sma200")
+    row = {
+        "Close": price,
+        "SMA200": sma200,
+        "Ret252": rec.get("ret_1y"),
+        "Liquidity": rec.get("liquidity", ""),
+    }
+    if price and hi:
+        row["PctFromHigh"] = (price / hi - 1) * 100
+    if price and lo:
+        row["PctFromLow"] = (price / lo - 1) * 100
+    if price and sma200:
+        row["Above200DMA"] = price > sma200
+        row["GoldenCross"] = price > sma200  # best-effort proxy when no DMA50 given
+    fund = {"roe": rec["roe"]} if rec.get("roe") is not None else None
+    return row, rec.get("pe"), fund
+
+
+def evaluate_manual(
+    records: List[dict], med_pe: float = 20.0, verbose: bool = True
+) -> pd.DataFrame:
+    """Decide from user-typed inputs alone (no central data needed). Each record:
+    {ticker, price, pe, high_52w, low_52w, sma200, ret_1y, roe, liquidity}."""
+    from decision_engine import decide
+
+    rows = []
+    for rec in records:
+        row, pe, fund = _row_from_manual(rec)
+        d = decide(row, pe, med_pe, fundamentals=fund)
+        rows.append(
+            {
+                "Ticker": rec.get("ticker", "?"),
+                "Signal": d["signal"],
+                "Flags": " ".join(d["flags"]),
+                "PE": pe,
+                "Score": d["composite"],
+                "Recovery": d["recovery"],
+                "Rationale": d["rationale"],
+            }
+        )
+    out = pd.DataFrame(rows)
+    if verbose and not out.empty:
+        print("\n=== Manual-input decisions ===")
+        print(out.to_string(index=False))
+    return out
+
+
 def main() -> int:
-    ap = argparse.ArgumentParser(
-        description="Validate holdings against screens → Buy/Hold/Sell by P/E"
-    )
+    ap = argparse.ArgumentParser(description="Validate holdings against screens → Buy/Hold/Sell")
     ap.add_argument("--tickers", help="comma/space list of tickers")
-    ap.add_argument("--file", help="holdings / tax-P&L CSV or XLSX")
+    ap.add_argument("--names", help="comma list of company NAMES (auto-resolved to tickers)")
+    ap.add_argument("--file", help="holdings / tax-P&L CSV or XLSX (ticker or name column)")
     ap.add_argument("--market", default="IN")
     args = ap.parse_args()
 
     if args.file:
-        tickers = parse_file(args.file)
-        print(f"  parsed {len(tickers)} tickers from {args.file}")
+        evaluate_from_file(args.file, args.market)
+        return 0
+    if args.names:
+        tickers = resolve_names([n.strip() for n in args.names.split(",")], args.market)
     elif args.tickers:
         tickers = parse_tickers(args.tickers)
     else:
-        print("provide --tickers or --file")
+        print("provide --tickers, --names or --file")
         return 1
     if not tickers:
-        print("no tickers found")
+        print("no tickers resolved")
         return 1
     evaluate(tickers, args.market)
     return 0
