@@ -82,13 +82,20 @@ Grounds discoveries against Screener.in's **most-used screens** (the curated
 - **14 price/technical/liquidity screens computed locally** from the serving view
   (golden/bearish crossover, 52w high/low, near-200DMA, Darvas, RSI-oversold,
   multibagger/quality/value momentum, …).
-- **43 fundamental-only screens registered** (Piotroski-9, Coffee-Can, Magic
-  Formula, high-ROCE, debt-free, PEG<1, sector/theme screens, …) for optional live
-  Screener.in fetch — they need fundamentals not in the local price cache.
+- **26 fundamental popular screens from public-domain Screener.in data** — pulled
+  from the official curated `/explore/` list (verified IDs: Bull Cartel, Piotroski,
+  Coffee-Can, Magic Formula, FII Buying, Debt Reduction, Growth-without-Dilution,
+  Graham/Buffett, Multibagger, FCF Yield, …). Fetched once, cached, then read offline.
 
 ```bash
-python3 validation.py --market IN
+python3 public_screens.py --fetch      # pull the 26 public screens → cache (needs screener.in)
+python3 public_screens.py --list       # show cached screens
+python3 validation.py --market IN      # report over all 40 screens
 ```
+
+The public screens are fetched with **verified official screen IDs discovered from
+Screener.in's own explore page** (no guessed IDs); the fetcher validates each returns
+a real table and skips any that don't. Override/add URLs via `public_screens.json`.
 Reports per-screen name counts and validates today's auto-screener recommendation:
 - **grounded %** — picks appearing in ≥1 popular screen (market already validates them)
 - **novel %** — picks in none (a genuinely new pattern)

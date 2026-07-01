@@ -108,20 +108,35 @@ FUNDAMENTAL_SCREENS: Dict[str, str] = {
 
 
 # ── local evaluation ────────────────────────────────────────────────────────────
-def local_screens(market: str) -> Dict[str, set]:
-    """Run every locally-computable popular screen on the serving view."""
-    df = sl.serving(market)
-    if df.empty:
+def _public_fundamental(market: str) -> Dict[str, set]:
+    """Cached public-domain Screener.in fundamental screens (India only; populated
+    by `python3 public_screens.py --fetch`). Empty until fetched → validation still
+    runs on the local price screens."""
+    if market != "IN":
         return {}
-    if "Liquidity" in df:
-        df = df[df["Liquidity"].isin(LIQ_GOOD)]
+    try:
+        from public_screens import cached_screens
+
+        return {f"pub::{k}": v for k, v in cached_screens().items()}
+    except Exception:
+        return {}
+
+
+def local_screens(market: str) -> Dict[str, set]:
+    """Every popular screen we can evaluate: price/technical/liquidity computed from
+    the serving view + cached public-domain fundamental screens (screener.in)."""
+    df = sl.serving(market)
     out: Dict[str, set] = {}
-    for name, pred in LOCAL_SCREENS.items():
-        try:
-            m = pred(df).fillna(False)
-            out[name] = set(df.loc[m, "Symbol"])
-        except Exception:
-            out[name] = set()
+    if not df.empty:
+        if "Liquidity" in df:
+            df = df[df["Liquidity"].isin(LIQ_GOOD)]
+        for name, pred in LOCAL_SCREENS.items():
+            try:
+                m = pred(df).fillna(False)
+                out[name] = set(df.loc[m, "Symbol"])
+            except Exception:
+                out[name] = set()
+    out.update(_public_fundamental(market))
     return out
 
 
