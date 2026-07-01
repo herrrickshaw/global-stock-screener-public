@@ -44,11 +44,17 @@ def update(n_days: int = 400, verbose: bool = True) -> int:
     if verbose:
         print(f"  cache refreshed: {len(hist)} India symbols")
 
-    # rebuild from ALL market seeds (no arg) so the freshly-updated IN cache and
-    # the committed non-IN seeds all land in one store.
-    n = store.build(verbose=verbose)
+    # refresh the LMDB store — incrementally (only markets whose seed changed,
+    # typically just IN) via datalink; fall back to a full rebuild if unavailable.
+    try:
+        from datalink import build_store_incremental
+
+        res = build_store_incremental(verbose=verbose)
+        n = res.get("symbols", 0)
+    except Exception:
+        n = store.build(verbose=verbose)
     if verbose:
-        print(f"  LMDB store rebuilt: {n} symbols total")
+        print(f"  LMDB store refreshed ({n} symbols touched)")
     return n
 
 

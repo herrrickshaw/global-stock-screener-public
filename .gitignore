@@ -29,5 +29,9 @@ results/
 results_top150_global.csv
 full_report.html
 
+# machine-specific data index / store state (regenerated locally by datalink)
+cache_seed/data_manifest.json
+cache_seed/.store_state.json
+
 # secrets — never commit real credentials
 .env

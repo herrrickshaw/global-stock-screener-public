@@ -104,6 +104,15 @@ def load(market: str, min_turnover_usd: float = 0.0) -> Dict[str, pd.DataFrame]:
     min_turnover_usd > 0 applies the liquidity pre-filter (keeps only names trading
     at least that many USD/day) BEFORE building frames — much faster screening on
     markets with long illiquid tails (e.g. India 8,931 → a few hundred)."""
+    # memoized, signature-keyed loader (datalink) — repeat loads in one process
+    # (e.g. running all 11 screeners) reuse the grouped frames instead of re-reading
+    # and re-grouping the parquet each time.
+    try:
+        from datalink import load_market
+
+        return load_market(market, min_turnover_usd)
+    except Exception:
+        pass
     p = _live_path(market)
     if not p.exists():
         return {}
@@ -191,6 +200,14 @@ def update(market: str, verbose: bool = True) -> dict:
 # ── screening ────────────────────────────────────────────────────────────────────
 def _india_ccc() -> dict:
     """{symbol: CCC days} from the screener.in India CCC screen (cached best-effort)."""
+    # cached CCC (datalink) — reads the committed parquet, refetches from
+    # screener.in only when stale; avoids a network call on every India screen.
+    try:
+        from datalink import ccc_map_cached
+
+        return ccc_map_cached()
+    except Exception:
+        pass
     try:
         from screener_in import ccc_map
 
