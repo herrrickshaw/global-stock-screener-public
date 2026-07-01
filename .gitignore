@@ -57,3 +57,6 @@ KARZ_DEPLOYMENT_FINAL_SUMMARY.md
 
 # delivery-% cache (fetched locally by delivery_signal.py --fetch)
 cache_seed/delivery/
+
+# sector classification cache (fetched locally by sector_map.py --fetch)
+cache_seed/sectors/
