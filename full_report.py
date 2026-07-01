@@ -54,10 +54,40 @@ def _india_fundamentals() -> dict:
     return f
 
 
-def india_all_screeners(min_turnover=1_000_000) -> dict:
-    """Run every one of the 11 strategies on India; return {slug: DataFrame}."""
+def _enrich_authenticated(fmap: dict, symbols: list, limit: int = 300) -> dict:
+    """If screener.in creds are set, pull real fundamentals for the most-liquid
+    India symbols and merge them in (so piotroski/garp/etc. can run). No-op with
+    a clear note when creds are absent — the bhavcopy+scan path still stands."""
+    try:
+        import screener_in_auth as auth
+
+        auth.session()  # raises AuthError when SCREENER_EMAIL/PASSWORD unset
+        af = auth.fundamentals_batch(symbols[:limit], verbose=False)
+        for s, fd in af.items():
+            fmap.setdefault(s, {}).update(fd)
+        print(f"  screener.in auth: enriched {len(af)} India symbols with fundamentals")
+    except Exception as e:
+        print(f"  screener.in auth: skipped ({type(e).__name__}) — bhavcopy+scan fallback")
+    return fmap
+
+
+def india_all_screeners(min_turnover=1_000_000, use_auth=True, auth_limit=300) -> dict:
+    """Run every one of the 11 strategies on India; return {slug: DataFrame}.
+
+    If use_auth and screener.in creds are set, fundamental screeners run on real
+    financials (top `auth_limit` most-liquid names); otherwise they fall back to
+    the scan-derived Piotroski/Coffee-Can results."""
     data = kit.load("IN", min_turnover)
     fmap = _india_fundamentals()
+    if use_auth:
+        # most-liquid first, so a capped auth fetch covers the tradable names
+        try:
+            from liquidity import liquid_symbols
+
+            ordered = [s for s in liquid_symbols("IN", min_turnover) if s in data]
+        except Exception:
+            ordered = list(data)
+        fmap = _enrich_authenticated(fmap, ordered or list(data), auth_limit)
     stocks = [StockData(s, "IN", ohlcv=d, fundamentals=fmap.get(s, {})) for s, d in data.items()]
     out = {}
     for slug, mod in st.STRATEGIES.items():
