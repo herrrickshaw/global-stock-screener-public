@@ -172,7 +172,18 @@ def _fetch_new(market: str, period: str, verbose: bool) -> pd.DataFrame:
 
 
 def update(market: str, period: str = "5d", verbose: bool = True) -> dict:
-    """UPDATE one market: fetch new bars → upsert into LTM → evict → derive STM."""
+    """UPDATE one market: fetch new bars → upsert into LTM → evict → derive STM.
+
+    Guard: if the LTM has little/no history (first run for this market), bootstrap
+    it from the committed 1y seed FIRST — otherwise a short 5-day fetch would derive
+    a thin STM that overwrites the good committed seed."""
+    if market != "IN":
+        ltm = _read_long(_ltm_path(market))
+        span_days = 0 if ltm.empty else (ltm["Date"].max() - ltm["Date"].min()).days
+        if span_days < 60:  # not yet seeded with real history
+            seed = SEED_DIR / f"cleaned_long_{market}.parquet"
+            if seed.exists():
+                commit(market, _read_long(seed), verbose=False)
     new_long = _fetch_new(market, period=period, verbose=verbose)
     return commit(market, new_long, verbose=verbose)
 
@@ -191,6 +202,17 @@ def drop(market: str, symbols: List[str], verbose: bool = True) -> dict:
     if verbose:
         print(f"  {market}: dropped {len(symbols)} syms → LTM {n_ltm} / STM {n_stm}")
     return {"market": market, "ltm_symbols": n_ltm, "stm_symbols": n_stm}
+
+
+def seed_from_committed(market: str, verbose: bool = True) -> dict:
+    """CREATE offline: initialise the LTM from the committed 1-year seed
+    (cache_seed/cleaned_long[_MKT].parquet) — no network. The LTM starts at ~1y
+    and deepens toward 5y as daily updates upsert new bars."""
+    name = "cleaned_long.parquet" if market == "IN" else f"cleaned_long_{market}.parquet"
+    seed = SEED_DIR / name
+    if not seed.exists():
+        return {"market": market, "error": "no committed seed"}
+    return commit(market, _read_long(seed), verbose=verbose)
 
 
 # ── batch driver ───────────────────────────────────────────────────────────────
@@ -239,6 +261,11 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Two-tier (5y LTM / 1y STM) market memory")
     ap.add_argument("--daily", action="store_true", help="incremental daily update (default)")
     ap.add_argument("--create", action="store_true", help="first-time 5-year backfill (network)")
+    ap.add_argument(
+        "--from-seeds",
+        action="store_true",
+        help="initialise LTM offline from the committed 1y seeds (no network)",
+    )
     ap.add_argument("--status", action="store_true", help="print tier coverage report")
     ap.add_argument("--market", nargs="*", help="limit to these market codes")
     ap.add_argument("--period", default="5d", help="fetch window for --daily (default 5d)")
@@ -248,6 +275,11 @@ def main() -> int:
     if args.status:
         with pd.option_context("display.max_rows", None, "display.width", 120):
             print(status(args.market).to_string(index=False))
+        return 0
+
+    if args.from_seeds:
+        for m in args.market or MARKETS:
+            seed_from_committed(m, verbose=not args.quiet)
         return 0
 
     try:
