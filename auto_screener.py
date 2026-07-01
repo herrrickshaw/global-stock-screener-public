@@ -78,6 +78,13 @@ def known_good(market: str) -> set:
     quality = (df["Ret252"] > 15) & df["Above200DMA"]                          # coffee-can momentum
     good = set(df[liq & (darvas | golden | quality)]["Symbol"])
     good |= supervised
+    # fold in Screener.in popular-screen universe (validation module) as labels
+    try:
+        from validation import known_universe
+
+        good |= known_universe(market)
+    except Exception:
+        pass
     if market == "IN":
         try:
             from datalink import ccc_map_cached

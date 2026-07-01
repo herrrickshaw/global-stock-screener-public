@@ -111,6 +111,8 @@ def build_dataset(
             fwd = (close[t + horizon] / close[t] - 1) * 100 if close[t] else 0.0
             f.update({"Symbol": sym, "asof": dates[t], "label": _label(fwd, strong, buy)})
             rows.append(f)
+    if not rows:
+        return pd.DataFrame(columns=FEATURES + ["Symbol", "asof", "label"])
     return pd.DataFrame(rows).sort_values("asof").reset_index(drop=True)
 
 
@@ -127,14 +129,27 @@ def _make_model():
 
 
 # ── train with walk-forward validation ───────────────────────────────────────────
-def train(market: str, horizon: int = 63, verbose: bool = True) -> dict:
+def train(market: str, horizon: int = 252, verbose: bool = True) -> dict:
     import joblib
     from sklearn.metrics import accuracy_score
     from sklearn.model_selection import TimeSeriesSplit
 
-    ds = build_dataset(market, horizon=horizon)
+    # 252d (1y-forward) is the doc's target. If the LTM isn't deep enough yet to
+    # leave a full forward window, fall back to the largest horizon that yields
+    # enough samples (annual thresholds scale down with the horizon).
+    ds = pd.DataFrame()
+    for h in [horizon, 189, 126, 63]:
+        if h > horizon:
+            continue
+        strong, buy = 30.0 * h / 252, 15.0 * h / 252  # doc thresholds, pro-rated
+        ds = build_dataset(market, horizon=h, strong=strong, buy=buy)
+        if len(ds) >= 200:
+            horizon = h
+            break
     if len(ds) < 200:
         raise RuntimeError(f"too few training samples for {market} ({len(ds)})")
+    if verbose:
+        print(f"  effective horizon: {horizon}d (LTM depth-limited)")
     X, y = ds[FEATURES].to_numpy(), ds["label"].to_numpy()
 
     accs = []
@@ -209,7 +224,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Supervised forward-return classifier (doc Layer 1)")
     ap.add_argument("--market", default="IN")
     ap.add_argument("--train", action="store_true")
-    ap.add_argument("--horizon", type=int, default=63, help="forward return horizon in trading days")
+    ap.add_argument("--horizon", type=int, default=252, help="forward return horizon in trading days")
     ap.add_argument("--top", type=int, default=15)
     args = ap.parse_args()
 

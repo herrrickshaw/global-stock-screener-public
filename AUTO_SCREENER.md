@@ -74,6 +74,29 @@ python3 rl_trader.py --market IN                            # actions on today's
 The agent consumes the auto-screener shortlist + supervised score and emits an
 ENTER/HOLD/EXIT action per name.
 
-> ⚠️ Research/education only. Discovered screens and RL actions are historical
-> associations, not predictions or advice. Human review always wins (per the doc's
-> guardrails).
+## Validation vs Screener.in popular screens (`validation.py`)
+
+Grounds discoveries against Screener.in's **most-used screens** (the curated
+"popular" list + widely-cloned community screens):
+
+- **14 price/technical/liquidity screens computed locally** from the serving view
+  (golden/bearish crossover, 52w high/low, near-200DMA, Darvas, RSI-oversold,
+  multibagger/quality/value momentum, …).
+- **43 fundamental-only screens registered** (Piotroski-9, Coffee-Can, Magic
+  Formula, high-ROCE, debt-free, PEG<1, sector/theme screens, …) for optional live
+  Screener.in fetch — they need fundamentals not in the local price cache.
+
+```bash
+python3 validation.py --market IN
+```
+Reports per-screen name counts and validates today's auto-screener recommendation:
+- **grounded %** — picks appearing in ≥1 popular screen (market already validates them)
+- **novel %** — picks in none (a genuinely new pattern)
+
+The union of the local popular screens is also folded into `auto_screener.known_good`
+as an extra supervised anchor. Measured (IN): the recommendation was **100% grounded**
+(golden_crossover / midcap_momentum / quality_momentum overlaps), 0% novel in the
+current Bear tape.
+
+> ⚠️ Research/education only. Discovered screens, RL actions and validations are
+> historical associations, not predictions or advice. Human review always wins.
