@@ -85,6 +85,7 @@ and the LMDB store (round-trip on a temp cache).
 | `DATA_AND_MODULES.md` | every data source + a one-line purpose for each module |
 | `DATA_SOURCES.md` | **data sources: used capability + unused potential for future analysis** |
 | `query.py` | **DuckDB SQL layer over the parquet seeds** (range/aggregate queries) |
+| `partition_ltm.py` | **year-partition the LTM** (Hive market=/year=) for pruned queries at scale |
 | `BLOOMBERG_SOURCES.md` | Bloomberg-terminal data categories → free/official equivalents |
 | `EXCHANGE_COVERAGE.md` | the 20 markets validated vs Wikipedia's major exchanges |
 | `colab_quickstart.ipynb` | run-top-to-bottom Colab notebook |

@@ -59,8 +59,17 @@ def con():
     import duckdb
 
     c = duckdb.connect(":memory:")
-    # LTM: filename_split gives Market; parquet is sorted by (Symbol,Date)
-    if list(Path(LTM_GLOB).parent.glob("*.parquet")):
+    # LTM view: prefer the year-partitioned dataset (Hive market=/year= → prunes whole
+    # years); else the single-file-per-market parquet. Both expose a `Market` column.
+    parts = HERE / "cache_seed" / "ltm_parts"
+    if parts.exists() and any(parts.rglob("*.parquet")):
+        # hive gives lowercase `market`/`year`; alias `market`→`Market` for parity
+        # with the single-file view so callers use one column name either way.
+        c.execute(
+            f"""CREATE VIEW ltm AS SELECT * RENAME (market AS Market) FROM
+                read_parquet('{parts}/**/*.parquet', hive_partitioning=true)"""
+        )
+    elif list(Path(LTM_GLOB).parent.glob("*.parquet")):
         c.execute(
             f"""CREATE VIEW ltm AS
                 SELECT *, regexp_extract(filename, 'ltm/([A-Z]+)\\.parquet', 1) AS Market

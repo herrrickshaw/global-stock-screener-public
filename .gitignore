@@ -60,3 +60,6 @@ cache_seed/delivery/
 
 # sector classification cache (fetched locally by sector_map.py --fetch)
 cache_seed/sectors/
+
+# year-partitioned LTM mirror (derived; rebuild with partition_ltm.py)
+cache_seed/ltm_parts/
