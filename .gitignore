@@ -53,3 +53,4 @@ cache_seed/pipeline_state.json
 # — not committed, to avoid ~120MB duplication (STM is a trailing 1y slice of LTM)
 cache_seed/cleaned_long.parquet
 cache_seed/cleaned_long_*.parquet
+KARZ_DEPLOYMENT_FINAL_SUMMARY.md

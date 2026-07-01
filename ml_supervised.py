@@ -27,7 +27,7 @@ from __future__ import annotations
 import argparse
 import warnings
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -39,8 +39,18 @@ import datalink
 MODEL_DIR = Path(__file__).parent / "cache_seed" / "models"
 MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
-FEATURES = ["rsi14", "ret21", "ret63", "ret126", "pct_from_high", "pct_from_low",
-            "above_200dma", "golden_cross", "vol_ratio", "log_turnover"]
+FEATURES = [
+    "rsi14",
+    "ret21",
+    "ret63",
+    "ret126",
+    "pct_from_high",
+    "pct_from_low",
+    "above_200dma",
+    "golden_cross",
+    "vol_ratio",
+    "log_turnover",
+]
 CLASS_NAMES = {0: "Avoid", 1: "Hold", 2: "Buy", 3: "Strong Buy"}
 
 
@@ -120,8 +130,14 @@ def _make_model():
     try:
         from xgboost import XGBClassifier
 
-        return XGBClassifier(n_estimators=300, max_depth=5, learning_rate=0.05,
-                             subsample=0.8, colsample_bytree=0.8, eval_metric="mlogloss")
+        return XGBClassifier(
+            n_estimators=300,
+            max_depth=5,
+            learning_rate=0.05,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            eval_metric="mlogloss",
+        )
     except Exception:
         from sklearn.ensemble import HistGradientBoostingClassifier
 
@@ -161,14 +177,24 @@ def train(market: str, horizon: int = 252, verbose: bool = True) -> dict:
 
     model = _make_model()
     model.fit(X, y)  # final fit on all data
-    joblib.dump({"model": model, "features": FEATURES, "horizon": horizon}, MODEL_DIR / f"{market}.pkl")
+    joblib.dump(
+        {"model": model, "features": FEATURES, "horizon": horizon}, MODEL_DIR / f"{market}.pkl"
+    )
 
     imp = _importances(model, X, y)
     if verbose:
-        print(f"  trained {market}: {len(ds)} samples, walk-forward acc "
-              f"{np.mean(accs):.3f}±{np.std(accs):.3f}")
-        print("  top features: " + ", ".join(f"{FEATURES[i]}={imp[i]:.2f}" for i in np.argsort(imp)[::-1][:5]))
-        print("  label mix: " + ", ".join(f"{CLASS_NAMES[c]}={int((y==c).sum())}" for c in sorted(set(y))))
+        print(
+            f"  trained {market}: {len(ds)} samples, walk-forward acc "
+            f"{np.mean(accs):.3f}±{np.std(accs):.3f}"
+        )
+        print(
+            "  top features: "
+            + ", ".join(f"{FEATURES[i]}={imp[i]:.2f}" for i in np.argsort(imp)[::-1][:5])
+        )
+        print(
+            "  label mix: "
+            + ", ".join(f"{CLASS_NAMES[c]}={int((y==c).sum())}" for c in sorted(set(y)))
+        )
     return {"market": market, "samples": len(ds), "cv_acc": float(np.mean(accs))}
 
 
@@ -224,7 +250,9 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Supervised forward-return classifier (doc Layer 1)")
     ap.add_argument("--market", default="IN")
     ap.add_argument("--train", action="store_true")
-    ap.add_argument("--horizon", type=int, default=252, help="forward return horizon in trading days")
+    ap.add_argument(
+        "--horizon", type=int, default=252, help="forward return horizon in trading days"
+    )
     ap.add_argument("--top", type=int, default=15)
     args = ap.parse_args()
 
@@ -236,7 +264,11 @@ def main() -> int:
     if cur.empty:
         print("no model — run --train first")
         return 0
-    cols = [c for c in ["Symbol", "pred_name", "score", "rsi14", "ret63", "pct_from_high"] if c in cur.columns]
+    cols = [
+        c
+        for c in ["Symbol", "pred_name", "score", "rsi14", "ret63", "pct_from_high"]
+        if c in cur.columns
+    ]
     print(f"\nTop {args.top} supervised Buy/Strong-Buy — {args.market}:")
     print(cur[cur["score"] >= 0.5][cols].head(args.top).to_string(index=False))
     return 0

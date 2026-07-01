@@ -50,8 +50,26 @@ LTM_YEARS = 5  # long-term memory window
 STM_YEARS = 1  # short-term (hot) window
 
 MARKETS = [
-    "IN", "US", "JP", "KR", "CN", "SG", "EU", "HK", "TW", "CA",
-    "AU", "UK", "DE", "SA", "BR", "CH", "ZA", "SE", "FI", "DK",
+    "IN",
+    "US",
+    "JP",
+    "KR",
+    "CN",
+    "SG",
+    "EU",
+    "HK",
+    "TW",
+    "CA",
+    "AU",
+    "UK",
+    "DE",
+    "SA",
+    "BR",
+    "CH",
+    "ZA",
+    "SE",
+    "FI",
+    "DK",
 ]  # Wikipedia top-20
 
 
@@ -117,8 +135,9 @@ def _derive_stm(ltm_long: pd.DataFrame, market: str) -> int:
     return _write(stm, _stm_path(market))
 
 
-def ensure_stm_seeds(markets: Optional[List[str]] = None, force: bool = False,
-                     verbose: bool = True) -> int:
+def ensure_stm_seeds(
+    markets: Optional[List[str]] = None, force: bool = False, verbose: bool = True
+) -> int:
     """Derive any missing STM seed (cleaned_long[_MKT].parquet) from the committed
     5y LTM. The repo ships only the LTM (source of truth); the 1y STM is a trailing
     slice of it, so shipping both duplicates ~120 MB. This regenerates the STM
@@ -163,7 +182,9 @@ def _fetch_new(market: str, period: str, verbose: bool) -> pd.DataFrame:
         import os
 
         live = (
-            Path(os.environ.get("BHAV_CACHE", Path.home() / "Downloads" / "data" / "bhavcopy_cache"))
+            Path(
+                os.environ.get("BHAV_CACHE", Path.home() / "Downloads" / "data" / "bhavcopy_cache")
+            )
             / "cleaned_long.parquet"
         )
         src = live if live.exists() else _stm_path("IN")
@@ -274,15 +295,20 @@ def status(markets: Optional[List[str]] = None) -> pd.DataFrame:
         for tier in ("ltm", "stm"):
             long = _read_long(_ltm_path(m) if tier == "ltm" else _stm_path(m))
             if long.empty:
-                rows.append({"market": m, "tier": tier, "symbols": 0, "start": "—", "end": "—", "rows": 0})
+                rows.append(
+                    {"market": m, "tier": tier, "symbols": 0, "start": "—", "end": "—", "rows": 0}
+                )
             else:
-                rows.append({
-                    "market": m, "tier": tier,
-                    "symbols": long["Symbol"].nunique(),
-                    "start": str(long["Date"].min())[:10],
-                    "end": str(long["Date"].max())[:10],
-                    "rows": len(long),
-                })
+                rows.append(
+                    {
+                        "market": m,
+                        "tier": tier,
+                        "symbols": long["Symbol"].nunique(),
+                        "start": str(long["Date"].min())[:10],
+                        "end": str(long["Date"].max())[:10],
+                        "rows": len(long),
+                    }
+                )
     return pd.DataFrame(rows)
 
 
