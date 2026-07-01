@@ -96,27 +96,56 @@ def _fundamentals(market: str) -> pd.DataFrame:
     return pd.read_parquet(p) if p.exists() else pd.DataFrame()
 
 
-def _pe_map(market: str, serving: pd.DataFrame) -> Dict[str, float]:
-    """P/E per symbol: prefer a stored ratio, else price/EPS, else market_cap/NI."""
+def _pe_of(r: dict, price: Optional[float]) -> Optional[float]:
+    """P/E from one fundamentals record: stored ratio, else price/EPS, else mcap/NI."""
+    for key in ("pe", "P/E", "pe_ttm"):
+        v = r.get(key)
+        if v not in (None, 0, "") and pd.notna(v):
+            return round(float(v), 1)
+    if r.get("eps_ttm") and price:
+        return round(price / r["eps_ttm"], 1) if r["eps_ttm"] else None
+    if r.get("net_income") and r.get("shares") and price:
+        return round(price * r["shares"] / r["net_income"], 1) if r["net_income"] else None
+    return None
+
+
+def _fund_map(market: str, serving: pd.DataFrame) -> Dict[str, dict]:
+    """{symbol: enriched fundamentals dict (roe, roce, piotroski, pe, …)}."""
     f = _fundamentals(market)
+    if f.empty:
+        return {}
+    try:
+        from fundamental_metrics import _enrich
+
+        f = _enrich(f)
+    except Exception:
+        pass
     price = dict(zip(serving["Symbol"], serving["Close"])) if not serving.empty else {}
-    pe: Dict[str, float] = {}
-    if not f.empty:
-        for _, r in f.iterrows():
-            sym = r["Symbol"]
-            val = None
-            for key in ("pe", "P/E", "pe_ttm"):
-                if key in r and pd.notna(r.get(key)) and r.get(key) not in (0, ""):
-                    val = float(r[key])
-                    break
-            if val is None and r.get("eps_ttm") and price.get(sym):
-                val = price[sym] / r["eps_ttm"] if r["eps_ttm"] else None
-            if val is None and r.get("net_income") and r.get("shares") and price.get(sym):
-                mc = price[sym] * r["shares"]
-                val = mc / r["net_income"] if r["net_income"] else None
-            if val is not None and np.isfinite(val):
-                pe[sym] = round(val, 1)
-    return pe
+    out: Dict[str, dict] = {}
+    for r in f.to_dict("records"):
+        sym = r.get("Symbol")
+        if not sym:
+            continue
+        r["pe"] = _pe_of(r, price.get(sym))
+        out[sym] = r
+    return out
+
+
+def enrich_missing(market: str, tickers: List[str], have: set, verbose: bool = True) -> None:
+    """On-demand: fetch fundamentals for uploaded tickers not yet cached (US=SEC,
+    IN=screener.in), so their P/E and quality feed the decision."""
+    missing = [t for t in tickers if t not in have]
+    if not missing:
+        return
+    try:
+        from fundamental_metrics import load_fundamentals
+
+        if verbose:
+            print(f"  fetching live fundamentals for {len(missing)} uncached ticker(s)…")
+        load_fundamentals(market, symbols=missing, limit=len(missing), verbose=False)
+    except Exception as e:  # noqa: BLE001
+        if verbose:
+            print(f"    live fetch skipped ({str(e)[:40]})")
 
 
 def _screens_passed(market: str, serving: pd.DataFrame) -> Dict[str, list]:
@@ -174,13 +203,24 @@ def _decide(pe: Optional[float], med_pe: float, n_screens: int, uptrend: bool) -
     return "HOLD", f"fair value (P/E {pe} near median {med_pe:.0f}), {n_screens} screens"
 
 
-def evaluate(tickers: List[str], market: str = "IN", verbose: bool = True) -> pd.DataFrame:
+def evaluate(
+    tickers: List[str], market: str = "IN", fetch: bool = True, verbose: bool = True
+) -> pd.DataFrame:
+    from decision_engine import decide
+
     serving = sl.serving(market)
     if serving.empty:
         raise RuntimeError(f"no serving view for {market} — run serving_layer.py --refresh")
     serving = serving.set_index("Symbol")
-    pe_map = _pe_map(market, serving.reset_index())
-    med_pe = float(np.median([v for v in pe_map.values() if 0 < v < 200])) if pe_map else 20.0
+
+    # on-demand: fetch fundamentals for uploaded names not yet cached
+    if fetch:
+        have = set(_fundamentals(market)["Symbol"]) if not _fundamentals(market).empty else set()
+        enrich_missing(market, [t for t in tickers if t in serving.index], have, verbose)
+
+    fmap = _fund_map(market, serving.reset_index())
+    pes = [f["pe"] for f in fmap.values() if f.get("pe") and 0 < f["pe"] < 200]
+    med_pe = float(np.median(pes)) if pes else 20.0
     screens = _screens_passed(market, serving.reset_index())
 
     rows = []
@@ -196,22 +236,24 @@ def evaluate(tickers: List[str], market: str = "IN", verbose: bool = True) -> pd
                 }
             )
             continue
-        row = serving.loc[t]
-        pe = pe_map.get(t)
+        row = serving.loc[t].to_dict()
+        fund = fmap.get(t)
+        pe = fund.get("pe") if fund else None
         scr = screens.get(t, [])
-        uptrend = bool(row.get("Above200DMA", False))
-        sig, why = _decide(pe, med_pe, len(scr), uptrend)
+        d = decide(row, pe, med_pe, fundamentals=fund)
         rows.append(
             {
                 "Symbol": t,
-                "Signal": sig,
+                "Signal": d["signal"],
+                "Flags": " ".join(d["flags"]),
                 "PE": pe,
                 "Close": round(float(row["Close"]), 2),
                 "Ret252": round(float(row.get("Ret252", np.nan)), 1),
                 "Liquidity": row.get("Liquidity", ""),
+                "Score": d["composite"],
+                "Recovery": d["recovery"],
                 "Screens": len(scr),
-                "Passed": ",".join(scr),
-                "Rationale": why,
+                "Rationale": d["rationale"],
             }
         )
     out = pd.DataFrame(rows)
@@ -221,7 +263,7 @@ def evaluate(tickers: List[str], market: str = "IN", verbose: bool = True) -> pd
         print(f"\n=== Portfolio review ({market}) — market median P/E ≈ {med_pe:.0f} ===")
         cols = [
             c
-            for c in ["Symbol", "Signal", "PE", "Close", "Ret252", "Screens", "Rationale"]
+            for c in ["Symbol", "Signal", "Flags", "PE", "Close", "Ret252", "Recovery", "Rationale"]
             if c in out.columns
         ]
         print(out[cols].to_string(index=False))
