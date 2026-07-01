@@ -83,6 +83,8 @@ and the LMDB store (round-trip on a temp cache).
 | `BLOOMBERG_SOURCES.md` | Bloomberg-terminal data categories → free/official equivalents |
 | `EXCHANGE_COVERAGE.md` | the 20 markets validated vs Wikipedia's major exchanges |
 | `colab_quickstart.ipynb` | run-top-to-bottom Colab notebook |
+| `notebooks/` | **Colab checkpoint notebooks** for the data / screening / ML layers |
+| `BRANCHES.md` | branch map (core on `main`, legacy on `archive/*`) |
 
 ## Repo layout
 
