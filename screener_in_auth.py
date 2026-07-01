@@ -200,7 +200,6 @@ def company_financials(symbol: str) -> dict:
 
     ni = row("Net profit", "Net Profit")
     rev = row("Sales", "Sales+", "Revenue", "Total Revenue")
-    opprofit = row("Operating Profit")
     interest = row("Interest")
     pbt = row("Profit before tax", "Profit Before Tax")
     eps = row("EPS in Rs", "Adjusted EPS in Rs", "EPS")
@@ -209,7 +208,6 @@ def company_financials(symbol: str) -> dict:
     capital = row("Equity Capital", "Equity Share Capital", "Share Capital")
     other_liab = row("Other Liabilities", "Other Liabilities+")
     net_block = row("Net Block", "Fixed Assets")
-    other_assets = row("Other Assets", "Other Assets+")
     inv = row("Inventory", "Inventories")
     recv = row("Trade receivables", "Debtors", "Receivables")
     cash = row("Cash & Bank", "Cash Equivalents")
