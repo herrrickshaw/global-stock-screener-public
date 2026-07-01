@@ -63,3 +63,31 @@ python3 datalink.py --manifest   # (re)build the index
 python3 datalink.py --status     # coverage table
 python3 datalink.py --store      # incremental LMDB refresh (changed markets only)
 ```
+
+## 4. Serving layer — Modern Data Architecture Blueprint applied
+
+`serving_layer.py` maps the blueprint's patterns onto the screener:
+
+| Blueprint pattern | Here |
+|---|---|
+| **Lambda: batch + speed → serving** | LTM (5y) = batch layer, STM (1y seeds) = speed layer; `serving_layer` merges them into a materialised query view |
+| **CDC (capture deltas, never rescan)** | `capture_deltas()` logs only changed rows (`op/key/value/asof/ts` — the blueprint's delta model) to `cache_seed/cdc/<MKT>.parquet` |
+| **Denormalisation / query-driven, write-time compute** | `build_serving()` precomputes every per-symbol feature (SMA20/50/200, RSI14, 52w hi/lo, Ret21/63/126/252, turnover, Above200DMA, GoldenCross, liquidity tier) once/day into a wide columnar table `cache_seed/serving/<MKT>.parquet` |
+
+Read-time screening then becomes a **vectorised filter over precomputed columns**
+instead of iterating 8k symbols and recomputing indicators:
+
+```python
+import serving_layer as sl
+sl.screen_fast({"Above200DMA": ("==", True), "RSI14": ("<", 70),
+                "PctFromHigh": (">", -8)}, "IN", top=15)
+```
+
+Measured: a full custom screen dropped from **~2.3 s (load + per-symbol recompute)**
+to **~1 ms** (memoised serving read + vectorised mask). Refreshed daily in
+`daily_memory.sh`, incrementally (only markets whose seed changed).
+
+```bash
+python3 serving_layer.py --refresh          # rebuild views + capture deltas
+python3 serving_layer.py --screen IN        # demo fast screen
+```

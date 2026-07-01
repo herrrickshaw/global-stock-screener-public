@@ -33,5 +33,9 @@ full_report.html
 cache_seed/data_manifest.json
 cache_seed/.store_state.json
 
+# derived serving views + CDC delta logs (rebuilt daily by serving_layer)
+cache_seed/serving/
+cache_seed/cdc/
+
 # secrets — never commit real credentials
 .env

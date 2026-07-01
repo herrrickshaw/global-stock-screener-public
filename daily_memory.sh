@@ -9,5 +9,6 @@ cd "$(dirname "$0")"
 echo "=== $(date '+%F %T') daily market-memory refresh ==="
 python3 update_bhavcopy_daily.py --quiet
 python3 market_memory.py --daily "$@"
+python3 serving_layer.py --refresh          # rebuild materialised serving views + CDC deltas
 python3 market_memory.py --status
 echo "=== done ==="
