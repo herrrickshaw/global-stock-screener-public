@@ -10,8 +10,18 @@ repos:
     rev: 25.11.0
     hooks:
       - id: black
+  # regenerate the code+data interdependency map so it never goes stale
+  - repo: local
+    hooks:
+      - id: dependency-map
+        name: regenerate DEPENDENCIES.md
+        entry: python dep_map.py
+        language: system
+        pass_filenames: false
+        always_run: true
   # tamper-evidence: regenerate the SHA-256 manifest so committed files always carry
-  # matching checksums (CI then verifies no post-commit drift)
+  # matching checksums (CI then verifies no post-commit drift). MUST stay last so it
+  # captures any files the earlier hooks (format, dep-map) just rewrote.
   - repo: local
     hooks:
       - id: integrity-checksums

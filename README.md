@@ -36,6 +36,9 @@ python run.py --list                  # all strategies & markets
 `run.py` auto-bootstraps the cached data into a fast local store on first use, then
 prints results and saves them to `results/`.
 
+**Check readiness anytime:** `python preflight.py` verifies the initial conditions
+(LFS data pulled, packages, serving views); `python preflight.py --ensure` establishes them.
+
 ---
 
 ## What you get
