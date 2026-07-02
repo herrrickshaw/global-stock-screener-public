@@ -44,6 +44,7 @@ missed — treat §1/§2 (imports) as exact.
 | `stock_utils` | `bhavcopy_history`, `build_market_seeds`, `data_sources`, `fetch_market_ohlc`, `market_data_cache`, `pattern_discovery`, `screener_kit` |
 | `strategies` | `custom_screener`, `run`, `run_global_analysis`, `screener_kit` |
 | `symbol_master` | `export_company_list`, `name_matcher` |
+| `trendlyne_auth` | `fundamental_metrics` |
 | `universe_sources` | `fetch_market_ohlc`, `ipo_monitor`, `market_memory` |
 | `validation` | `auto_screener`, `pipeline`, `portfolio_evaluator` |
 
@@ -63,7 +64,7 @@ missed — treat §1/§2 (imports) as exact.
 | `datalink` | `bhavcopy_store`, `frames`, `liquidity`, `market_memory`, `screener_in` |
 | `export_company_list` | `datalink`, `serving_layer`, `symbol_master` |
 | `fetch_market_ohlc` | `data_sources`, `frames`, `full_european_market_scan`, `sg_stock_daily_report`, `stock_utils`, `universe_sources` |
-| `fundamental_metrics` | `screener_in_auth`, `sec_fundamentals`, `serving_layer` |
+| `fundamental_metrics` | `screener_in_auth`, `sec_fundamentals`, `serving_layer`, `trendlyne_auth` |
 | `india_public` | `liquidity`, `screener_in`, `screener_kit` |
 | `ipo_monitor` | `universe_sources` |
 | `liquidity` | `screener_kit` |

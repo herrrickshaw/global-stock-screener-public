@@ -35,6 +35,13 @@ Every external data source the system references, what we **currently use**, and
 - **Currently used (IN):** 26 curated popular screens (Bull Cartel, Piotroski, Magic Formula, CCC, …) as validation ground-truth + the CCC metric.
 - **Unused potential:** each screen page exposes **ROCE/ROE/OPM/sales & profit growth/P/E/dividend columns** we only partially parse; the **query definitions** themselves (login) encode analyst logic we could replicate; peer/sector pages give **sector medians** for relative valuation.
 
+### 5b. Trendlyne — authenticated (`trendlyne_auth.py`)
+- **Currently used (IN):** per-stock P/E, PB, ROE, ROA, debt/equity, dividend yield,
+  OPM, revenue/profit growth, Piotroski, market cap — the primary IN fundamentals feed
+  (higher throughput than screener.in's export). Creds via `.env` only.
+- **Unused potential:** SWOT/DVM scores, shareholding & pledge trends, forecasts,
+  results calendar, superstar-investor holdings.
+
 ### 6. screener.in — authenticated export — `screener_in_auth.py`
 - **Currently used (IN):** per-company Excel export → net income, ROE, ROCE, debt, growth for the promoted watchlist.
 - **Unused potential:** the export's **10-year annual + quarterly sheets** (balance sheet, cash flow, ratios, shareholding pattern incl. **promoter holding & pledge**, FII/DII holding) — the richest untapped IN fundamentals source; would power promoter-pledge red-flags, holding-trend and 10-yr compounding screens.

@@ -46,14 +46,38 @@ def _fetch_one(market: str, sym: str) -> dict:
 
         return fundamentals(sym) or {}
     if market == "IN":
-        try:
-            from screener_in_auth import company_financials
-
-            return company_financials(sym) or {}
-        except Exception:
-            return {}
+        # Trendlyne first (P/E+ROE+... , higher throughput), then screener.in export,
+        # then yfinance .NS — first non-empty wins.
+        for src in (_in_trendlyne, _in_screener):
+            try:
+                d = src(sym)
+                if d:
+                    return d
+            except Exception:
+                continue
+        return _yf_fundamentals("IN", sym)
     # all other markets → yfinance .info (trailing P/E, ROE, debt, growth)
     return _yf_fundamentals(market, sym)
+
+
+_TL_SESSION = None
+
+
+def _in_trendlyne(sym: str) -> dict:
+    """IN fundamentals via Trendlyne (cached login session)."""
+    global _TL_SESSION
+    from trendlyne_auth import fundamentals as tl_fundamentals
+    from trendlyne_auth import session
+
+    if _TL_SESSION is None:
+        _TL_SESSION = session()
+    return tl_fundamentals(sym, _TL_SESSION) or {}
+
+
+def _in_screener(sym: str) -> dict:
+    from screener_in_auth import company_financials
+
+    return company_financials(sym) or {}
 
 
 # yfinance suffix per market (query the right symbol)
