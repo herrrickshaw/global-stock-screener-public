@@ -244,6 +244,23 @@ def evaluate(
     med_pe = float(np.median(pes)) if pes else 20.0
     screens = _screens_passed(market, serving.reset_index())
 
+    # delivery-% accumulation (IN smart-money signal) — attach to each row if cached
+    accum: Dict[str, float] = {}
+    if market == "IN":
+        try:
+            import delivery_signal as ds
+
+            p = ds.CACHE / "IN.parquet"
+            if p.exists():
+                accum = dict(
+                    zip(
+                        ds.accumulation_scores(pd.read_parquet(p))["Symbol"],
+                        ds.accumulation_scores(pd.read_parquet(p))["AccumScore"],
+                    )
+                )
+        except Exception:
+            pass
+
     rows = []
     for t in tickers:
         if t not in serving.index:
@@ -258,6 +275,8 @@ def evaluate(
             )
             continue
         row = serving.loc[t].to_dict()
+        if t in accum:
+            row["accum_score"] = accum[t]
         fund = fmap.get(t)
         pe = fund.get("pe") if fund else None
         scr = screens.get(t, [])

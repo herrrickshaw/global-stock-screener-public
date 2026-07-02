@@ -119,5 +119,115 @@
     "job_size": 5,
     "status": "done",
     "epic": "Fundamentals depth"
+  },
+  {
+    "id": "F-09",
+    "type": "Feature",
+    "title": "Delivery-% accumulation factor in decision engine",
+    "value": 13,
+    "time_criticality": 8,
+    "risk": 5,
+    "job_size": 3,
+    "status": "done",
+    "epic": "Smart-money signals"
+  },
+  {
+    "id": "F-10",
+    "type": "Feature",
+    "title": "Sector-boom gating in auto-screener (doc Layer-2 Track A)",
+    "value": 13,
+    "time_criticality": 5,
+    "risk": 5,
+    "job_size": 5,
+    "status": "todo",
+    "epic": "ML"
+  },
+  {
+    "id": "F-11",
+    "type": "Epic",
+    "title": "Portfolio-level analytics (concentration, factor exposure, rebalance)",
+    "value": 13,
+    "time_criticality": 3,
+    "risk": 3,
+    "job_size": 8,
+    "status": "todo",
+    "epic": "Investor tools"
+  },
+  {
+    "id": "F-12",
+    "type": "Feature",
+    "title": "Walk-forward backtest of screens/decisions (quantify edge)",
+    "value": 13,
+    "time_criticality": 3,
+    "risk": 8,
+    "job_size": 8,
+    "status": "todo",
+    "epic": "Analytics"
+  },
+  {
+    "id": "F-13",
+    "type": "Feature",
+    "title": "CDC watchlist-delta daily mailer (signal flips, new BUYs, pledge spikes)",
+    "value": 8,
+    "time_criticality": 5,
+    "risk": 3,
+    "job_size": 5,
+    "status": "todo",
+    "epic": "Ops"
+  },
+  {
+    "id": "F-14",
+    "type": "Feature",
+    "title": "10y + quarterly fundamentals & shareholding-trend screens",
+    "value": 8,
+    "time_criticality": 3,
+    "risk": 3,
+    "job_size": 8,
+    "status": "todo",
+    "epic": "Fundamentals depth"
+  },
+  {
+    "id": "F-15",
+    "type": "Feature",
+    "title": "Corporate-actions & results calendar (event-aware screening)",
+    "value": 8,
+    "time_criticality": 5,
+    "risk": 3,
+    "job_size": 5,
+    "status": "todo",
+    "epic": "Data breadth"
+  },
+  {
+    "id": "F-16",
+    "type": "Feature",
+    "title": "Scheduled autonomous daily run + brief (cron/launchd + mailer)",
+    "value": 8,
+    "time_criticality": 5,
+    "risk": 2,
+    "job_size": 3,
+    "status": "todo",
+    "epic": "Ops"
+  },
+  {
+    "id": "F-17",
+    "type": "Feature",
+    "title": "FastAPI surface over query + portfolio evaluator",
+    "value": 8,
+    "time_criticality": 2,
+    "risk": 3,
+    "job_size": 8,
+    "status": "todo",
+    "epic": "Platform"
+  },
+  {
+    "id": "F-18",
+    "type": "Feature",
+    "title": "Superstar-investor / bulk-block-deal holdings screen",
+    "value": 8,
+    "time_criticality": 3,
+    "risk": 3,
+    "job_size": 5,
+    "status": "todo",
+    "epic": "Smart-money signals"
   }
 ]

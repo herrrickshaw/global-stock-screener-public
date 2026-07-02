@@ -18,6 +18,7 @@ missed — treat §1/§2 (imports) as exact.
 | `data_sources` | `fetch_market_ohlc`, `market_memory`, `market_performance`, `screener_kit` |
 | `datalink` | `auto_screener`, `export_company_list`, `ml_supervised`, `pipeline`, `rl_trader`, `screen_metrics`, `screener_kit`, `serving_layer`, `update_bhavcopy_daily` |
 | `decision_engine` | `portfolio_evaluator` |
+| `delivery_signal` | `portfolio_evaluator` |
 | `frames` | `bhavcopy_history`, `bhavcopy_store`, `build_market_seeds`, `datalink`, `fetch_market_ohlc`, `market_memory`, `screener_kit`, `serving_layer` |
 | `full_european_market_scan` | `fetch_market_ohlc`, `universe_sources` |
 | `full_japan_market_scan` | `universe_sources` |
@@ -50,7 +51,7 @@ missed — treat §1/§2 (imports) as exact.
 | `universe_sources` | `fetch_market_ohlc`, `ipo_monitor`, `market_memory` |
 | `validation` | `auto_screener`, `pipeline`, `portfolio_evaluator` |
 
-**Leaf modules** (nothing imports them — safe to change in isolation): `__init__`, `backlog`, `base`, `bluest_blue_chips`, `build_market_seeds`, `cash_conversion_cycle`, `coffee_can`, `darvas`, `debt_reduction`, `delivery_signal`, `dep_map`, `dividend_yield`, `export_company_list`, `fetch_market_ohlc`, `garp`, `golden_crossover`, `governance`, `india_public`, `ipo_monitor`, `loss_to_profit`, `magic_formula`, `ml_signal_engine`, `partition_ltm`, `pattern_discovery`, `piotroski`, `pipeline`, `portfolio_evaluator`, `preflight`, `query`, `rl_trader`, `run`, `sector_map`, `send_mailer`, `update_bhavcopy_daily`
+**Leaf modules** (nothing imports them — safe to change in isolation): `__init__`, `backlog`, `base`, `bluest_blue_chips`, `build_market_seeds`, `cash_conversion_cycle`, `coffee_can`, `darvas`, `debt_reduction`, `dep_map`, `dividend_yield`, `export_company_list`, `fetch_market_ohlc`, `garp`, `golden_crossover`, `governance`, `india_public`, `ipo_monitor`, `loss_to_profit`, `magic_formula`, `ml_signal_engine`, `partition_ltm`, `pattern_discovery`, `piotroski`, `pipeline`, `portfolio_evaluator`, `preflight`, `query`, `rl_trader`, `run`, `sector_map`, `send_mailer`, `update_bhavcopy_daily`
 
 ## 2. Code — dependencies (what each module needs)
 
@@ -80,7 +81,7 @@ missed — treat §1/§2 (imports) as exact.
 | `name_matcher` | `symbol_master` |
 | `pattern_discovery` | `stock_utils` |
 | `pipeline` | `auto_screener`, `datalink`, `fundamental_metrics`, `market_memory`, `screen_metrics`, `validation` |
-| `portfolio_evaluator` | `decision_engine`, `fundamental_metrics`, `name_matcher`, `screen_metrics`, `serving_layer`, `ticker_aliases`, `validation` |
+| `portfolio_evaluator` | `decision_engine`, `delivery_signal`, `fundamental_metrics`, `name_matcher`, `screen_metrics`, `serving_layer`, `ticker_aliases`, `validation` |
 | `preflight` | `market_memory`, `serving_layer` |
 | `public_screens` | `screener_in` |
 | `rl_trader` | `auto_screener`, `datalink`, `ml_supervised` |

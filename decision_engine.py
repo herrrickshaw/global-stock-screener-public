@@ -175,6 +175,18 @@ def decide(
     tot = sum(w.values())
     composite = sum(comps[k] * (w[k] / tot) for k in w)
 
+    # delivery-% accumulation adjustment (smart-money): rising deliverable volume
+    # nudges the composite up, distribution nudges it down — applied before banding.
+    accum = _g(row, "accum_score")
+    accum_flag = None
+    if accum is not None:
+        if accum >= 1.15:
+            composite = _clamp(composite + 5)
+            accum_flag = "ACCUMULATION"
+        elif accum <= 0.8:
+            composite = _clamp(composite - 5)
+            accum_flag = "DISTRIBUTION"
+
     flags, reasons = [], []
     if is_impaired(row, pe, fundamentals, rec):
         pfh = _g(row, "PctFromHigh", 0.0)
@@ -206,6 +218,9 @@ def decide(
             reasons.append(f"quality {qual:.0f}/100")
         if rec < 45:
             flags.append("WEAK-RECOVERY")
+        if accum_flag:
+            flags.append(accum_flag)
+            reasons.append(f"delivery {accum_flag.lower()}")
 
     # promoter-pledge risk control (applies to any non-impaired signal): pledged
     # promoter shares are a governance/liquidation risk — flag, and veto a BUY at
