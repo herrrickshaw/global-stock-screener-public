@@ -13,6 +13,7 @@ python3 serving_layer.py --refresh          # rebuild materialised serving views
 python3 pipeline.py --all --sync            # CRUD: update filter-clearing watchlists (all markets)
 python3 pipeline.py --market IN --refresh   # deep-track promoted IN stocks (fundamentals)
 python3 daily_brief.py            # F-16: write results/daily_brief.md
+python3 morning_mailer.py         # assemble + send the morning mail (saves HTML if no creds)
 python3 market_memory.py --status
 python3 pipeline.py --status
 echo "=== done ==="

@@ -86,17 +86,13 @@ def write_brief(markets: Optional[List[str]] = None, verbose: bool = True) -> Pa
 
 
 def mail_brief(markets: Optional[List[str]] = None) -> bool:
-    """Email the brief via send_mailer if configured; returns True on send."""
-    text = build_brief(markets)
+    """Email the brief — delegates to the full morning mailer (correct send signature)."""
     try:
-        import send_mailer
+        import morning_mailer
 
-        if hasattr(send_mailer, "send"):
-            send_mailer.send(subject=f"Daily Market Brief {_dt.date.today()}", body=text)
-            return True
+        return morning_mailer.send(markets, verbose=False)
     except Exception:
-        pass
-    return False
+        return False
 
 
 def main() -> int:

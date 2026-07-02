@@ -53,7 +53,8 @@ others = yfinance. See `trendlyne_auth`, `sec_fundamentals`, `screener_in*`, `DA
 | Capability | Module | Run |
 |-----------|--------|-----|
 | Autonomous daily pipeline | `daily_memory.sh` | cron/launchd |
-| **Daily market brief** | `daily_brief` | `python daily_brief.py --mail` |
+| **Daily market brief** | `daily_brief` | `python daily_brief.py` |
+| **Daily morning mailer (brief+deltas+top BUYs)** | `morning_mailer` | `python morning_mailer.py` |
 | CRUD pipeline (filter-driven tiering) | `pipeline` | `python pipeline.py --sync` |
 | Initial-conditions bootstrap/health | `preflight` | `python preflight.py --ensure` |
 | Tamper-evidence (SHA-256 manifest) | `integrity` | `python integrity.py --verify` |

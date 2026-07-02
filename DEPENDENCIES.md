@@ -10,11 +10,12 @@ missed — treat §1/§2 (imports) as exact.
 
 | Module | Directly imported by (fix these if you change it) |
 |--------|----------------------------------------------------|
-| `auto_screener` | `pipeline`, `rl_trader`, `validation` |
+| `auto_screener` | `morning_mailer`, `pipeline`, `rl_trader`, `validation` |
 | `bhavcopy_history` | `screener_kit`, `universe_sources`, `update_bhavcopy_daily` |
 | `bhavcopy_store` | `bhavcopy_history`, `custom_screener`, `datalink`, `run`, `screener_kit`, `universe_sources`, `update_bhavcopy_daily` |
 | `build_mailer` | `run`, `send_mailer` |
 | `custom_screener` | `run_global_analysis`, `screener_kit` |
+| `daily_brief` | `morning_mailer` |
 | `data_sources` | `fetch_market_ohlc`, `market_memory`, `market_performance`, `screener_kit` |
 | `datalink` | `auto_screener`, `backtest`, `daily_brief`, `export_company_list`, `ml_supervised`, `pipeline`, `rl_trader`, `screen_metrics`, `screener_kit`, `serving_layer`, `update_bhavcopy_daily` |
 | `decision_engine` | `portfolio_evaluator` |
@@ -32,6 +33,7 @@ missed — treat §1/§2 (imports) as exact.
 | `market_memory` | `datalink`, `pipeline`, `preflight`, `screener_kit` |
 | `market_performance` | `build_mailer` |
 | `ml_supervised` | `auto_screener`, `rl_trader` |
+| `morning_mailer` | `daily_brief` |
 | `name_matcher` | `portfolio_evaluator` |
 | `portfolio_evaluator` | `watchlist_delta` |
 | `public_screens` | `validation` |
@@ -43,7 +45,7 @@ missed — treat §1/§2 (imports) as exact.
 | `screener_kit` | `india_public`, `liquidity`, `market_holidays`, `run`, `run_global_analysis` |
 | `sec_fundamentals` | `fundamental_metrics` |
 | `sector_map` | `auto_screener` |
-| `send_mailer` | `daily_brief` |
+| `send_mailer` | `morning_mailer` |
 | `serving_layer` | `auto_screener`, `daily_brief`, `export_company_list`, `fundamental_metrics`, `portfolio_evaluator`, `preflight`, `sector_map`, `validation`, `watchlist_delta` |
 | `sg_stock_daily_report` | `fetch_market_ohlc` |
 | `stock_utils` | `bhavcopy_history`, `build_market_seeds`, `data_sources`, `fetch_market_ohlc`, `market_data_cache`, `pattern_discovery`, `screener_kit` |
@@ -53,8 +55,9 @@ missed — treat §1/§2 (imports) as exact.
 | `trendlyne_auth` | `fundamental_metrics` |
 | `universe_sources` | `fetch_market_ohlc`, `ipo_monitor`, `market_memory` |
 | `validation` | `auto_screener`, `pipeline`, `portfolio_evaluator` |
+| `watchlist_delta` | `morning_mailer` |
 
-**Leaf modules** (nothing imports them — safe to change in isolation): `__init__`, `backlog`, `backtest`, `base`, `bluest_blue_chips`, `build_market_seeds`, `cash_conversion_cycle`, `coffee_can`, `daily_brief`, `darvas`, `debt_reduction`, `dep_map`, `dividend_yield`, `export_company_list`, `fetch_market_ohlc`, `flows_regime`, `garp`, `golden_crossover`, `governance`, `india_public`, `ipo_monitor`, `loss_to_profit`, `magic_formula`, `ml_signal_engine`, `partition_ltm`, `pattern_discovery`, `piotroski`, `pipeline`, `preflight`, `query`, `rl_trader`, `run`, `update_bhavcopy_daily`, `watchlist_delta`
+**Leaf modules** (nothing imports them — safe to change in isolation): `__init__`, `backlog`, `backtest`, `base`, `bluest_blue_chips`, `build_market_seeds`, `cash_conversion_cycle`, `coffee_can`, `darvas`, `debt_reduction`, `dep_map`, `dividend_yield`, `export_company_list`, `fetch_market_ohlc`, `flows_regime`, `garp`, `golden_crossover`, `governance`, `india_public`, `ipo_monitor`, `loss_to_profit`, `magic_formula`, `ml_signal_engine`, `partition_ltm`, `pattern_discovery`, `piotroski`, `pipeline`, `preflight`, `query`, `rl_trader`, `run`, `update_bhavcopy_daily`
 
 ## 2. Code — dependencies (what each module needs)
 
@@ -67,7 +70,7 @@ missed — treat §1/§2 (imports) as exact.
 | `build_mailer` | `liquidity`, `market_performance`, `run_global_analysis` |
 | `build_market_seeds` | `frames`, `stock_utils` |
 | `custom_screener` | `bhavcopy_store`, `strategies` |
-| `daily_brief` | `datalink`, `send_mailer`, `serving_layer` |
+| `daily_brief` | `datalink`, `morning_mailer`, `serving_layer` |
 | `data_sources` | `stock_utils` |
 | `datalink` | `bhavcopy_store`, `frames`, `liquidity`, `market_memory`, `screener_in` |
 | `export_company_list` | `datalink`, `serving_layer`, `symbol_master` |
@@ -83,6 +86,7 @@ missed — treat §1/§2 (imports) as exact.
 | `market_performance` | `data_sources` |
 | `ml_signal_engine` | `market_data_cache` |
 | `ml_supervised` | `datalink` |
+| `morning_mailer` | `auto_screener`, `daily_brief`, `send_mailer`, `watchlist_delta` |
 | `name_matcher` | `symbol_master` |
 | `pattern_discovery` | `stock_utils` |
 | `pipeline` | `auto_screener`, `datalink`, `fundamental_metrics`, `market_memory`, `screen_metrics`, `validation` |
