@@ -92,6 +92,12 @@ def known_good(market: str) -> set:
         good |= fundamental_anchor(market)
     except Exception:
         pass
+    # F-10: sector-boom gating (doc Layer-2 Track A) — fold in members of Early/Peak-
+    # Boom sectors so discovery is anchored to the market's leading sectors.
+    try:
+        good |= boom_sector_members(market)
+    except Exception:
+        pass
     if market == "IN":
         try:
             from datalink import ccc_map_cached
@@ -100,6 +106,39 @@ def known_good(market: str) -> set:
         except Exception:
             pass
     return good
+
+
+def boom_sectors(market: str) -> set:
+    """Sectors currently in Early/Peak Boom (from sector_map rotation), if a sector
+    map has been fetched; else empty."""
+    try:
+        import sector_map as sm
+
+        smap = sm.sector_map(market)
+        if not smap:
+            return set()
+        rot = sm.rotation(sl.serving(market), smap)
+        return (
+            set(rot[rot["Phase"].str.contains("Boom", na=False)]["Sector"])
+            if not rot.empty
+            else set()
+        )
+    except Exception:
+        return set()
+
+
+def boom_sector_members(market: str) -> set:
+    """Symbols whose sector is booming — the doc's 'only hunt in booming sectors'."""
+    try:
+        import sector_map as sm
+
+        booms = boom_sectors(market)
+        if not booms:
+            return set()
+        smap = sm.sector_map(market)
+        return {s for s, sec in smap.items() if sec in booms}
+    except Exception:
+        return set()
 
 
 def fundamental_anchor(market: str) -> set:

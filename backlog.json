@@ -139,7 +139,7 @@
     "time_criticality": 5,
     "risk": 5,
     "job_size": 5,
-    "status": "todo",
+    "status": "done",
     "epic": "ML"
   },
   {
@@ -205,7 +205,7 @@
     "time_criticality": 5,
     "risk": 2,
     "job_size": 3,
-    "status": "todo",
+    "status": "done",
     "epic": "Ops"
   },
   {

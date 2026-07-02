@@ -16,7 +16,7 @@ missed — treat §1/§2 (imports) as exact.
 | `build_mailer` | `run`, `send_mailer` |
 | `custom_screener` | `run_global_analysis`, `screener_kit` |
 | `data_sources` | `fetch_market_ohlc`, `market_memory`, `market_performance`, `screener_kit` |
-| `datalink` | `auto_screener`, `export_company_list`, `ml_supervised`, `pipeline`, `rl_trader`, `screen_metrics`, `screener_kit`, `serving_layer`, `update_bhavcopy_daily` |
+| `datalink` | `auto_screener`, `daily_brief`, `export_company_list`, `ml_supervised`, `pipeline`, `rl_trader`, `screen_metrics`, `screener_kit`, `serving_layer`, `update_bhavcopy_daily` |
 | `decision_engine` | `portfolio_evaluator` |
 | `delivery_signal` | `portfolio_evaluator` |
 | `frames` | `bhavcopy_history`, `bhavcopy_store`, `build_market_seeds`, `datalink`, `fetch_market_ohlc`, `market_memory`, `screener_kit`, `serving_layer` |
@@ -41,7 +41,9 @@ missed — treat §1/§2 (imports) as exact.
 | `screener_in_auth` | `fundamental_metrics` |
 | `screener_kit` | `india_public`, `liquidity`, `market_holidays`, `run`, `run_global_analysis` |
 | `sec_fundamentals` | `fundamental_metrics` |
-| `serving_layer` | `auto_screener`, `export_company_list`, `fundamental_metrics`, `portfolio_evaluator`, `preflight`, `sector_map`, `validation` |
+| `sector_map` | `auto_screener` |
+| `send_mailer` | `daily_brief` |
+| `serving_layer` | `auto_screener`, `daily_brief`, `export_company_list`, `fundamental_metrics`, `portfolio_evaluator`, `preflight`, `sector_map`, `validation` |
 | `sg_stock_daily_report` | `fetch_market_ohlc` |
 | `stock_utils` | `bhavcopy_history`, `build_market_seeds`, `data_sources`, `fetch_market_ohlc`, `market_data_cache`, `pattern_discovery`, `screener_kit` |
 | `strategies` | `custom_screener`, `run`, `run_global_analysis`, `screener_kit` |
@@ -51,18 +53,19 @@ missed — treat §1/§2 (imports) as exact.
 | `universe_sources` | `fetch_market_ohlc`, `ipo_monitor`, `market_memory` |
 | `validation` | `auto_screener`, `pipeline`, `portfolio_evaluator` |
 
-**Leaf modules** (nothing imports them — safe to change in isolation): `__init__`, `backlog`, `base`, `bluest_blue_chips`, `build_market_seeds`, `cash_conversion_cycle`, `coffee_can`, `darvas`, `debt_reduction`, `dep_map`, `dividend_yield`, `export_company_list`, `fetch_market_ohlc`, `garp`, `golden_crossover`, `governance`, `india_public`, `ipo_monitor`, `loss_to_profit`, `magic_formula`, `ml_signal_engine`, `partition_ltm`, `pattern_discovery`, `piotroski`, `pipeline`, `portfolio_evaluator`, `preflight`, `query`, `rl_trader`, `run`, `sector_map`, `send_mailer`, `update_bhavcopy_daily`
+**Leaf modules** (nothing imports them — safe to change in isolation): `__init__`, `backlog`, `base`, `bluest_blue_chips`, `build_market_seeds`, `cash_conversion_cycle`, `coffee_can`, `daily_brief`, `darvas`, `debt_reduction`, `dep_map`, `dividend_yield`, `export_company_list`, `fetch_market_ohlc`, `garp`, `golden_crossover`, `governance`, `india_public`, `ipo_monitor`, `loss_to_profit`, `magic_formula`, `ml_signal_engine`, `partition_ltm`, `pattern_discovery`, `piotroski`, `pipeline`, `portfolio_evaluator`, `preflight`, `query`, `rl_trader`, `run`, `update_bhavcopy_daily`
 
 ## 2. Code — dependencies (what each module needs)
 
 | Module | Imports (local) |
 |--------|-----------------|
-| `auto_screener` | `datalink`, `fundamental_metrics`, `ml_supervised`, `serving_layer`, `validation` |
+| `auto_screener` | `datalink`, `fundamental_metrics`, `ml_supervised`, `sector_map`, `serving_layer`, `validation` |
 | `bhavcopy_history` | `bhavcopy_store`, `frames`, `market_calendar`, `stock_utils` |
 | `bhavcopy_store` | `frames` |
 | `build_mailer` | `liquidity`, `market_performance`, `run_global_analysis` |
 | `build_market_seeds` | `frames`, `stock_utils` |
 | `custom_screener` | `bhavcopy_store`, `strategies` |
+| `daily_brief` | `datalink`, `send_mailer`, `serving_layer` |
 | `data_sources` | `stock_utils` |
 | `datalink` | `bhavcopy_store`, `frames`, `liquidity`, `market_memory`, `screener_in` |
 | `export_company_list` | `datalink`, `serving_layer`, `symbol_master` |
