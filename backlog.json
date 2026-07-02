@@ -161,7 +161,7 @@
     "time_criticality": 3,
     "risk": 8,
     "job_size": 8,
-    "status": "todo",
+    "status": "done",
     "epic": "Analytics"
   },
   {

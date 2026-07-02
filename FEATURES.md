@@ -33,6 +33,7 @@ Everything the system does, grouped, with the module and a one-line usage. See
 | Supervised forward-return classifier (L1) | `ml_supervised` | `python ml_supervised.py --market IN --train` |
 | Unsupervised discovery + RL correction (L2) | `auto_screener` | `python auto_screener.py --market IN` |
 | RL trade agent (L3) | `rl_trader` | `python rl_trader.py --market IN --train` |
+| **Walk-forward backtest (screen edge)** | `backtest` | `python backtest.py --market IN --all` |
 | **FII/DII + India-VIX regime** | `flows_regime` | `python flows_regime.py --fetch` |
 
 ## Investor tools
