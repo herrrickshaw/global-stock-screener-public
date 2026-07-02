@@ -62,7 +62,7 @@
     "time_criticality": 2,
     "risk": 3,
     "job_size": 5,
-    "status": "todo",
+    "status": "done",
     "epic": "Data quality"
   },
   {
@@ -150,7 +150,7 @@
     "time_criticality": 3,
     "risk": 3,
     "job_size": 8,
-    "status": "todo",
+    "status": "done",
     "epic": "Investor tools"
   },
   {
