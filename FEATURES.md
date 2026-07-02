@@ -34,6 +34,9 @@ Everything the system does, grouped, with the module and a one-line usage. See
 | Unsupervised discovery + RL correction (L2) | `auto_screener` | `python auto_screener.py --market IN` |
 | RL trade agent (L3) | `rl_trader` | `python rl_trader.py --market IN --train` |
 | **Walk-forward backtest (screen edge)** | `backtest` | `python backtest.py --market IN --all` |
+| **Fama-French factor attribution** | `factor_analysis` | `python factor_analysis.py --demo` |
+| **Deepen LTM history** | `deepen_ltm` | `python deepen_ltm.py --market US --years 5` |
+| **HTTP API surface** | `api` | `uvicorn api:app` |
 | **FII/DII + India-VIX regime** | `flows_regime` | `python flows_regime.py --fetch` |
 
 ## Investor tools

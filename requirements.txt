@@ -39,3 +39,5 @@ pytest>=8.0
 ruff>=0.6
 black>=24.0
 duckdb  # optional: SQL query layer (query.py)
+fastapi  # optional: HTTP API (api.py)
+uvicorn  # optional: ASGI server for api.py
