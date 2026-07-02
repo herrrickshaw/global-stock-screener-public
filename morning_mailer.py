@@ -24,6 +24,46 @@ warnings.filterwarnings("ignore")
 RESULTS = Path(__file__).parent / "results"
 RESULTS.mkdir(exist_ok=True)
 
+COMBINED_DIR = Path(__file__).parent / "combined_report_results"
+_MARKET_TITLES = {"IN": "🇮🇳 India", "US": "🇺🇸 United States"}
+
+
+def _latest_combined(market: str) -> Optional[Path]:
+    """Newest combined-report HTML fragment for a market, if daily_combined_report ran."""
+    if not COMBINED_DIR.is_dir():
+        return None
+    frags = sorted(COMBINED_DIR.glob(f"combined_{market}_*.html"))
+    return frags[-1] if frags else None
+
+
+def assemble_combined(markets: List[str]) -> Optional[Tuple[str, str, str]]:
+    """Old combined-report format: stitch per-market fundamentals + street-talk fragments.
+
+    Returns (subject, text, html), or None if no fragments are available (caller
+    then falls back to the brief format).
+    """
+    frags = [(m, _latest_combined(m)) for m in markets]
+    frags = [(m, f) for m, f in frags if f is not None]
+    if not frags:
+        return None
+
+    today = _dt.date.today().isoformat()
+    subject = f"📈 Daily Combined Report — {today}"
+
+    parts = [
+        "<html><body style='font-family:sans-serif;max-width:760px'>",
+        f"<h1>📈 Daily Combined Report — {today}</h1>",
+    ]
+    text_bits = [f"Daily Combined Report — {today}", ""]
+    for m, f in frags:
+        title = _MARKET_TITLES.get(m, m)
+        parts.append(f"<h2 style='border-top:2px solid #ccc;padding-top:8px'>{title}</h2>")
+        parts.append(f.read_text())
+        text_bits.append(f"{title} — see HTML view. (source: {f.name})")
+    parts.append("<p><i>Educational/research only. Not investment advice.</i></p></body></html>")
+    text_bits += ["", "Educational/research only. NOT investment advice."]
+    return subject, "\n".join(text_bits), "\n".join(parts)
+
 
 def _top_buys(market: str, n: int = 8) -> list:
     """Top BUY tickers for a market from the auto-screener recommendation."""
@@ -35,10 +75,20 @@ def _top_buys(market: str, n: int = 8) -> list:
         return []
 
 
-def assemble(markets: Optional[List[str]] = None) -> Tuple[str, str, str]:
-    """Return (subject, text, html) for the morning mail."""
+def assemble(markets: Optional[List[str]] = None, fmt: str = "combined") -> Tuple[str, str, str]:
+    """Return (subject, text, html) for the morning mail.
+
+    fmt="combined" (default) uses the daily_combined_report fragments when present,
+    matching the long-standing email layout; it falls back to the brief format if
+    no fragments exist. fmt="brief" always uses the compact brief format.
+    """
 
     markets = markets or ["IN", "US"]
+    if fmt == "combined":
+        combined = assemble_combined(markets)
+        if combined is not None:
+            return combined
+
     today = _dt.date.today().isoformat()
     subject = f"📈 Morning Market Brief — {today}"
 
@@ -125,8 +175,13 @@ def _md_to_html(md: str) -> str:
     return f"<html><body style='font-family:sans-serif'>{html}</body></html>"
 
 
-def send(markets: Optional[List[str]] = None, dry: bool = False, verbose: bool = True) -> bool:
-    subject, text, html = assemble(markets)
+def send(
+    markets: Optional[List[str]] = None,
+    dry: bool = False,
+    verbose: bool = True,
+    fmt: str = "combined",
+) -> bool:
+    subject, text, html = assemble(markets, fmt=fmt)
     (RESULTS / "morning_brief.html").write_text(html)
     (RESULTS / "morning_brief.md").write_text(text)
     if dry:
@@ -151,8 +206,14 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Daily morning market mailer")
     ap.add_argument("--market", nargs="*")
     ap.add_argument("--dry", action="store_true", help="build + save HTML, do not send")
+    ap.add_argument(
+        "--format",
+        choices=["combined", "brief"],
+        default="combined",
+        help="combined = daily_combined_report layout (default); brief = compact brief",
+    )
     args = ap.parse_args()
-    send(args.market, dry=args.dry)
+    send(args.market, dry=args.dry, fmt=args.format)
     return 0
 
 

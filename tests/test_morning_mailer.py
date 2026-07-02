@@ -16,10 +16,31 @@ def test_assemble_builds_subject_text_html(monkeypatch):
     import daily_brief as db
 
     monkeypatch.setattr(db, "build_brief", lambda markets: "# Daily Market Brief\nBull: IN")
-    subj, text, html = mm.assemble(["IN"])
+    subj, text, html = mm.assemble(["IN"], fmt="brief")
     assert "Morning Market Brief" in subj
     assert "Top BUY candidates" in text and "AAA, BBB" in text
     assert html.startswith("<html>") and "</html>" in html
+
+
+def test_assemble_combined_uses_fragments(tmp_path, monkeypatch):
+    monkeypatch.setattr(mm, "COMBINED_DIR", tmp_path)
+    (tmp_path / "combined_IN_20260101_0900.html").write_text("<h2>Picks</h2><b>RML</b>")
+    (tmp_path / "combined_IN_20260102_0900.html").write_text("<h2>Picks</h2><b>NEWER</b>")
+    subj, text, html = mm.assemble(["IN"], fmt="combined")
+    assert "Daily Combined Report" in subj
+    assert "🇮🇳 India" in html
+    assert "NEWER" in html and "RML" not in html  # newest fragment wins
+    assert "Not investment advice" in html
+
+
+def test_assemble_combined_falls_back_when_no_fragments(tmp_path, monkeypatch):
+    monkeypatch.setattr(mm, "COMBINED_DIR", tmp_path)  # empty → no fragments
+    monkeypatch.setattr(mm, "_top_buys", lambda m, n=8: [])
+    import daily_brief as db
+
+    monkeypatch.setattr(db, "build_brief", lambda markets: "# Brief")
+    subj, _text, _html = mm.assemble(["IN"], fmt="combined")
+    assert "Morning Market Brief" in subj  # fell back to brief format
 
 
 def test_send_dry_writes_files(tmp_path, monkeypatch):
