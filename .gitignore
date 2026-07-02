@@ -63,3 +63,7 @@ cache_seed/sectors/
 
 # year-partitioned LTM mirror (derived; rebuild with partition_ltm.py)
 cache_seed/ltm_parts/
+
+# F-01/F-13 derived caches (fetched/generated locally)
+cache_seed/flows/
+cache_seed/decision_snapshots/

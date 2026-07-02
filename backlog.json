@@ -7,7 +7,7 @@
     "time_criticality": 8,
     "risk": 8,
     "job_size": 8,
-    "status": "todo",
+    "status": "done",
     "epic": "Smart-money signals"
   },
   {
@@ -172,7 +172,7 @@
     "time_criticality": 5,
     "risk": 3,
     "job_size": 5,
-    "status": "todo",
+    "status": "done",
     "epic": "Ops"
   },
   {
