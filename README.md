@@ -77,6 +77,7 @@ and the LMDB store (round-trip on a temp cache).
 
 | Doc | What's inside |
 |-----|---------------|
+| `FEATURES.md` | **capability catalog — every feature + how to run it** |
 | `HOW_IT_WORKS.md` | step-by-step walk-through (bootstrap → screen → refresh → outputs) |
 | `SCREENER_ACCESS.md` | how to provide screener.in creds (env vars) for India fundamentals |
 | `DATA_SCHEMA_AND_ARCHITECTURE.md` | **full architecture map + data schemas (Mermaid diagrams)** |
