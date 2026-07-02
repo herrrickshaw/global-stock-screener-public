@@ -57,7 +57,7 @@ missed — treat §1/§2 (imports) as exact.
 | `validation` | `auto_screener`, `pipeline`, `portfolio_evaluator` |
 | `watchlist_delta` | `morning_mailer` |
 
-**Leaf modules** (nothing imports them — safe to change in isolation): `__init__`, `backlog`, `backtest`, `base`, `bluest_blue_chips`, `build_market_seeds`, `cash_conversion_cycle`, `coffee_can`, `darvas`, `debt_reduction`, `dep_map`, `dividend_yield`, `export_company_list`, `fetch_market_ohlc`, `flows_regime`, `garp`, `golden_crossover`, `governance`, `india_public`, `ipo_monitor`, `loss_to_profit`, `magic_formula`, `ml_signal_engine`, `partition_ltm`, `pattern_discovery`, `piotroski`, `pipeline`, `portfolio_analytics`, `preflight`, `query`, `rl_trader`, `run`, `total_return`, `update_bhavcopy_daily`
+**Leaf modules** (nothing imports them — safe to change in isolation): `__init__`, `backlog`, `backtest`, `base`, `bluest_blue_chips`, `build_market_seeds`, `cash_conversion_cycle`, `coffee_can`, `consistency`, `darvas`, `debt_reduction`, `dep_map`, `dividend_yield`, `export_company_list`, `fetch_market_ohlc`, `flows_regime`, `garp`, `golden_crossover`, `governance`, `india_public`, `ipo_monitor`, `loss_to_profit`, `magic_formula`, `ml_signal_engine`, `partition_ltm`, `pattern_discovery`, `piotroski`, `pipeline`, `portfolio_analytics`, `preflight`, `query`, `results_calendar`, `rl_trader`, `run`, `smart_holdings`, `total_return`, `update_bhavcopy_daily`
 
 ## 2. Code — dependencies (what each module needs)
 

@@ -183,7 +183,7 @@
     "time_criticality": 3,
     "risk": 3,
     "job_size": 8,
-    "status": "todo",
+    "status": "done",
     "epic": "Fundamentals depth"
   },
   {
@@ -194,7 +194,7 @@
     "time_criticality": 5,
     "risk": 3,
     "job_size": 5,
-    "status": "todo",
+    "status": "done",
     "epic": "Data breadth"
   },
   {
@@ -227,7 +227,7 @@
     "time_criticality": 3,
     "risk": 3,
     "job_size": 5,
-    "status": "todo",
+    "status": "done",
     "epic": "Smart-money signals"
   }
 ]
