@@ -1,0 +1,123 @@
+[
+  {
+    "id": "F-01",
+    "type": "Feature",
+    "title": "FII/DII flows + India VIX regime signal",
+    "value": 13,
+    "time_criticality": 8,
+    "risk": 8,
+    "job_size": 8,
+    "status": "todo",
+    "epic": "Smart-money signals"
+  },
+  {
+    "id": "F-02",
+    "type": "Feature",
+    "title": "Map 45 NO-DATA delisted/renamed tickers",
+    "value": 8,
+    "time_criticality": 5,
+    "risk": 3,
+    "job_size": 3,
+    "status": "todo",
+    "epic": "Data quality"
+  },
+  {
+    "id": "F-03",
+    "type": "Feature",
+    "title": "Clamp absurd P/E (near-zero EPS) in decision engine",
+    "value": 5,
+    "time_criticality": 5,
+    "risk": 5,
+    "job_size": 1,
+    "status": "todo",
+    "epic": "Data quality"
+  },
+  {
+    "id": "F-04",
+    "type": "Feature",
+    "title": "Trendlyne DVM scores + promoter pledge into decision factors",
+    "value": 13,
+    "time_criticality": 5,
+    "risk": 5,
+    "job_size": 5,
+    "status": "todo",
+    "epic": "Fundamentals depth"
+  },
+  {
+    "id": "F-05",
+    "type": "Feature",
+    "title": "Deepen thin LTMs past 252 bars (full 1y momentum)",
+    "value": 8,
+    "time_criticality": 3,
+    "risk": 3,
+    "job_size": 5,
+    "status": "todo",
+    "epic": "Data depth"
+  },
+  {
+    "id": "F-06",
+    "type": "Feature",
+    "title": "Dividend/split-adjusted total-return series",
+    "value": 8,
+    "time_criticality": 2,
+    "risk": 3,
+    "job_size": 5,
+    "status": "todo",
+    "epic": "Data quality"
+  },
+  {
+    "id": "F-07",
+    "type": "Feature",
+    "title": "Factor regressions (Fama-French) attribution",
+    "value": 8,
+    "time_criticality": 2,
+    "risk": 2,
+    "job_size": 8,
+    "status": "todo",
+    "epic": "Analytics"
+  },
+  {
+    "id": "F-08",
+    "type": "Feature",
+    "title": "PPO/SB3 upgrade path for the RL trade agent",
+    "value": 5,
+    "time_criticality": 1,
+    "risk": 2,
+    "job_size": 13,
+    "status": "todo",
+    "epic": "ML"
+  },
+  {
+    "id": "F-D1",
+    "type": "Feature",
+    "title": "Delivery-% accumulation signal",
+    "value": 13,
+    "time_criticality": 8,
+    "risk": 8,
+    "job_size": 5,
+    "status": "done",
+    "epic": "Smart-money signals"
+  },
+  {
+    "id": "F-D2",
+    "type": "Feature",
+    "title": "Sector classification + rotation",
+    "value": 13,
+    "time_criticality": 5,
+    "risk": 5,
+    "job_size": 5,
+    "status": "done",
+    "epic": "Analytics"
+  },
+  {
+    "id": "F-D3",
+    "type": "Feature",
+    "title": "Trendlyne fundamentals source (P/E, ROE, +)",
+    "value": 13,
+    "time_criticality": 8,
+    "risk": 5,
+    "job_size": 5,
+    "status": "done",
+    "epic": "Fundamentals depth"
+  }
+]
