@@ -52,7 +52,67 @@ def _fetch_one(market: str, sym: str) -> dict:
             return company_financials(sym) or {}
         except Exception:
             return {}
-    return {}
+    # all other markets → yfinance .info (trailing P/E, ROE, debt, growth)
+    return _yf_fundamentals(market, sym)
+
+
+# yfinance suffix per market (query the right symbol)
+_YF_SUFFIX = {
+    "JP": ".T",
+    "KR": ".KS",
+    "CN": ".SS",
+    "SG": ".SI",
+    "EU": ".PA",
+    "HK": ".HK",
+    "TW": ".TW",
+    "CA": ".TO",
+    "AU": ".AX",
+    "UK": ".L",
+    "DE": ".DE",
+    "SA": ".SR",
+    "BR": ".SA",
+    "CH": ".SW",
+    "ZA": ".JO",
+    "SE": ".ST",
+    "FI": ".HE",
+    "DK": ".CO",
+}
+
+
+def _yf_fundamentals(market: str, sym: str) -> dict:
+    """Fundamentals from yfinance .info for a Yahoo-covered market. Maps to the same
+    keys the decision engine / P/E logic expect (pe, roe, debt_to_equity, …)."""
+    try:
+        import yfinance as yf
+
+        info = yf.Ticker(f"{sym}{_YF_SUFFIX.get(market, '')}").info
+    except Exception:
+        return {}
+    if not info:
+        return {}
+
+    def g(*keys):
+        for k in keys:
+            v = info.get(k)
+            if v not in (None, "") and not (isinstance(v, float) and v != v):
+                return v
+        return None
+
+    roe = g("returnOnEquity")
+    de = g("debtToEquity")
+    out = {
+        "source": "yfinance",
+        "pe": g("trailingPE", "forwardPE"),
+        "roe": roe * 100 if isinstance(roe, (int, float)) else None,
+        "debt_to_equity": de / 100 if isinstance(de, (int, float)) and de > 5 else de,
+        "net_income": g("netIncomeToCommon"),
+        "revenue": g("totalRevenue"),
+        "eps_ttm": g("trailingEps"),
+        "market_cap": g("marketCap"),
+        "gross_margin": (g("grossMargins") or 0) * 100 if g("grossMargins") else None,
+        "profit_growth": (g("earningsGrowth") or 0) * 100 if g("earningsGrowth") else None,
+    }
+    return {k: v for k, v in out.items() if v is not None}
 
 
 def _liquid_symbols(market: str, n: int) -> List[str]:
