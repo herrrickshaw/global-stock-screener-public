@@ -56,6 +56,11 @@ _TITLE_MAP = [
     ("current ratio", "current_ratio"),
     ("promoter holding", "promoter_holding"),
     ("pledge", "promoter_pledge"),
+    # Trendlyne DVM proprietary scores (0–100)
+    ("durability score", "dvm_durability"),
+    ("durability", "dvm_durability"),
+    ("valuation score", "dvm_valuation"),
+    ("momentum score", "dvm_momentum"),
 ]
 
 

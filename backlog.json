@@ -40,7 +40,7 @@
     "time_criticality": 5,
     "risk": 5,
     "job_size": 5,
-    "status": "todo",
+    "status": "done",
     "epic": "Fundamentals depth"
   },
   {

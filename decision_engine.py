@@ -70,6 +70,10 @@ def momentum_score(row: dict) -> float:
     s += _clamp(r63 / 3, -12, 12)  # 3mo return
     pfh = _g(row, "PctFromHigh", -50.0)  # closer to 52w high = stronger
     s += _clamp((pfh + 20) / 2, -15, 12)
+    # blend Trendlyne DVM Momentum score (0–100) when supplied on the row
+    dvm_m = _g(row, "dvm_momentum")
+    if dvm_m is not None:
+        s = 0.6 * s + 0.4 * _clamp(dvm_m)
     return _clamp(s)
 
 
@@ -96,6 +100,11 @@ def quality_score(fund: Optional[dict]) -> Optional[float]:
     pg = _g(fund, "profit_growth")
     if pg is not None:
         s += _clamp(50 + pg, 0, 100)
+        n += 1
+    # Trendlyne DVM Durability score (0–100) is a ready-made quality gauge
+    dur = _g(fund, "dvm_durability")
+    if dur is not None:
+        s += _clamp(dur)
         n += 1
     return _clamp(s / n) if n else None
 
@@ -151,6 +160,10 @@ WEIGHTS = {"valuation": 0.35, "momentum": 0.30, "quality": 0.20, "recovery": 0.1
 def decide(
     row: dict, pe: Optional[float], med_pe: float = 20.0, fundamentals: Optional[dict] = None
 ) -> dict:
+    fund = fundamentals or {}
+    # surface Trendlyne DVM Momentum onto the row so momentum_score can blend it
+    if _g(fund, "dvm_momentum") is not None and _g(row, "dvm_momentum") is None:
+        row = {**row, "dvm_momentum": fund["dvm_momentum"]}
     val = valuation_score(pe, med_pe)
     mom = momentum_score(row)
     qual = quality_score(fundamentals)
@@ -193,6 +206,16 @@ def decide(
             reasons.append(f"quality {qual:.0f}/100")
         if rec < 45:
             flags.append("WEAK-RECOVERY")
+
+    # promoter-pledge risk control (applies to any non-impaired signal): pledged
+    # promoter shares are a governance/liquidation risk — flag, and veto a BUY at
+    # high pledge (a cheap stock with heavily-pledged promoters is a value trap risk).
+    pledge = _g(fund, "promoter_pledge")
+    if pledge is not None and pledge > 25:
+        flags.append(f"PLEDGE-{int(pledge)}%")
+        if signal == "BUY" and pledge > 50:
+            signal = "HOLD"
+            reasons.append(f"high promoter pledge {pledge:.0f}% — de-risked BUY→HOLD")
 
     return {
         "signal": signal,
