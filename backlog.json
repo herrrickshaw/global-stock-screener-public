@@ -18,7 +18,7 @@
     "time_criticality": 5,
     "risk": 3,
     "job_size": 3,
-    "status": "todo",
+    "status": "done",
     "epic": "Data quality"
   },
   {
@@ -29,7 +29,7 @@
     "time_criticality": 5,
     "risk": 5,
     "job_size": 1,
-    "status": "todo",
+    "status": "done",
     "epic": "Data quality"
   },
   {

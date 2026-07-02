@@ -96,16 +96,29 @@ def _fundamentals(market: str) -> pd.DataFrame:
     return pd.read_parquet(p) if p.exists() else pd.DataFrame()
 
 
+P_E_MAX = 1000.0  # above this a P/E is a data artifact (near-zero EPS), not a valuation
+
+
+def _sane_pe(pe: Optional[float]) -> Optional[float]:
+    """Discard implausible P/E (>1000 from near-zero EPS) so it doesn't pollute the
+    median or the valuation factor; loss-making (<=0) is left for the engine to flag."""
+    if pe is None:
+        return None
+    return pe if -0.0 <= pe <= P_E_MAX or pe < 0 else None
+
+
 def _pe_of(r: dict, price: Optional[float]) -> Optional[float]:
     """P/E from one fundamentals record: stored ratio, else price/EPS, else mcap/NI."""
     for key in ("pe", "P/E", "pe_ttm"):
         v = r.get(key)
         if v not in (None, 0, "") and pd.notna(v):
-            return round(float(v), 1)
+            return _sane_pe(round(float(v), 1))
     if r.get("eps_ttm") and price:
-        return round(price / r["eps_ttm"], 1) if r["eps_ttm"] else None
+        return _sane_pe(round(price / r["eps_ttm"], 1)) if r["eps_ttm"] else None
     if r.get("net_income") and r.get("shares") and price:
-        return round(price * r["shares"] / r["net_income"], 1) if r["net_income"] else None
+        return (
+            _sane_pe(round(price * r["shares"] / r["net_income"], 1)) if r["net_income"] else None
+        )
     return None
 
 
@@ -207,6 +220,14 @@ def evaluate(
     tickers: List[str], market: str = "IN", fetch: bool = True, verbose: bool = True
 ) -> pd.DataFrame:
     from decision_engine import decide
+
+    # remap old/delisted/renamed tickers to their current symbol (e.g. ZOMATO→ETERNAL)
+    try:
+        from ticker_aliases import apply_aliases
+
+        tickers = apply_aliases(tickers)
+    except Exception:
+        pass
 
     serving = sl.serving(market)
     if serving.empty:

@@ -45,6 +45,7 @@ missed — treat §1/§2 (imports) as exact.
 | `stock_utils` | `bhavcopy_history`, `build_market_seeds`, `data_sources`, `fetch_market_ohlc`, `market_data_cache`, `pattern_discovery`, `screener_kit` |
 | `strategies` | `custom_screener`, `run`, `run_global_analysis`, `screener_kit` |
 | `symbol_master` | `export_company_list`, `name_matcher` |
+| `ticker_aliases` | `portfolio_evaluator` |
 | `trendlyne_auth` | `fundamental_metrics` |
 | `universe_sources` | `fetch_market_ohlc`, `ipo_monitor`, `market_memory` |
 | `validation` | `auto_screener`, `pipeline`, `portfolio_evaluator` |
@@ -79,7 +80,7 @@ missed — treat §1/§2 (imports) as exact.
 | `name_matcher` | `symbol_master` |
 | `pattern_discovery` | `stock_utils` |
 | `pipeline` | `auto_screener`, `datalink`, `fundamental_metrics`, `market_memory`, `screen_metrics`, `validation` |
-| `portfolio_evaluator` | `decision_engine`, `fundamental_metrics`, `name_matcher`, `screen_metrics`, `serving_layer`, `validation` |
+| `portfolio_evaluator` | `decision_engine`, `fundamental_metrics`, `name_matcher`, `screen_metrics`, `serving_layer`, `ticker_aliases`, `validation` |
 | `preflight` | `market_memory`, `serving_layer` |
 | `public_screens` | `screener_in` |
 | `rl_trader` | `auto_screener`, `datalink`, `ml_supervised` |
