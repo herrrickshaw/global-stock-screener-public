@@ -80,6 +80,7 @@ and the LMDB store (round-trip on a temp cache).
 | `HOW_IT_WORKS.md` | step-by-step walk-through (bootstrap → screen → refresh → outputs) |
 | `SCREENER_ACCESS.md` | how to provide screener.in creds (env vars) for India fundamentals |
 | `DATA_SCHEMA_AND_ARCHITECTURE.md` | **full architecture map + data schemas (Mermaid diagrams)** |
+| `TOGAF.md` / `governance.py` | **TOGAF EA alignment** (principles, ADM map) + executable governance check |
 | `ARCHITECTURE.md` | layered diagram, request→result flow, data schemas |
 | `MEMORY_ARCHITECTURE.md` / `DATA_LINKAGE.md` / `AUTO_SCREENER.md` | tiered memory, linkage layer, ML/auto-screener |
 | `DATA_AND_MODULES.md` | every data source + a one-line purpose for each module |

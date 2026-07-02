@@ -23,6 +23,7 @@ missed — treat §1/§2 (imports) as exact.
 | `full_japan_market_scan` | `universe_sources` |
 | `full_korea_market_scan` | `universe_sources` |
 | `fundamental_metrics` | `auto_screener`, `pipeline`, `portfolio_evaluator` |
+| `integrity` | `governance` |
 | `liquidity` | `build_mailer`, `datalink`, `india_public`, `screen_metrics`, `screener_kit`, `serving_layer` |
 | `market_calendar` | `bhavcopy_history`, `market_holidays` |
 | `market_data_cache` | `ml_signal_engine` |
@@ -48,7 +49,7 @@ missed — treat §1/§2 (imports) as exact.
 | `universe_sources` | `fetch_market_ohlc`, `ipo_monitor`, `market_memory` |
 | `validation` | `auto_screener`, `pipeline`, `portfolio_evaluator` |
 
-**Leaf modules** (nothing imports them — safe to change in isolation): `__init__`, `base`, `bluest_blue_chips`, `build_market_seeds`, `cash_conversion_cycle`, `coffee_can`, `darvas`, `debt_reduction`, `delivery_signal`, `dep_map`, `dividend_yield`, `export_company_list`, `fetch_market_ohlc`, `garp`, `golden_crossover`, `india_public`, `integrity`, `ipo_monitor`, `loss_to_profit`, `magic_formula`, `ml_signal_engine`, `partition_ltm`, `pattern_discovery`, `piotroski`, `pipeline`, `portfolio_evaluator`, `preflight`, `query`, `rl_trader`, `run`, `sector_map`, `send_mailer`, `update_bhavcopy_daily`
+**Leaf modules** (nothing imports them — safe to change in isolation): `__init__`, `base`, `bluest_blue_chips`, `build_market_seeds`, `cash_conversion_cycle`, `coffee_can`, `darvas`, `debt_reduction`, `delivery_signal`, `dep_map`, `dividend_yield`, `export_company_list`, `fetch_market_ohlc`, `garp`, `golden_crossover`, `governance`, `india_public`, `ipo_monitor`, `loss_to_profit`, `magic_formula`, `ml_signal_engine`, `partition_ltm`, `pattern_discovery`, `piotroski`, `pipeline`, `portfolio_evaluator`, `preflight`, `query`, `rl_trader`, `run`, `sector_map`, `send_mailer`, `update_bhavcopy_daily`
 
 ## 2. Code — dependencies (what each module needs)
 
@@ -65,6 +66,7 @@ missed — treat §1/§2 (imports) as exact.
 | `export_company_list` | `datalink`, `serving_layer`, `symbol_master` |
 | `fetch_market_ohlc` | `data_sources`, `frames`, `full_european_market_scan`, `sg_stock_daily_report`, `stock_utils`, `universe_sources` |
 | `fundamental_metrics` | `screener_in_auth`, `sec_fundamentals`, `serving_layer`, `trendlyne_auth` |
+| `governance` | `integrity` |
 | `india_public` | `liquidity`, `screener_in`, `screener_kit` |
 | `ipo_monitor` | `universe_sources` |
 | `liquidity` | `screener_kit` |
@@ -104,7 +106,7 @@ missed — treat §1/§2 (imports) as exact.
 | company list | `export_company_list` | `name_matcher` |
 | data manifest | `datalink` | `datalink` |
 | discovered screens | `auto_screener` | — |
-| integrity manifest | `integrity` | `integrity` |
+| integrity manifest | `integrity` | `governance`, `integrity` |
 | liquidity index | `liquidity` | `liquidity` |
 | market performance | `market_performance` | `market_performance` |
 | pipeline registry | `pipeline` | `pipeline` |
