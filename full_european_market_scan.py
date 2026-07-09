@@ -21,7 +21,9 @@
 #   pip install yfinance pandas openpyxl requests
 
 import argparse
+import os
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
@@ -201,6 +203,32 @@ def compute_darvas_box(df: pd.DataFrame, confirm: int = DARVAS_CONFIRM) -> dict:
 
 
 # ── Fundamental Scan ──────────────────────────────────────────────────────────
+_EMERG_FUND = {"mod": None, "checked": False}
+
+
+def _emerging_fundamentals(symbol: str):
+    """Pull statements from a keyed provider (FMP/Twelve Data) for tickers
+    yfinance can't serve. Returns a res-compatible dict or None (no key/no data).
+    Only attempted for exchanges Yahoo lacks statements for, to save quota."""
+    if not str(symbol).upper().endswith((".IS", ".PR", ".BD")):
+        return None
+    if not _EMERG_FUND["checked"]:
+        _EMERG_FUND["checked"] = True
+        try:
+            import emerging_fundamentals as ef
+
+            _EMERG_FUND["mod"] = ef if ef.available_source() else None
+        except Exception:
+            _EMERG_FUND["mod"] = None
+    ef = _EMERG_FUND["mod"]
+    if ef is None:
+        return None
+    try:
+        return ef.get_fundamentals(symbol)
+    except Exception:
+        return None
+
+
 def fundamental_scan(symbol: str) -> dict:
     """Fetch financials and execute F-Score, Coffee Can, and PEGY calculations in one Ticker call."""
     res = {"symbol": symbol, "f_score": None, "cc_qualifies": "FAIL", "error": None}
@@ -217,6 +245,14 @@ def fundamental_scan(symbol: str) -> dict:
             pass
 
         if inc is None or inc.empty:
+            # yfinance has no statements for this market (Istanbul/Prague/Budapest
+            # and other emerging tickers). Fall back to a keyed fundamentals
+            # provider (FMP / Twelve Data) if one is configured; otherwise keep
+            # the momentum-only behaviour.
+            alt = _emerging_fundamentals(symbol)
+            if alt is not None:
+                res.update(alt)
+                return res
             res["error"] = "no_financial_statements"
             return res
     except Exception as e:
@@ -331,6 +367,7 @@ def fundamental_scan(symbol: str) -> dict:
         dy = (dy_raw if dy_raw >= 0.15 else dy_raw * 100) if dy_raw is not None else 0.0
         pegy = float(peg) + dy if peg is not None else None
 
+        res["sector"] = info.get("sector")
         res.update(
             {
                 "market_cap_b": round(mcap / 1e9, 2) if mcap else None,
@@ -428,31 +465,122 @@ def style_excel_sheet(ws):
 
 
 # ── Main Scanner ──────────────────────────────────────────────────────────────
+def load_universe(path):
+    """Load a broad European universe CSV (yf_ticker,name,index,exchange) into
+    an ordered {ticker: (name, sector_or_exchange)} meta dict."""
+    df = pd.read_csv(os.path.expanduser(path))
+    tcol = "yf_ticker" if "yf_ticker" in df.columns else df.columns[0]
+    ncol = "name" if "name" in df.columns else (df.columns[1] if len(df.columns) > 1 else tcol)
+    xcol = "exchange" if "exchange" in df.columns else None
+    meta = {}
+    for _, r in df.iterrows():
+        t = str(r[tcol]).strip()
+        if not t or t.lower() == "nan":
+            continue
+        # Sector is unknown from index lists → seed with exchange; enriched from
+        # yfinance .info during the fundamental stage where available.
+        meta[t] = (str(r[ncol]), str(r[xcol]) if xcol else "—")
+    return meta
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Optimized Euro Stoxx 50 Scanner")
+    parser = argparse.ArgumentParser(
+        description="European market scanner (Darvas + Piotroski + Coffee Can)"
+    )
     parser.add_argument("--top", type=int, default=0, help="Scan only first N tickers")
     parser.add_argument(
         "--no-scans", action="store_true", default=False, help="Skip Stage 4 fundamental scans"
     )
+    parser.add_argument(
+        "--universe",
+        default=None,
+        help="CSV of a broad universe (yf_ticker,name,index,exchange). Default: EURO STOXX 50.",
+    )
+    parser.add_argument("--label", default=None, help="Scan label used in the output filename.")
+    parser.add_argument(
+        "--batch", type=int, default=120, help="OHLC download batch size (default 120)."
+    )
     args = parser.parse_args()
 
-    symbols = list(EURO_STOXX_50_META.keys())
+    if args.universe:
+        meta = load_universe(args.universe)
+        label = args.label or "european_broad"
+    else:
+        meta = dict(EURO_STOXX_50_META)
+        label = args.label or "european"
+    symbols = list(meta.keys())
     if args.top:
         symbols = symbols[: args.top]
 
     print(f"\n{'#'*60}")
-    print("  OPTIMIZED EURO STOXX 50 SCANNER")
+    print(f"  EUROPEAN MARKET SCANNER — {label}  ({len(symbols)} tickers)")
     print(f"  Started: {datetime.now().strftime('%d %b %Y  %H:%M:%S')}")
+    try:
+        import emerging_fundamentals as _ef
+
+        _src = _ef.available_source()
+        print(
+            f"  Emerging-market fundamentals (.IS/.PR/.BD): "
+            f"{_src + ' active' if _src else 'no provider key set (FMP_API_KEY / TWELVEDATA_KEY) — momentum-only'}"
+        )
+    except Exception:
+        pass
     print(f"{'#'*60}")
 
-    # Stage 1 & 2: Bulk OHLC download (1 request for all 50 tickers - extremely fast)
-    print(f"\nStage 1 & 2 — Bulk downloading 1y history for {len(symbols)} stocks …")
-    try:
-        raw_ohlc = yf.download(
-            symbols, period="1y", group_by="ticker", auto_adjust=True, threads=True, progress=False
+    # Stage 1 & 2: Batched OHLC download (chunked so ~1000-ticker universes don't
+    # overload a single yfinance request). threads=True fires one connection per
+    # ticker in the chunk almost simultaneously, which trips Yahoo's burst rate
+    # limiter on chunks much above ~20-30 -- back off and retry once on a
+    # rate-limit-shaped error, and pause briefly between chunks either way.
+    print(
+        f"\nStage 1 & 2 — Downloading 1y history for {len(symbols)} stocks in batches of {args.batch} …"
+    )
+    ohlc_by_sym = {}
+    for i in range(0, len(symbols), args.batch):
+        chunk = symbols[i : i + args.batch]
+        raw = None
+        for attempt in range(2):
+            try:
+                raw = yf.download(
+                    chunk,
+                    period="1y",
+                    group_by="ticker",
+                    auto_adjust=True,
+                    threads=True,
+                    progress=False,
+                )
+                break
+            except Exception as e:
+                msg = str(e)
+                rate_limited = "Rate limited" in msg or "Too Many Requests" in msg
+                if rate_limited and attempt == 0:
+                    print(
+                        f"    ⏳ batch {i//args.batch+1} rate-limited; backing off 20s and retrying …"
+                    )
+                    time.sleep(20)
+                    continue
+                print(f"    ⚠️  batch {i//args.batch+1} download failed ({msg[:60]}); skipping.")
+        if raw is None or raw.empty:
+            time.sleep(2)
+            continue
+        multi = isinstance(raw.columns, pd.MultiIndex)
+        for s in chunk:
+            try:
+                sub = (
+                    raw[s]
+                    if (multi and s in raw.columns.get_level_values(0))
+                    else (raw if (not multi and len(chunk) == 1) else None)
+                )
+                if sub is not None and not sub.dropna().empty:
+                    ohlc_by_sym[s] = sub.dropna()
+            except Exception:
+                continue
+        time.sleep(2)
+        print(
+            f"    batch {i//args.batch+1}/{(len(symbols)-1)//args.batch+1} — {len(ohlc_by_sym)} tickers with data so far"
         )
-    except Exception as e:
-        sys.exit(f"❌ Failed to download bulk OHLC data: {e}")
+    if not ohlc_by_sym:
+        sys.exit("❌ No OHLC data downloaded for any ticker.")
 
     # Stage 3: Technical Scan (Local pandas math - instant)
     print("\nStage 3 — Computing Darvas Box & 200-day MA Trend locally …")
@@ -461,12 +589,8 @@ def main():
 
     for sym in symbols:
         try:
-            df = (
-                raw_ohlc[sym].dropna()
-                if isinstance(raw_ohlc.columns, pd.MultiIndex)
-                else raw_ohlc.dropna()
-            )
-            if df.empty or len(df) < 20:
+            df = ohlc_by_sym.get(sym)
+            if df is None or df.empty or len(df) < 20:
                 continue
 
             closes = pd.to_numeric(df["Close"], errors="coerce").dropna()
@@ -489,7 +613,7 @@ def main():
 
             # Darvas Box
             darv = compute_darvas_box(df)
-            name, sector = EURO_STOXX_50_META.get(sym, (sym, "—"))
+            name, sector = meta.get(sym, (sym, "—"))
 
             all_stocks_map[sym] = {
                 "Symbol": sym,
@@ -543,7 +667,7 @@ def main():
                     fund_row = {
                         "Symbol": sym,
                         "Name": tech.get("Name"),
-                        "Sector": tech.get("Sector"),
+                        "Sector": res.get("sector") or tech.get("Sector"),
                         "LTP": tech.get("LTP"),
                         "Change%": tech.get("Change%"),
                         "Darvas_Signal": tech.get("Darvas_Signal"),
@@ -598,7 +722,10 @@ def main():
     ]
 
     date_str = datetime.today().strftime("%Y%m%d_%H%M")
-    excel_path = DOWNLOAD_DIR / f"european_market_scan_{date_str}.xlsx"
+    fname = (
+        "european_market_scan" if label in ("european", None) else f"european_market_scan_{label}"
+    )
+    excel_path = DOWNLOAD_DIR / f"{fname}_{date_str}.xlsx"
 
     with pd.ExcelWriter(excel_path, engine="openpyxl") as writer:
 
