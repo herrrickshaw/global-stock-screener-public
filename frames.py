@@ -44,7 +44,14 @@ def to_long(hist: Dict[str, pd.DataFrame]) -> pd.DataFrame:
         parts.append(g)
     if not parts:
         return pd.DataFrame(columns=["Date", *OHLCV, "Symbol"])
-    return pd.concat(parts, ignore_index=True).sort_values(["Symbol", "Date"])
+    out = pd.concat(parts, ignore_index=True).sort_values(["Symbol", "Date"])
+    # downcast Volume int64 → int32 when it fits (halves the column); safe fallback
+    try:
+        if out["Volume"].abs().max() <= 2_147_483_647:
+            out["Volume"] = out["Volume"].astype("int32")
+    except Exception:
+        pass
+    return out
 
 
 def write_seed(hist: Dict[str, pd.DataFrame], path: Path, level: int = 9) -> int:
@@ -61,3 +68,25 @@ def read_seed(path: Path, min_bars: int = 1) -> Dict[str, pd.DataFrame]:
     """Read a seed parquet back into {symbol: OHLCV df}."""
     p = Path(path)
     return long_to_dict(pd.read_parquet(p), min_bars) if p.exists() else {}
+
+
+def recompress_seed(path) -> dict:
+    """Re-read a seed and rewrite it with current dtypes (float32/int32) + zstd-9.
+    Returns {before, after, saved_pct}. Safe/idempotent."""
+    from pathlib import Path as _P
+
+    p = _P(path)
+    if not p.exists():
+        return {"path": str(p), "error": "missing"}
+    before = p.stat().st_size
+    hist = read_seed(p)
+    if not hist:
+        return {"path": str(p), "error": "empty"}
+    write_seed(hist, p)
+    after = p.stat().st_size
+    return {
+        "path": p.name,
+        "before_mb": round(before / 1e6, 1),
+        "after_mb": round(after / 1e6, 1),
+        "saved_pct": round(100 * (before - after) / before, 1) if before else 0.0,
+    }

@@ -46,7 +46,7 @@ SEED_DIR = Path(__file__).parent / "cache_seed"
 LTM_DIR = SEED_DIR / "ltm"
 LTM_DIR.mkdir(parents=True, exist_ok=True)
 
-LTM_YEARS = 5  # long-term memory window
+LTM_YEARS = 10  # long-term memory window (widened for deep backtest history)
 STM_YEARS = 1  # short-term (hot) window
 
 MARKETS = [
@@ -154,12 +154,28 @@ def ensure_stm_seeds(
 
 
 def commit(market: str, new_long: pd.DataFrame, verbose: bool = True) -> dict:
-    """The write half of every operation: upsert new_long into LTM, evict past
-    5y, persist LTM, then re-derive the 1y STM. Returns per-tier row counts."""
+    """The write half of every operation: upsert new_long into LTM, evict past the
+    LTM window, persist LTM, then re-derive the 1y STM. Every write passes the
+    MANDATORY ingest_gate (dedup + compact dtypes + size report + VCRUD audit)."""
     ltm = _upsert(_read_long(_ltm_path(market)), new_long)
     ltm = _evict(ltm, LTM_YEARS)
+    # ── mandatory ingestion gate (best-effort import so the core never hard-breaks)
+    before_bytes = _ltm_path(market).stat().st_size if _ltm_path(market).exists() else 0
+    try:
+        import ingest_gate
+
+        ltm = ingest_gate.gate_frame(market, ltm, _ltm_path(market), verbose=verbose)
+    except Exception as e:  # noqa: BLE001
+        if verbose:
+            print(f"  ⟢ ingest-gate skipped ({str(e)[:50]})")
     n_ltm = _write(ltm, _ltm_path(market))
     n_stm = _derive_stm(ltm, market)
+    try:
+        import ingest_gate
+
+        ingest_gate.report_after(market, _ltm_path(market), before_bytes, verbose=verbose)
+    except Exception:
+        pass
     latest = str(ltm["Date"].max())[:10] if not ltm.empty else "—"
     if verbose:
         print(f"  {market}: LTM {n_ltm} syms / STM {n_stm} syms (latest {latest})")

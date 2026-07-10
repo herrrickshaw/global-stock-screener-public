@@ -163,13 +163,37 @@ def fundamentals(symbol: str, s=None) -> dict:
     return {"source": "trendlyne", **out} if out else {}
 
 
+def scores(symbol: str, s=None) -> dict:
+    """Current Piotroski F-score + DVM (Durability/Valuation/Momentum, each 0-100) for a
+    symbol — the quality-overlay signals for LIVE picks (the backtests show Piotroski
+    works as an overlay on breakouts). Snapshot only, not historical. The DVM scores live
+    in an HTML tooltip, the F-score in an SSR JSON blob, so parse each specifically."""
+    s = s or session()
+    text = _page(s, symbol)
+    if not text:
+        return {}
+    out: dict = {}
+    m = re.search(r'"title":\s*"Piotroski Score",\s*"value":\s*"?(\d+)', text)
+    if m:
+        out["piotroski"] = int(m.group(1))
+    for key, lab in (
+        ("dvm_durability", "Durability Score"),
+        ("dvm_valuation", "Valuation Score"),
+        ("dvm_momentum", "Momentum Score"),
+    ):
+        mm = re.search(lab + r"\s*:\s*(\d+)", text)
+        if mm:
+            out[key] = int(mm.group(1))
+    return out
+
+
 def main() -> int:
     import sys
 
     s = session()
     print("Trendlyne login ok ✓")
     for sym in sys.argv[1:] or ["RELIANCE", "TCS", "INFY"]:
-        print(f"  {sym}: {fundamentals(sym, s)}")
+        print(f"  {sym}: fundamentals={fundamentals(sym, s)}  scores={scores(sym, s)}")
         time.sleep(0.4)
     return 0
 

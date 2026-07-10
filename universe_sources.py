@@ -331,7 +331,17 @@ _DAMO_EXCH_SUFFIX = {
     "SWX": ".SW",
 }
 # Nordic exchange codes collide (all "OM"), so resolve those by country instead.
-_COUNTRY_SUFFIX = {"Sweden": ".ST", "Denmark": ".CO", "Finland": ".HE", "Norway": ".OL"}
+_COUNTRY_SUFFIX = {
+    "Sweden": ".ST",
+    "Denmark": ".CO",
+    "Finland": ".HE",
+    "Norway": ".OL",
+    "Thailand": ".BK",
+    "Indonesia": ".JK",
+    "Malaysia": ".KL",
+    "Mexico": ".MX",
+    "Israel": ".TA",
+}
 
 
 def from_damodaran(country: str, allowed_exch: Optional[set] = None) -> List[str]:
@@ -381,6 +391,12 @@ PROVIDERS = {
     "UK": lambda: from_damodaran("United Kingdom", {"LSE", "AIM"}),
     "DE": lambda: from_damodaran("Germany", {"XTRA", "DB", "HMSE"}),
     "CH": lambda: from_damodaran("Switzerland", {"SWX"}),
+    # non-European additions (local exchange only)
+    "TH": lambda: from_damodaran("Thailand", {"SET"}),
+    "ID": lambda: from_damodaran("Indonesia", {"IDX"}),
+    "MY": lambda: from_damodaran("Malaysia", {"KLSE"}),
+    "MX": lambda: from_damodaran("Mexico", {"BMV"}),
+    "IL": lambda: from_damodaran("Israel", {"TASE"}),
 }
 
 

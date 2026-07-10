@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  launchd schedule for the FULL-MARKET "Hidden Gems" update (macOS).
+  Runs daily_pipeline.sh on WEEKDAYS at 18:30 local with the FULL universe
+  (GMS_TOP=0) + HIDDEN_GEMS=1, so it surfaces the strong small/mid-cap picks
+  (Piotroski>=8) the fast 07:35 top-200 run can't reach. Emails a "💎 Hidden
+  Gems (full-market)" report and writes data/curated/hidden_gems_<date>.parquet.
+
+  Credentials come from the gitignored .env (no secrets here).
+
+  Install / reload:
+    cp com.umashankar.hiddengems.plist ~/Library/LaunchAgents/
+    launchctl bootout   gui/$(id -u)/com.umashankar.hiddengems 2>/dev/null
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.umashankar.hiddengems.plist
+
+  ⚠ A full US(~7k)+IN(~2.6k)+EU(~1k) scan can take 1–3h; it starts at 18:30 so
+  it finishes in the evening. Only fires while the Mac is awake/logged in.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.umashankar.hiddengems</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/umashankar/Downloads/code/python_files/daily_pipeline.sh</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <!-- Full universe + hidden-gems highlight. -->
+    <key>GMS_TOP</key><string>0</string>
+    <key>HIDDEN_GEMS</key><string>1</string>
+  </dict>
+  <!-- Weekdays only: Weekday 1=Mon … 5=Fri, at 18:30 local. -->
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>18</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>18</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>18</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>18</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>18</integer><key>Minute</key><integer>30</integer></dict>
+  </array>
+  <key>WorkingDirectory</key><string>/Users/umashankar/Downloads/code/python_files</string>
+  <key>StandardOutPath</key><string>/Users/umashankar/Downloads/code/python_files/launchd_gems_out.log</string>
+  <key>StandardErrorPath</key><string>/Users/umashankar/Downloads/code/python_files/launchd_gems_err.log</string>
+</dict>
+</plist>

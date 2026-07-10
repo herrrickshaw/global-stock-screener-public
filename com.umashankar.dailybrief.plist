@@ -1,14 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  launchd schedule for the token-free Daily Market Brief (macOS).
-  Runs daily_pipeline.sh at 07:35 local — no Claude session needed.
+  launchd schedule for the token-free Daily Market Report (macOS).
+  Runs daily_pipeline.sh at 07:35 local on WEEKDAYS ONLY (Mon–Fri) — no Claude
+  session needed. Credentials (GMAIL_USER / GMAIL_APP_PASSWORD / MAIL_TO, plus
+  FMP_API_KEY etc.) are read from the gitignored .env file by the pipeline, so
+  they are NOT stored here.
 
-  Install:
-    1. Put your Gmail App Password in the EnvironmentVariables below
-       (Google Account → Security → 2-Step Verification → App passwords).
-    2. cp com.umashankar.dailybrief.plist ~/Library/LaunchAgents/
-    3. launchctl load ~/Library/LaunchAgents/com.umashankar.dailybrief.plist
-       (launchctl unload ... to stop)
+  Install / reload:
+    cp com.umashankar.dailybrief.plist ~/Library/LaunchAgents/
+    launchctl bootout   gui/$(id -u)/com.umashankar.dailybrief 2>/dev/null
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.umashankar.dailybrief.plist
+  Stop:
+    launchctl bootout   gui/$(id -u)/com.umashankar.dailybrief
   It only fires while the Mac is awake/logged in; for guaranteed runs use a
   server or `caffeinate`.
 -->
@@ -22,16 +25,19 @@
   </array>
   <key>EnvironmentVariables</key>
   <dict>
-    <key>GMAIL_USER</key><string>umashankartd1991@gmail.com</string>
-    <key>GMAIL_APP_PASSWORD</key><string>PUT-YOUR-16-CHAR-APP-PASSWORD-HERE</string>
-    <key>MAIL_TO</key><string>umashankartd1991@gmail.com</string>
     <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <!-- Morning run is FAST: cap US/IN scans at the top 200 by size. -->
+    <key>GMS_TOP</key><string>200</string>
   </dict>
+  <!-- Weekdays only: Weekday 1=Mon … 5=Fri, at 07:35 local. -->
   <key>StartCalendarInterval</key>
-  <dict>
-    <key>Hour</key><integer>7</integer>
-    <key>Minute</key><integer>35</integer>
-  </dict>
+  <array>
+    <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>7</integer><key>Minute</key><integer>35</integer></dict>
+    <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>7</integer><key>Minute</key><integer>35</integer></dict>
+    <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>7</integer><key>Minute</key><integer>35</integer></dict>
+    <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>7</integer><key>Minute</key><integer>35</integer></dict>
+    <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>7</integer><key>Minute</key><integer>35</integer></dict>
+  </array>
   <key>WorkingDirectory</key><string>/Users/umashankar/Downloads/code/python_files</string>
   <key>StandardOutPath</key><string>/Users/umashankar/Downloads/code/python_files/launchd_out.log</string>
   <key>StandardErrorPath</key><string>/Users/umashankar/Downloads/code/python_files/launchd_err.log</string>

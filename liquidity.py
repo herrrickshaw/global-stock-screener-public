@@ -141,7 +141,12 @@ MARKET_TIERS = {
 
 
 def tier(turnover_usd: Optional[float], market: Optional[str] = None) -> str:
-    if turnover_usd is None:
+    # pd.isna also catches NaN (e.g. a symbol absent from the turnover index,
+    # which arrives as float('nan') via DataFrame.map, not None) — previously
+    # only `is None` was checked, so unmapped/untracked symbols silently fell
+    # through to "Low" instead of "Unknown" (NaN >= anything is False, so the
+    # High/Medium comparisons below both fail and it defaults to Low).
+    if turnover_usd is None or pd.isna(turnover_usd):
         return "Unknown"
     hi, med = MARKET_TIERS.get(market, (HIGH, MED))
     if turnover_usd >= hi:

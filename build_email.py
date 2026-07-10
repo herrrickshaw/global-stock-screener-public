@@ -624,9 +624,28 @@ def _read_frag(name):
 in_darvas = _read_frag("in_darvas.html")
 us_darvas = _read_frag("us_darvas.html")
 
-today = datetime.date(2026, 7, 9)
+today = datetime.date.today()
 datestr = today.strftime("%d %b %Y")
 now = datetime.datetime.now().strftime("%d %b %Y %H:%M")
+# Hidden-gems (full-market evening) run → distinct artifact file, title & subject
+# so it publishes to a SEPARATE Artifact URL from the fast morning report.
+HIDDEN_GEMS = bool(os.environ.get("HIDDEN_GEMS"))
+_wm = "💎 HIDDEN GEMS" if HIDDEN_GEMS else '<span class="tick">▲</span> MARKET DAILY'
+_eye = (
+    "Full-Market · Piotroski≥8 small/mid-caps · IN / US / EU"
+    if HIDDEN_GEMS
+    else "Fundamentals · Street Talk · Darvas · IN / US / EU"
+)
+_foot = (
+    "Educational / research only — not investment advice. Full-universe hidden-gems scan, weekday evenings."
+    if HIDDEN_GEMS
+    else "Educational / research only — not investment advice. Regenerated each weekday morning."
+)
+_artname = (
+    "daily_market_report_hiddengems_artifact.html"
+    if HIDDEN_GEMS
+    else "daily_market_report_artifact.html"
+)
 n_conv = len([c for c in usj["convergence"] if "BOTH BULLISH" in c.get("Convergence", "")]) + len(
     eu_conv_hi
 )
@@ -758,18 +777,20 @@ body {{ margin:0; }}
 </style>
 <div class="desk">
   <div class="deskhead">
-    <div class="wordmark"><span class="tick">▲</span> MARKET DAILY</div>
-    <div class="eyebrow">Fundamentals · Street Talk · Darvas · IN / US / EU</div>
+    <div class="wordmark">{_wm}</div>
+    <div class="eyebrow">{_eye}</div>
   </div>
   <article class="paper">
   {wrap_tables(email)}
   </article>
-  <div class="deskfoot">Educational / research only — not investment advice. Regenerated each weekday morning.</div>
+  <div class="deskfoot">{_foot}</div>
 </div>"""
-art_path = os.path.expanduser("~/Downloads/daily_market_report_artifact.html")
+art_path = os.path.expanduser(f"~/Downloads/{_artname}")
 open(art_path, "w").write(artifact)
 
-# also print subject line for the sender step
+# also print subject line for the sender step. NB: the ETL's load_deliver adds
+# the "💎 Hidden Gems (full-market) — N strong picks" prefix (it has the count),
+# so keep this base subject plain to avoid double-prefixing.
 subj = f"Daily Market Report — {datestr} | Fundamentals: {n_fund} picks | Street mood: {mood_lbl} | Convergence: {n_conv}"
 print("SUBJECT:", subj)
 print("PATH:", out_path)

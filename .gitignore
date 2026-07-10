@@ -67,3 +67,18 @@ cache_seed/ltm_parts/
 # F-01/F-13 derived caches (fetched/generated locally)
 cache_seed/flows/
 cache_seed/decision_snapshots/
+
+# ETL pipeline outputs (derived — regenerate with etl_pipeline.py)
+data/raw/
+data/reports/
+data/curated/*.parquet
+!data/curated/exchange_reference.parquet
+data/curated/etl_runs/
+
+# ETL checklist (derived)
+data/curated/*.md
+!data/curated/daily_checklist_*.md
+
+# SEC historical financials (derived — rebuild with sec_history_collector.py)
+cache_seed/fundamentals_history/*
+!cache_seed/fundamentals_history/*.parquet
