@@ -469,6 +469,32 @@ def build():
     except Exception:
         regime_section = ""
 
+    # 1g. Data verification — cross-check this report's yfinance-sourced
+    # prices (the same regime picks just used above) against an independent
+    # authoritative source: Databento (US, paid/metered) and NSE Bhavcopy
+    # (India, free/official). See verify_data.py's own docstring for why
+    # Databento can't cover India (confirmed against its real dataset list,
+    # not marketing copy) and Bhavcopy substitutes there instead.
+    try:
+        import regime_picks
+        import verify_data
+
+        us_picks_for_verify = [
+            {"symbol": p["symbol"], "price": p["price"]} for p in regime_picks.picks_for("US")
+        ]
+        in_picks_for_verify = [
+            {"symbol": p["symbol"], "price": p["price"]} for p in regime_picks.picks_for("IN")
+        ]
+        us_verify = verify_data.verify_us(us_picks_for_verify)
+        in_verify = verify_data.verify_india(in_picks_for_verify)
+        verification_section = verify_data.verification_html(us_verify, in_verify)
+        verification_text_block = verify_data.verification_text(us_verify, in_verify)
+    except Exception as e:  # noqa: BLE001 - verification is an annotation, never blocks the mailer
+        verification_section = (
+            f"<p style='font-size:11px;color:#888'>Data verification unavailable: {e}</p>"
+        )
+        verification_text_block = "Data verification unavailable."
+
     # 2. India CCC screen (screener.in)
     ccc_rows = []
     try:
@@ -546,8 +572,9 @@ def build():
 
     html = f"""<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:740px;color:#1a1a1a">
 <h1 style="font-size:21px;margin:0 0 2px">📈 Daily Market Brief — {today}</h1>
-<p style="color:#666;font-size:13px;margin:0 0 14px">India + US screeners · fundamentals/news convergence · AI-discovered screens · cash-conversion-cycle · global momentum + 5-year scoreboard · data as of last close</p>
+<p style="color:#666;font-size:13px;margin:0 0 14px">India + US screeners · fundamentals/news convergence · AI-discovered screens · cash-conversion-cycle · global momentum + 5-year scoreboard · Databento/Bhavcopy-verified · data as of last close</p>
 {regime_section}
+{verification_section}
 <h2 style="font-size:16px;border-bottom:2px solid #1a73e8;padding-bottom:3px">🇮🇳 India — Daily Screener (most tradable)</h2>
 {_table(["Symbol","Tier","Screens","Turnover","Liquidity"], picks_rows) if picks_rows else "<p>no picks</p>"}
 <p style="font-size:11px;color:#666;margin:3px 0">Mood: <b style="color:#2e7d32">{mood['mood']} ({mood['score']:+.2f})</b> from {mood.get('n_articles',0)} articles. Liquidity (India): High ≥$5M/day · Medium $0.5–5M · Low &lt;$0.5M.</p>
@@ -587,6 +614,7 @@ def build():
         f"India + US screeners, fundamentals/news convergence, AI-discovered screens (auto_screener.py),\n"
         f"global-market-scanners full-universe scan, Europe 22-exchange scan,\n"
         f"India CCC screen (screener.in 228040), global momentum + 20-market 5y scoreboard.\n"
+        f"{verification_text_block}\n"
         f"Educational/research only. NOT investment advice."
     )
     subject = f"📈 Daily Market Brief — {today}"
