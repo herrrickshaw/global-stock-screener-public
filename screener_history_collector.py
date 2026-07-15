@@ -49,6 +49,9 @@ OUT = os.path.join(OUT_DIR, "IN.parquet")
 UNIVERSE = os.path.join(BASE, "data", "global_universe", "IN.csv")
 LTM = os.path.join(BASE, "cache_seed", "ltm", "IN.parquet")
 _RATE = 0.7  # polite delay between screener.in fetches (ToS-friendly)
+# Consecutive empty fetches before aborting. A real universe has gaps (BSE-only names
+# 404 on the NSE-shaped URL), but ~30 in a row is a block, not a coincidence.
+MAX_CONSECUTIVE_EMPTY = 30
 
 # Data-Sheet row label → our field name (annual series only; first present wins).
 FIELDS = {
@@ -141,9 +144,26 @@ def _extract_annual(df):
     return out
 
 
+class Blocked(RuntimeError):
+    """screener.in stopped serving us. Raised so the caller can ABORT, not grind on."""
+
+
 def collect_ticker(sess_mod, ticker):
-    """Fetch + parse one company. Returns list of per-fiscal-year row dicts."""
-    raw = sess_mod.company_export_bytes(ticker)
+    """Fetch + parse one company. Returns list of per-fiscal-year row dicts.
+
+    Raises Blocked when the host refuses the connection, so main() can stop.
+    Previously every failure was swallowed into `return []`, which turned a block into a
+    silent no-op: on 2026-07-15 a run was blocked ~1 MINUTE in, then spent 40 MINUTES
+    walking 2,367 tickers whose every fetch failed, and reported "2367/2367 | 31 with
+    data" — a completion message for a job that collected nothing after the first
+    minute. A failure that looks like progress is worse than a crash.
+    """
+    try:
+        raw = sess_mod.company_export_bytes(ticker)
+    except Exception as e:
+        if "Max retries" in str(e) or "Connection" in type(e).__name__:
+            raise Blocked(f"host refused connection at {ticker}: {str(e)[:60]}") from e
+        return []
     if not raw:
         return []
     try:
@@ -295,6 +315,16 @@ def main():
     rows, n_ok, t0 = [], 0, time.time()
     for i, tk in enumerate(todo, 1):
         time.sleep(_RATE)
+        # CIRCUIT BREAKER. Consecutive empties mean the session died or the host is
+        # blocking; continuing just deepens the block and produces a fake progress bar.
+        if not got:
+            _consec_empty += 1
+            if _consec_empty >= MAX_CONSECUTIVE_EMPTY:
+                print(f"\n  ABORT: {_consec_empty} consecutive tickers returned nothing "
+                      f"— session dead or host blocking. Collected {n_ok} before this.")
+                break
+        else:
+            _consec_empty = 0
         try:
             r = collect_ticker(sess_mod, tk)
             if r:
