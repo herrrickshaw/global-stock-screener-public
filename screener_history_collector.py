@@ -29,6 +29,7 @@ Output: cache_seed/fundamentals_history/IN.parquet — long format, one row per
 import argparse
 import io
 import os
+import re
 import time
 
 import pandas as pd
@@ -94,6 +95,34 @@ FIELDS = {
 def _zero(x):
     """NaN/None -> 0.0. `(x or 0)` cannot do this: NaN is TRUTHY, so `nan or 0` is nan."""
     return 0.0 if x is None or x != x else float(x)
+
+
+# ── non-equity instruments ────────────────────────────────────────────────────
+# The GSS price panel is 23% NON-EQUITY: 1,984 coupon-prefixed bonds (1010EFSL29,
+# 805HDFCB29), 141 G-secs/SDLs (1018GS2026), 169 T-bills. Median 90 shares/day against
+# 76,887 for real equities.
+#
+# A VALUE-based liquidity floor does NOT remove them — that is the whole trap. A bond
+# trading 90 units/day at Rs 1 lakh face value turns over Rs 90 lakh and sails through a
+# Rs 1 crore gate. This is the LIQUIDSBI incident (an ETF shipped as a golden-cross pick)
+# at 2,593x scale, and it is why the India collection wasted fetches on bonds screener.in
+# will never serve.
+#
+# Structure, not value, is the discriminator — the same lesson as the ISIN prefix
+# (INE=equity, INF=fund, IN0-3=G-Sec).
+_BOND = re.compile(r"^\d{3,4}[A-Z]+\d{2,4}$")   # coupon + issuer + maturity year
+_GSEC = re.compile(r"GS\d{4}$|^SDL|SDL\d|GOI")
+_TBIL = re.compile(r"^(91D|182D|364D)|TB\d{2}")
+
+def is_non_equity(sym: str) -> bool:
+    """True for bonds / G-secs / T-bills masquerading as equities.
+
+    The trailing-digits requirement in _BOND matters: `^\d{3,4}[A-Z]` alone flags 360ONE
+    (360 + ONE), a real equity. Real bonds carry a maturity year — 1010EFSL29 -> 1010,
+    EFSL, 29. Verified: this pattern keeps 360ONE and drops 1010EFSL29.
+    """
+    s = (sym or "").strip().upper()
+    return bool(_BOND.match(s) or _GSEC.search(s) or _TBIL.search(s))
 
 
 def _num(x):
@@ -326,7 +355,15 @@ def _universe(args):
     recent["tv"] = recent["Close"] * recent["Volume"]
     liq = recent.groupby("Symbol")["tv"].median()
     keep = liq[liq >= 10_000_000].index
-    return sorted(set(pd.Series(list(keep)).astype(str).str.upper()))
+    syms = sorted(set(pd.Series(list(keep)).astype(str).str.upper()))
+    # Instrument filter AFTER the value gate, because the value gate cannot do this job:
+    # bonds pass it on face value. Structure is the discriminator.
+    equities = [s for s in syms if not is_non_equity(s)]
+    dropped = len(syms) - len(equities)
+    if dropped:
+        print(f"  dropped {dropped} non-equity instruments (bonds/G-secs/T-bills) "
+              f"that cleared the value gate")
+    return equities
 
 
 def main():
