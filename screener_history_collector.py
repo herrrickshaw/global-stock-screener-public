@@ -175,14 +175,44 @@ def collect_ticker(sess_mod, ticker):
         # Employee Cost and Selling/admin are EXCLUDED: they are SG&A. Folding them in
         # would compute an OPERATING margin and label it a gross margin — which is the
         # kind of plausible-but-wrong field that is worse than a missing one.
+        # GATED ON BUSINESS MODEL — this COGS definition is MANUFACTURER-ONLY.
+        #
+        # I previously claimed the PBT identity proved gross margin "isn't a judgement
+        # call". That was wrong. The identity pins the ARITHMETIC (it proved Change in
+        # Inventory is a credit, reproducing reported PBT to the rupee) but says nothing
+        # about WHICH lines are cost-of-goods for a given business. TCS exposed it:
+        #     Raw Material Cost 94  vs  Sales 92,693  (0.1%)  — because TCS's real cost
+        #     of service is Employee Cost 48,116.
+        # Formula A would report ~98% gross margin for TCS against a true ~42%, i.e. a
+        # plausible-looking, badly wrong number for every IT/services firm in the universe.
+        #
+        # Validated against yfinance's TRUE Gross Profit (64 company-years, 17 tickers):
+        #     rm/sales >30% (manufacturers)  error  -0.1pp   <- essentially exact
+        #     rm/sales 5-30% (mixed)         error  +6.7pp
+        #     rm/sales <5%  (services)       NO DATA to validate against
+        #
+        # So the formula is applied ONLY where it was proven, and SKIPPED elsewhere.
+        # Skipping is not a cop-out: weigh() drops a None test from both numerator and
+        # denominator, so a services firm scores on 7 tests and stays comparable. A
+        # wrong-but-populated field is the failure mode this repo keeps hitting (the
+        # quarterly Operating Profit splice, the ratio-inverted ROCE at 95-137%, the
+        # current-ratio proxy at 62.1% vs a 57.6% coin flip).
+        #
+        # A services COGS (employee cost as cost of revenue) is defensible in principle
+        # but screener.in does not split Employee Cost into direct vs SG&A, and there is
+        # no validation sample here for it. Left unimplemented rather than guessed.
+        MFR_RM_SHARE_MIN = 0.30
         rm, chg = row.get("raw_material_cost"), row.get("change_in_inventory")
         pf, omf = row.get("power_and_fuel"), row.get("other_mfr_exp")
         sales = row.get("revenue")
         if rm is not None and sales:
-            cogs = rm - (chg or 0) + (pf or 0) + (omf or 0)
-            row["cogs"] = cogs
-            row["gross_profit"] = sales - cogs
-            row["gross_margin"] = row["gross_profit"] / sales
+            row["rm_share"] = rm / sales
+            if row["rm_share"] >= MFR_RM_SHARE_MIN:
+                cogs = rm - (chg or 0) + (pf or 0) + (omf or 0)
+                row["cogs"] = cogs
+                row["gross_profit"] = sales - cogs
+                row["gross_margin"] = row["gross_profit"] / sales
+            # else: not a manufacturer -> gross_margin stays absent, test 8 is skipped
         # Capital employed = shareholders' funds + debt. screener.in's balance
         # sheet gives the pieces directly (Equity Share Capital + Reserves +
         # Borrowings), so this is a sum of reported figures, not an inversion.
