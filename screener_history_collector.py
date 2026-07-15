@@ -46,7 +46,22 @@ _RATE = 0.7  # polite delay between screener.in fetches (ToS-friendly)
 FIELDS = {
     "net_income": ["Net profit", "Net Profit"],
     "revenue": ["Sales", "Sales+", "Revenue", "Total Revenue"],
-    "operating_profit": ["Operating Profit", "Operating Profit+"],
+    # "Operating Profit" is DELIBERATELY NOT mapped, despite existing in the export.
+    # It appears ONLY inside the "Quarters" block (row ~49), whose Report-Date axis
+    # carries Jun/Sep/Dec and is correctly rejected by _is_annual_axis. screener.in
+    # does not publish an annual Operating Profit row at all: the "PROFIT & LOSS"
+    # block runs Sales -> ... -> Interest -> Profit before tax -> Net profit with no
+    # operating-profit line. Mapping the label would silently splice a QUARTERLY
+    # figure into an annual series — a far worse bug than the missing column, because
+    # it would look populated and be wrong by ~4x.
+    #
+    # EBIT is instead DERIVED from two directly-reported ANNUAL line items:
+    #     EBIT = profit_before_tax + interest
+    # which is the textbook definition ROCE takes as its numerator. This is addition
+    # of reported figures, NOT the ratio-inversion trap (equity = net_income/roe)
+    # that previously produced absurd ROCE of 95-137%.
+    "profit_before_tax": ["Profit before tax", "Profit Before Tax", "PBT"],
+    "interest": ["Interest", "Interest Expense", "Finance Costs"],
     "cfo": ["Cash from Operating Activity", "Cash from Operating Activity+"],
     "borrowings": ["Borrowings", "Borrowings+", "Total Debt"],
     "reserves": ["Reserves"],
@@ -128,6 +143,20 @@ def collect_ticker(sess_mod, ticker):
     for fy, fields in sorted(annual.items()):
         row = {"ticker": ticker, "fy_end": fy.strftime("%Y-%m-%d")}
         row.update(fields)
+        # EBIT and capital employed, derived from reported annual line items so
+        # downstream ROCE consumers never re-derive them inconsistently.
+        pbt, interest = row.get("profit_before_tax"), row.get("interest")
+        if pbt is not None and interest is not None:
+            row["ebit"] = pbt + interest
+        # Capital employed = shareholders' funds + debt. screener.in's balance
+        # sheet gives the pieces directly (Equity Share Capital + Reserves +
+        # Borrowings), so this is a sum of reported figures, not an inversion.
+        eq, res, bor = (row.get("equity_capital"), row.get("reserves"),
+                        row.get("borrowings"))
+        if eq is not None and res is not None and bor is not None:
+            row["capital_employed"] = eq + res + bor
+        if row.get("ebit") is not None and row.get("capital_employed"):
+            row["roce"] = row["ebit"] / row["capital_employed"]
         rows.append(row)
     return rows
 
