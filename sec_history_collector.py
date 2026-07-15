@@ -87,6 +87,39 @@ def _ticker_cik(sess):
     return {v["ticker"].upper(): str(v["cik_str"]).zfill(10) for v in r.json().values()}
 
 
+def _is_annual_period(rec) -> bool:
+    """Is this fact an ANNUAL period, or a quarter wearing an annual label?
+
+    🔴 `form == "10-K" and fp == "FY"` DOES NOT MEAN ANNUAL. A 10-K reports quarterly
+    breakouts tagged fp=FY, and each was being stored keyed by its own `end` date — so
+    quarters entered the series as if they were fiscal years. Proven on ADM 2023
+    (form=10-K, fp=FY, concept Revenues):
+
+        start=2023-01-01 end=2023-03-31 days= 89  $24.07bn   <- QUARTER
+        start=2023-04-01 end=2023-06-30 days= 90  $25.19bn   <- QUARTER
+        start=2023-07-01 end=2023-09-30 days= 91  $21.70bn   <- QUARTER
+        start=2023-01-01 end=2023-12-31 days=364  $93.94bn   <- the real annual
+        start=2023-10-01 end=2023-12-31 days= 91  $22.98bn   <- QUARTER
+
+    Only the DURATION separates them. This is the same trap as India's "Operating
+    Profit", which exists only in screener.in's QUARTERLY block — caught there, then
+    not checked for here. The label lies; the structure does not.
+
+    INSTANT concepts (Assets, LiabilitiesCurrent, StockholdersEquity — balance-sheet
+    items) carry NO `start` and are a point in time, not a period. They are kept as-is:
+    a blanket duration test would delete every balance sheet in the dataset.
+    """
+    start = rec.get("start")
+    if not start:
+        return True                     # instant (balance-sheet) fact
+    try:
+        from datetime import date
+        days = (date.fromisoformat(rec["end"]) - date.fromisoformat(start)).days
+    except Exception:
+        return False                    # unparseable period -> do not guess
+    return 300 <= days <= 400           # ~1 year; 52/53-week filers land 364-371
+
+
 def _series(facts, concepts):
     """Full annual (10-K/FY) series for the first present concept → {fy_end: (val, filed)}.
     Each period is re-reported as a comparative in later 10-Ks; keep the EARLIEST
@@ -98,10 +131,13 @@ def _series(facts, concepts):
         out = {}
         for unit_vals in node.get("units", {}).values():
             for r in unit_vals:
-                if r.get("form") == "10-K" and r.get("fp") == "FY" and r.get("val") is not None:
-                    end, filed = r["end"], (r.get("filed") or "9999-99-99")
-                    if end not in out or filed < out[end][1]:  # earliest filing wins
-                        out[end] = (r["val"], filed)
+                if r.get("form") != "10-K" or r.get("fp") != "FY" or r.get("val") is None:
+                    continue
+                if not _is_annual_period(r):
+                    continue
+                end, filed = r["end"], (r.get("filed") or "9999-99-99")
+                if end not in out or filed < out[end][1]:  # earliest filing wins
+                    out[end] = (r["val"], filed)
         if out:
             return out
     return {}
