@@ -70,6 +70,12 @@ FIELDS = {
     # that previously produced absurd ROCE of 95-137%.
     "profit_before_tax": ["Profit before tax", "Profit Before Tax", "PBT"],
     "interest": ["Interest", "Interest Expense", "Finance Costs"],
+    # COGS components. screener.in has no "Gross Profit" or "COGS" row — it itemises
+    # the cost lines — so gross profit is built from them (see collect_ticker).
+    "raw_material_cost": ["Raw Material Cost"],
+    "change_in_inventory": ["Change in Inventory"],
+    "power_and_fuel": ["Power and Fuel"],
+    "other_mfr_exp": ["Other Mfr. Exp", "Other Mfr Exp"],
     "cfo": ["Cash from Operating Activity", "Cash from Operating Activity+"],
     "borrowings": ["Borrowings", "Borrowings+", "Total Debt"],
     "reserves": ["Reserves"],
@@ -156,6 +162,27 @@ def collect_ticker(sess_mod, ticker):
         pbt, interest = row.get("profit_before_tax"), row.get("interest")
         if pbt is not None and interest is not None:
             row["ebit"] = pbt + interest
+        # Gross profit. screener.in publishes no Gross Profit / COGS row, so COGS is
+        # assembled from the itemised annual cost lines. The sign convention is NOT
+        # guessed — it is pinned by reconstructing reported Profit-before-tax:
+        #   Sales - RawMat + ChgInv - Power - OtherMfr - Employee - Selling - OtherExp
+        #         + OtherIncome - Depreciation - Interest  ==  PBT
+        # On RELIANCE FY2017 that reproduces the reported PBT of 40,777 EXACTLY, and
+        # only when Change in Inventory is ADDED — it is a credit to profit, hence a
+        # REDUCTION of cost. The same chain independently reproduces EBIT 43,500,
+        # matching pbt+interest above, so the two derivations corroborate each other.
+        #
+        # Employee Cost and Selling/admin are EXCLUDED: they are SG&A. Folding them in
+        # would compute an OPERATING margin and label it a gross margin — which is the
+        # kind of plausible-but-wrong field that is worse than a missing one.
+        rm, chg = row.get("raw_material_cost"), row.get("change_in_inventory")
+        pf, omf = row.get("power_and_fuel"), row.get("other_mfr_exp")
+        sales = row.get("revenue")
+        if rm is not None and sales:
+            cogs = rm - (chg or 0) + (pf or 0) + (omf or 0)
+            row["cogs"] = cogs
+            row["gross_profit"] = sales - cogs
+            row["gross_margin"] = row["gross_profit"] / sales
         # Capital employed = shareholders' funds + debt. screener.in's balance
         # sheet gives the pieces directly (Equity Share Capital + Reserves +
         # Borrowings), so this is a sum of reported figures, not an inversion.
