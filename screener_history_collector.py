@@ -144,6 +144,46 @@ def _is_annual_axis(vals):
     return None
 
 
+# ── lender detection: NOT POSSIBLE FROM THIS SOURCE ───────────────────────────
+# 🔴 THREE DETECTORS TRIED. ALL THREE REFUTED BY DATA. The information is not in the file.
+#
+#   1. interest/revenue >= 25%
+#        AADHARHFC 48.8% caught | ADANIPOWER 41.1% FALSE POSITIVE (a power utility)
+#        360ONE 14.1% MISSED    | 5PAISA 9.6% MISSED
+#      -> measures LEVERAGE, not LENDING.
+#
+#   2. EBIT margin, any threshold
+#        lenders span -24.6% (5PAISA) to +95.8% (360ONE)
+#        non-lenders span +7.7% (ADOR) to +902.8% (3PLAND)
+#      -> TOTAL OVERLAP. No threshold exists. Ratios are the OUTPUT of a business model;
+#         they cannot reveal it.
+#
+#   3. "Financing Profit"/"Financing Margin" rows in the Data Sheet
+#        HDFCBANK detected as NOT-lender -> the detector does nothing.
+#      -> I asserted this from screener.in's WEB page and assumed the EXPORT matched.
+#         It does not. Measured, HDFCBANK's Data Sheet is the SAME template as a
+#         manufacturer's:
+#             Sales 69,305.96      <- interest income, written into the "Sales" line
+#             Raw Material Cost nan
+#             Interest 36,166.73   <- 52% of Sales
+#             Profit before tax 22,139.08
+#         screener.in NORMALISES every company into one layout. There is no bank-specific
+#         structure to read. The export carries NO sector signal.
+#
+# CONSEQUENCE, STATED PLAINLY: `ebit = pbt + interest` IS WRONG FOR LENDERS and there is
+# NO GUARD. For a bank/NBFC interest is cost of goods sold, so EBIT inflates ~4x while
+# borrowings inflate capital_employed ~9x — and THE ERRORS PARTIALLY CANCEL, landing
+# AADHARHFC at ROCE 8.5-10.7% every year, INSIDE the 5-25% plausibility band. No range
+# check can ever fire. True ROE is 14.1-16.8%: a systematic ~5pp understatement that
+# reads as a mediocre business. 34/245 rows flip a live screen threshold.
+#
+# THE FIX REQUIRES AN EXTERNAL SECTOR SOURCE — screener.in's company page carries an
+# "Industry" field, or NSE/BSE sector classification. Until one is wired in, consumers
+# MUST exclude financials themselves. `interest_share_of_revenue` is emitted as a WEAK
+# hint (it catches HDFCBANK at 52% and AADHARHFC at 48.8%, but false-positives
+# ADANIPOWER at 41.1% and misses 360ONE at 14.1%) — it is a hint, NOT a filter.
+
+
 def _extract_annual(df):
     """Walk the Data Sheet top→bottom, tracking the current annual Report-Date axis,
     and pull each wanted field's values aligned to fiscal year-ends. Returns
