@@ -144,44 +144,71 @@ def _is_annual_axis(vals):
     return None
 
 
-# ── lender detection: NOT POSSIBLE FROM THIS SOURCE ───────────────────────────
-# 🔴 THREE DETECTORS TRIED. ALL THREE REFUTED BY DATA. The information is not in the file.
+# ── lender detection: the SECTOR FIELD, from the company page ─────────────────
+# THREE RATIO/STRUCTURE DETECTORS WERE REFUTED BEFORE THIS ONE, and the reason matters:
+#   1. interest/revenue >= 25%  -> caught ADANIPOWER (a POWER utility), missed 360ONE.
+#                                  Measures LEVERAGE, not LENDING.
+#   2. EBIT margin, any cut     -> lenders -24.6%..+95.8%, non-lenders +7.7%..+902.8%.
+#                                  TOTAL OVERLAP. Ratios are the OUTPUT of a business
+#                                  model; they cannot reveal it.
+#   3. "Financing Profit" rows  -> HDFCBANK detected as NOT-lender. screener.in
+#                                  NORMALISES every company into one Data Sheet template:
+#                                  HDFCBANK shows Sales 69,305.96 (interest income written
+#                                  into the Sales line), Raw Material Cost nan, Interest
+#                                  36,166.73 (52% of Sales). The EXPORT has no sector signal.
 #
-#   1. interest/revenue >= 25%
-#        AADHARHFC 48.8% caught | ADANIPOWER 41.1% FALSE POSITIVE (a power utility)
-#        360ONE 14.1% MISSED    | 5PAISA 9.6% MISSED
-#      -> measures LEVERAGE, not LENDING.
+# The company PAGE does. It carries an Industry field the export omits:
+#     HDFCBANK   Banks               IN05      AADHARHFC  Finance          IN05
+#     360ONE     Capital Markets     IN05      5PAISA     Capital Markets  IN05
+#     ADANIPOWER Power               IN11      TCS        IT - Software    IN08
+#     3MINDIA    Diversified         IN12      APCOTEXIND Industrial Prod. IN07
+# Verified against the exact cases that broke all three earlier detectors: every lender
+# is IN05, every industrial is not.
 #
-#   2. EBIT margin, any threshold
-#        lenders span -24.6% (5PAISA) to +95.8% (360ONE)
-#        non-lenders span +7.7% (ADOR) to +902.8% (3PLAND)
-#      -> TOTAL OVERLAP. No threshold exists. Ratios are the OUTPUT of a business model;
-#         they cannot reveal it.
+# ⚠️ 3PLAND classifies as Finance/IN05 and I had labelled it "not-lender" from its name
+# (3P LAND -> real estate). The classifier is right and my label was wrong — its interest
+# is 908% of revenue. Sector comes from the source, not from reading tickers.
 #
-#   3. "Financing Profit"/"Financing Margin" rows in the Data Sheet
-#        HDFCBANK detected as NOT-lender -> the detector does nothing.
-#      -> I asserted this from screener.in's WEB page and assumed the EXPORT matched.
-#         It does not. Measured, HDFCBANK's Data Sheet is the SAME template as a
-#         manufacturer's:
-#             Sales 69,305.96      <- interest income, written into the "Sales" line
-#             Raw Material Cost nan
-#             Interest 36,166.73   <- 52% of Sales
-#             Profit before tax 22,139.08
-#         screener.in NORMALISES every company into one layout. There is no bank-specific
-#         structure to read. The export carries NO sector signal.
-#
-# CONSEQUENCE, STATED PLAINLY: `ebit = pbt + interest` IS WRONG FOR LENDERS and there is
-# NO GUARD. For a bank/NBFC interest is cost of goods sold, so EBIT inflates ~4x while
-# borrowings inflate capital_employed ~9x — and THE ERRORS PARTIALLY CANCEL, landing
-# AADHARHFC at ROCE 8.5-10.7% every year, INSIDE the 5-25% plausibility band. No range
-# check can ever fire. True ROE is 14.1-16.8%: a systematic ~5pp understatement that
-# reads as a mediocre business. 34/245 rows flip a live screen threshold.
-#
-# THE FIX REQUIRES AN EXTERNAL SECTOR SOURCE — screener.in's company page carries an
-# "Industry" field, or NSE/BSE sector classification. Until one is wired in, consumers
-# MUST exclude financials themselves. `interest_share_of_revenue` is emitted as a WEAK
-# hint (it catches HDFCBANK at 52% and AADHARHFC at 48.8%, but false-positives
-# ADANIPOWER at 41.1% and misses 360ONE at 14.1%) — it is a hint, NOT a filter.
+# WHY IT IS WORTH ONE EXTRA FETCH PER TICKER (~+28 min on 2,367 names): for a bank/NBFC
+# `ebit = pbt + interest` adds back their cost of goods sold. EBIT inflates ~4x,
+# borrowings inflate capital_employed ~9x, and THE ERRORS PARTIALLY CANCEL — AADHARHFC
+# lands at ROCE 8.5-10.7% every year, INSIDE the 5-25% plausibility band, so no range
+# check can ever fire. True ROE is 14.1-16.8%. 34/245 rows flip a live screen threshold.
+# An undetectable wrong number is worth 28 minutes to remove.
+_FINANCIAL_INDUSTRIES = (
+    "bank", "finance", "financial", "capital market", "nbfc", "insurance",
+    "asset management", "housing finance", "investment",
+)
+_INDUSTRY_RE = None
+
+
+def industry_of(sess_mod, ticker):
+    """Industry string from screener.in's company page, or None. One extra GET."""
+    global _INDUSTRY_RE
+    import re
+    if _INDUSTRY_RE is None:
+        _INDUSTRY_RE = re.compile(
+            r"Industry[^<]*</[^>]+>\s*<[^>]+>([^<]{2,40})<", re.I)
+    try:
+        s = sess_mod.session()
+        h = s.get(f"https://www.screener.in/company/{ticker}/", timeout=25).text
+    except Exception:
+        return None
+    m = _INDUSTRY_RE.search(h)
+    return m.group(1).strip() if m else None
+
+
+def is_financial(industry) -> bool:
+    """True when the SOURCE classifies this as a lender/financial.
+
+    Returns False on None: an unknown industry is not evidence of being industrial, but
+    declining every un-fetched company would empty the dataset. Callers get `industry`
+    on the row and can filter harder.
+    """
+    if not industry:
+        return False
+    i = industry.strip().lower()
+    return any(k in i for k in _FINANCIAL_INDUSTRIES)
 
 
 def _extract_annual(df):
@@ -247,6 +274,8 @@ def collect_ticker(sess_mod, ticker):
     except Exception:
         return []
     annual = _extract_annual(df)
+    industry = industry_of(sess_mod, ticker)
+    lender = is_financial(industry)
     rows = []
     for fy, fields in sorted(annual.items()):
         row = {"ticker": ticker, "fy_end": fy.strftime("%Y-%m-%d")}
@@ -283,7 +312,11 @@ def collect_ticker(sess_mod, ticker):
         # than papered over.
         if interest is not None and rev not in (None, 0):
             row["interest_share_of_revenue"] = abs(interest) / abs(rev)
-        if pbt is not None and interest is not None:
+        row["industry"] = industry
+        row["is_financial"] = lender
+        # DECLINE for financials. A null is honest; ROCE 9.6% for an HFC is not, and it
+        # is invisible to every guard the pipeline has.
+        if pbt is not None and interest is not None and not lender:
             row["ebit"] = pbt + interest
         # Gross profit. screener.in publishes no Gross Profit / COGS row, so COGS is
         # assembled from the itemised annual cost lines. The sign convention is NOT
