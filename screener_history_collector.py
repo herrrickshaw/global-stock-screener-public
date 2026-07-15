@@ -91,6 +91,11 @@ FIELDS = {
 }
 
 
+def _zero(x):
+    """NaN/None -> 0.0. `(x or 0)` cannot do this: NaN is TRUTHY, so `nan or 0` is nan."""
+    return 0.0 if x is None or x != x else float(x)
+
+
 def _num(x):
     try:
         return float(str(x).replace(",", "").replace("%", "").strip())
@@ -180,6 +185,35 @@ def collect_ticker(sess_mod, ticker):
         # EBIT and capital employed, derived from reported annual line items so
         # downstream ROCE consumers never re-derive them inconsistently.
         pbt, interest = row.get("profit_before_tax"), row.get("interest")
+        rev = row.get("revenue")
+        # 🔴 EBIT IS NOT DEFINED FOR LENDERS, AND THIS FILE CANNOT RELIABLY DETECT THEM.
+        # `pbt + interest` adds interest back as a financing cost. For a bank/HFC/NBFC
+        # interest IS cost of goods sold — borrowing is the raw material. EBIT inflates
+        # ~4x, borrowings inflate capital_employed ~9x, AND THE ERRORS PARTIALLY CANCEL:
+        # AADHARHFC lands at ROCE 8.5-10.7% every year, INSIDE the 5-25% plausibility
+        # band, so no range check can fire. True ROE is 14.1-16.8% — a systematic ~5pp
+        # understatement reading as a mediocre business. 34/245 rows flip a live screen
+        # threshold. It survived the validation that was run because RELIANCE 8.9% /
+        # TCS 56.8% are both NON-financials.
+        #
+        # An interest/revenue >= 25% gate was tried and REFUTED by the data:
+        #     AADHARHFC  48.8%  lender      caught
+        #     ADANIPOWER 41.1%  POWER co    FALSE POSITIVE — would void a valid ROCE
+        #     360ONE     14.1%  NBFC        FALSE NEGATIVE — missed
+        #     5PAISA      9.6%  broker      FALSE NEGATIVE — missed
+        # interest/revenue measures LEVERAGE, not LENDING. A heuristic wrong in both
+        # directions is worse than none: it would silently void Adani Power while still
+        # passing the NBFC the validator flagged.
+        #
+        # So: FLAG, do not silently decide. `interest_share_of_revenue` is emitted for
+        # every row and consumers MUST exclude financials themselves using a real sector
+        # source (screener.in renders a different P&L for banks — "Financing Profit" /
+        # "Financing Margin" instead of Operating Profit — which is the honest detector,
+        # but this collector does not read those rows yet).
+        # Until then ROCE for lenders is WRONG and there is no guard. Documented rather
+        # than papered over.
+        if interest is not None and rev not in (None, 0):
+            row["interest_share_of_revenue"] = abs(interest) / abs(rev)
         if pbt is not None and interest is not None:
             row["ebit"] = pbt + interest
         # Gross profit. screener.in publishes no Gross Profit / COGS row, so COGS is
@@ -228,7 +262,12 @@ def collect_ticker(sess_mod, ticker):
         if rm is not None and sales:
             row["rm_share"] = rm / sales
             if row["rm_share"] >= MFR_RM_SHARE_MIN:
-                cogs = rm - (chg or 0) + (pf or 0) + (omf or 0)
+                # `(x or 0)` LOOKS safe and is not: _num(np.nan) returns nan, because
+                # float(str(nan)) SUCCEEDS so the None fallback never fires — and then
+                # `nan or 0` yields nan, because NaN is TRUTHY. That silently voided 15%
+                # of gate-passing rows and hit FY2026 for six tickers: the most recent
+                # year, the most damaged.
+                cogs = rm - _zero(chg) + _zero(pf) + _zero(omf)
                 row["cogs"] = cogs
                 row["gross_profit"] = sales - cogs
                 row["gross_margin"] = row["gross_profit"] / sales
@@ -239,7 +278,14 @@ def collect_ticker(sess_mod, ticker):
         eq, res, bor = (row.get("equity_capital"), row.get("reserves"),
                         row.get("borrowings"))
         if eq is not None and res is not None and bor is not None:
-            row["capital_employed"] = eq + res + bor
+            ce = eq + res + bor
+            # A NEGATIVE-NET-WORTH shell rescued into positive CE by borrowings is worse
+            # than a negative denominator: the `ce > 0` guard fires on ZERO rows and the
+            # ratio looks computable. 505196 has net worth -292.07 and CE +118.62, printing
+            # +109.4% ROCE off a restructuring write-back. Require positive SHAREHOLDER
+            # FUNDS, not just positive CE.
+            row["capital_employed"] = ce if (eq + res) > 0 and ce > 0 else None
+        # roce only where EBIT is defined — i.e. never for lenders
         if row.get("ebit") is not None and row.get("capital_employed"):
             row["roce"] = row["ebit"] / row["capital_employed"]
         rows.append(row)
