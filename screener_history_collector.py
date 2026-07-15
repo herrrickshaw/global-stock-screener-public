@@ -243,8 +243,24 @@ def _universe(args):
     # artifact when the authoritative list is right there is pointless.
     if not os.path.exists(LTM):
         raise SystemExit(f"no universe: neither {UNIVERSE} nor {LTM} exists")
-    return sorted(set(pd.read_parquet(LTM, columns=["Symbol"])["Symbol"]
-                      .astype(str).str.upper()))
+    px = pd.read_parquet(LTM, columns=["Symbol", "Close", "Volume", "Date"])
+    if not args.liquid_only:
+        return sorted(set(px["Symbol"].astype(str).str.upper()))
+    # --liquid-only MUST still filter here. The first cut of this fallback ignored
+    # the flag and returned all 8,944 symbols in the LTM parquet, turning a ~28-minute
+    # job into a ~3.5-HOUR one against a rate-limited host — and silently, because the
+    # count is only printed once. The flag exists precisely to avoid hammering
+    # screener.in for names too illiquid to trade.
+    #
+    # Liquidity is the same gate used everywhere else in this repo: MEDIAN daily
+    # turnover >= Rs 1 crore, median so one block deal cannot lift a dead stock over
+    # the bar. Applied on the last 60 sessions.
+    cutoff = px["Date"].max() - pd.Timedelta(days=120)
+    recent = px[px["Date"] >= cutoff].copy()
+    recent["tv"] = recent["Close"] * recent["Volume"]
+    liq = recent.groupby("Symbol")["tv"].median()
+    keep = liq[liq >= 10_000_000].index
+    return sorted(set(pd.Series(list(keep)).astype(str).str.upper()))
 
 
 def main():
