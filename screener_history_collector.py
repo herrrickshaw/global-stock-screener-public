@@ -33,7 +33,15 @@ import time
 
 import pandas as pd
 
-BASE = os.path.expanduser("~/Downloads/code/python_files")
+# BASE used to hardcode ~/Downloads/code/python_files. That tree was migrated away
+# from AND is periodically mass-wiped by a parallel session, so all three derived
+# paths (UNIVERSE, LTM, OUT_DIR) resolved to nothing — and OUT_DIR pointing there
+# meant a 30-minute collection would write straight into the wipe zone.
+# Resolve against this file's own repo, which is where cache_seed/ltm/IN.parquet
+# actually lives; fall back to the legacy path only if it still exists.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_LEGACY = os.path.expanduser("~/Downloads/code/python_files")
+BASE = _HERE if os.path.exists(os.path.join(_HERE, "cache_seed")) else _LEGACY
 OUT_DIR = os.environ.get("FUND_HIST_DIR") or os.path.join(
     BASE, "cache_seed", "fundamentals_history"
 )
@@ -164,13 +172,22 @@ def collect_ticker(sess_mod, ticker):
 def _universe(args):
     if args.tickers:
         return [t.upper() for t in args.tickers]
-    uni = pd.read_csv(UNIVERSE)
-    syms = uni["yf_ticker"].astype(str).str.replace(r"\.(NS|BO)$", "", regex=True).str.upper()
-    syms = sorted(set(syms))
-    if args.liquid_only and os.path.exists(LTM):
-        liq = set(pd.read_parquet(LTM, columns=["Symbol"])["Symbol"].astype(str).str.upper())
-        syms = [s for s in syms if s in liq]
-    return syms
+    if os.path.exists(UNIVERSE):
+        uni = pd.read_csv(UNIVERSE)
+        syms = sorted(set(uni["yf_ticker"].astype(str)
+                          .str.replace(r"\.(NS|BO)$", "", regex=True).str.upper()))
+        if args.liquid_only and os.path.exists(LTM):
+            liq = set(pd.read_parquet(LTM, columns=["Symbol"])["Symbol"].astype(str).str.upper())
+            syms = [s for s in syms if s in liq]
+        return syms
+    # The universe CSV is a build artifact and is often absent. The LTM price
+    # parquet is the better source anyway: it IS the traded universe, and
+    # --liquid-only only ever intersected against it. Crashing on a missing
+    # artifact when the authoritative list is right there is pointless.
+    if not os.path.exists(LTM):
+        raise SystemExit(f"no universe: neither {UNIVERSE} nor {LTM} exists")
+    return sorted(set(pd.read_parquet(LTM, columns=["Symbol"])["Symbol"]
+                      .astype(str).str.upper()))
 
 
 def main():
