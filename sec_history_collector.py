@@ -24,7 +24,12 @@ import time
 import pandas as pd
 import requests
 
-BASE = os.path.expanduser("~/Downloads/code/python_files")
+# BASE hardcoded ~/Downloads/code/python_files — migrated away from AND periodically
+# mass-wiped, so the universe CSV, the LTM parquet and OUT_DIR all resolved to nothing.
+# Same bug as screener_history_collector.py. Resolve against this file's own repo.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_LEGACY = os.path.expanduser("~/Downloads/code/python_files")
+BASE = _HERE if os.path.exists(os.path.join(_HERE, "cache_seed")) else _LEGACY
 OUT_DIR = os.environ.get("FUND_HIST_DIR") or os.path.join(
     BASE, "cache_seed", "fundamentals_history"
 )
@@ -40,12 +45,36 @@ CONCEPTS = {
     "current_assets": ["AssetsCurrent"],
     "current_liabilities": ["LiabilitiesCurrent"],
     "long_term_debt": ["LongTermDebtNoncurrent", "LongTermDebt"],
+    # 🔴 ORDER MATTERS AND WAS WRONG. RevenueFromContractWithCustomerExcludingAssessedTax
+    # was FIRST, but it is the ASC-606 CONTRACT-revenue subset, not total revenue. For a
+    # multi-segment filer it omits derivative/trading revenue entirely:
+    #     ADM FY2023 stored $25.69B against a 10-K total of ~$93.9B — wrong by 3.7x.
+    # `cost_of_revenue` matched the filing exactly; only revenue didn't, which is why
+    # `cost_of_revenue > revenue` fires on 262/5,418 rows (4.8%) — arithmetically
+    # impossible, e.g. CPT FY2023 revenue ~$0 against $550M of cost.
+    # Revenue feeds P/S, every margin and every growth rate, so a 3.7x error propagates
+    # into everything downstream.
+    # `Revenues` is the US-GAAP TOTAL and now goes first; the ASC-606 tag remains as a
+    # fallback for filers who only report that one.
     "revenue": [
-        "RevenueFromContractWithCustomerExcludingAssessedTax",
         "Revenues",
+        "RevenueFromContractWithCustomerExcludingAssessedTax",
         "SalesRevenueNet",
     ],
+    # GrossProfit is tagged by only ~41% of filers — many report the COST line and
+    # leave the subtraction to the reader, so asking for one tag threw away more than
+    # half the universe. Both are collected; gross_profit is DERIVED from
+    # revenue - cost_of_revenue when the direct tag is absent (see collect_ticker).
+    # Same pattern `revenue` above already uses, and the same move that recovered EBIT
+    # for India (pbt + interest) — build from reported components rather than hoping
+    # for one convenience tag.
     "gross_profit": ["GrossProfit"],
+    "cost_of_revenue": [
+        "CostOfRevenue",
+        "CostOfGoodsAndServicesSold",
+        "CostOfGoodsSold",
+        "CostOfServices",
+    ],
     "ebit": ["OperatingIncomeLoss"],
     "equity": ["StockholdersEquity"],
     "shares": ["CommonStockSharesOutstanding", "WeightedAverageNumberOfSharesOutstandingBasic"],
@@ -96,6 +125,23 @@ def collect_ticker(sess, ticker, cik):
                 row[field] = s[fy][0]
                 filed = filed or s[fy][1]
         row["filed"] = filed
+        # Derive gross_profit when the filer never tagged GrossProfit. ~59% of filers
+        # do not, but nearly all tag a cost line — so the field was absent by
+        # COLLECTION METHOD, not by disclosure. This is subtraction of two reported
+        # figures, NOT the ratio-inversion that previously produced absurd ROCE of
+        # 95-137%. Where BOTH exist they must agree, which is checkable and is the
+        # reason the direct tag always wins.
+        # Sanity flag, not a silent repair: cost > revenue is impossible and means the
+        # revenue tag captured a subset. Surfaced so a consumer can exclude the row
+        # rather than quietly inheriting a 3.7x error.
+        _r, _c = row.get("revenue"), row.get("cost_of_revenue")
+        if _r is not None and _c is not None and _r > 0:
+            row["revenue_suspect"] = bool(_c > _r)
+        if row.get("gross_profit") is None:
+            rev, cost = row.get("revenue"), row.get("cost_of_revenue")
+            if rev is not None and cost is not None:
+                row["gross_profit"] = rev - cost
+                row["gross_profit_derived"] = True
         rows.append(row)
     return rows
 
@@ -114,7 +160,22 @@ def main():
         universe = [t.upper() for t in args.tickers]
     else:
         uni_csv = os.path.join(BASE, "data", "global_universe", "US.csv")
-        universe = sorted(set(pd.read_csv(uni_csv)["yf_ticker"].astype(str).str.upper()))
+        if os.path.exists(uni_csv):
+            universe = sorted(set(pd.read_csv(uni_csv)["yf_ticker"].astype(str).str.upper()))
+        else:
+            # The universe CSV is a build artifact and is usually absent. Two better
+            # sources are already to hand, so crashing on it is pointless:
+            #   * the LTM price panel — the TRADED universe, and analysis needs prices
+            #     anyway, so a filer with no price data cannot be used;
+            #   * SEC's own ticker->CIK map (fetched above) as the outer bound.
+            ltm = os.path.join(BASE, "cache_seed", "ltm", "US.parquet")
+            if os.path.exists(ltm):
+                universe = sorted(set(pd.read_parquet(ltm, columns=["Symbol"])["Symbol"]
+                                      .astype(str).str.upper()))
+                print(f"  universe from LTM price panel: {len(universe):,} symbols")
+            else:
+                universe = sorted(cik.keys())
+                print(f"  universe from SEC ticker->CIK map: {len(universe):,} filers")
     universe = [t for t in universe if t in cik]
     if args.limit:
         universe = universe[: args.limit]
