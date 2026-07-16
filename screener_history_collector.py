@@ -468,37 +468,66 @@ def main():
         f"{len(todo)} to fetch (~{len(todo)*_RATE/60:.0f} min at {_RATE}s/req)"
     )
 
+    def _checkpoint():
+        df = (
+            pd.concat(existing + [pd.DataFrame(rows)], ignore_index=True)
+            if (existing or rows)
+            else pd.DataFrame()
+        )
+        if not df.empty:
+            os.makedirs(OUT_DIR, exist_ok=True)  # survive a mid-run dir wipe
+            df.to_parquet(OUT, index=False)
+        return df
+
     rows, n_ok, t0, _consec_empty = [], 0, time.time(), 0
     for i, tk in enumerate(todo, 1):
         time.sleep(_RATE)
+        # ONE retry on empty before it counts against the circuit breaker. Proven
+        # transient, not a block: 500002 (ABB India, a large well-covered company —
+        # not a genuine data gap) returned empty once during a live run, then
+        # succeeded on an immediate manual re-fetch seconds later. The endpoint is
+        # occasionally flaky under sustained load; a single retry absorbs that
+        # without weakening real-block detection, since a genuine block fails the
+        # retry too and still counts.
         try:
             r = collect_ticker(sess_mod, tk)
+        except Blocked:
+            print(f"\n  ABORT: host refused the connection at {tk} — hard block, "
+                  f"not retrying. Collected {n_ok} before this.")
+            _checkpoint()
+            break
         except Exception:
             r = None
+        if not r:
+            time.sleep(_RATE * 2)
+            try:
+                r = collect_ticker(sess_mod, tk)
+            except Blocked:
+                print(f"\n  ABORT: host refused the connection at {tk} (on retry) — "
+                      f"hard block, not retrying. Collected {n_ok} before this.")
+                _checkpoint()
+                break
+            except Exception:
+                r = None
         got = bool(r)
         if got:
             rows.extend(r)
             n_ok += 1
-        # CIRCUIT BREAKER. Consecutive empties mean the session died or the host is
-        # blocking; continuing just deepens the block and produces a fake progress bar.
-        # Checked AFTER the fetch (needs this iteration's result, not the prior one —
-        # the previous version referenced `got`/`_consec_empty` before either was ever
-        # assigned, an unconditional NameError that meant this collector could not run
-        # at all).
+        # CIRCUIT BREAKER. Consecutive empties (after the retry above already absorbed
+        # one-off flakiness) mean the session died or the host is blocking; continuing
+        # just deepens the block and produces a fake progress bar. Checked AFTER the
+        # fetch (needs this iteration's result, not the prior one — the previous
+        # version referenced `got`/`_consec_empty` before either was ever assigned, an
+        # unconditional NameError that meant this collector could not run at all).
         _consec_empty = 0 if got else _consec_empty + 1
         if _consec_empty >= MAX_CONSECUTIVE_EMPTY:
             print(f"\n  ABORT: {_consec_empty} consecutive tickers returned nothing "
-                  f"— session dead or host blocking. Collected {n_ok} before this.")
+                  f"(each retried once) — session dead or host blocking. "
+                  f"Collected {n_ok} before this.")
+            _checkpoint()
             break
         if i % 100 == 0 or i == len(todo):
-            df = (
-                pd.concat(existing + [pd.DataFrame(rows)], ignore_index=True)
-                if (existing or rows)
-                else pd.DataFrame()
-            )
-            if not df.empty:
-                os.makedirs(OUT_DIR, exist_ok=True)  # survive a mid-run dir wipe
-                df.to_parquet(OUT, index=False)
+            df = _checkpoint()
             print(f"  {i}/{len(todo)} | {n_ok} with data | {len(df)} rows | {time.time()-t0:.0f}s")
     print(f"done → {os.path.relpath(OUT, BASE)}")
 
