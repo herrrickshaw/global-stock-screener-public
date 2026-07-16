@@ -78,6 +78,25 @@ CONCEPTS = {
     "ebit": ["OperatingIncomeLoss"],
     "equity": ["StockholdersEquity"],
     "shares": ["CommonStockSharesOutstanding", "WeightedAverageNumberOfSharesOutstandingBasic"],
+    # Added for Enterprise Value (Earnings Yield = EBIT / EV). Cash is a single
+    # dominant tag; "current debt" is split across three tags because filers use
+    # different ones for the current portion of long-term debt vs. short-term
+    # borrowings (revolving credit, commercial paper) — first present wins, same
+    # alternate-tag pattern as revenue/cost_of_revenue above.
+    "cash": ["CashAndCashEquivalentsAtCarryingValue",
+             "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents"],
+    "short_term_debt": ["LongTermDebtCurrent", "DebtCurrent", "ShortTermBorrowings"],
+    # Added for the growth/risk factor block: FCF (P/FCF, FCF/EBITDA), Altman
+    # Z-Score (retained_earnings, total_liabilities), Reinvestment Rate x ROCE.
+    "capex": ["PaymentsToAcquirePropertyPlantAndEquipment",
+              "PaymentsToAcquireProductiveAssets"],
+    "d_and_a": ["DepreciationDepletionAndAmortization",
+                "DepreciationAmortizationAndAccretionNet", "Depreciation"],
+    "retained_earnings": ["RetainedEarningsAccumulatedDeficit"],
+    # Liabilities is a DIRECT tag, preferred over deriving TL = TA - Equity: the
+    # derived form silently inherits whatever noise/lag equity has, and Altman's
+    # own formula uses reported total liabilities, not a residual.
+    "total_liabilities": ["Liabilities"],
 }
 
 
@@ -220,8 +239,20 @@ def main():
     existing = []
     if os.path.exists(OUT):
         prev = pd.read_parquet(OUT)
-        done = set(prev["ticker"].unique())
-        existing = [prev]
+        # collect_ticker() re-derives ALL concepts from a fresh companyfacts fetch —
+        # it never does a partial/incremental extraction — so a ticker collected
+        # before a new concept (e.g. cash, short_term_debt) was added has no way to
+        # backfill just that column. Self-heal: if the file predates the CURRENT
+        # concept set, treat nothing as done and re-fetch the whole universe. HTTP
+        # cost is the only cost here (~8 req/s), so a full re-collection is ~10-15
+        # min, not the multi-hour cost a naive "diff and only add" scheme would save.
+        missing = [c for c in CONCEPTS if c not in prev.columns]
+        if missing:
+            print(f"  concepts added since last collection ({missing}) — "
+                  f"re-fetching entire universe to backfill")
+        else:
+            done = set(prev["ticker"].unique())
+            existing = [prev]
     todo = [t for t in universe if t not in done]
     print(
         f"SEC history: {len(universe)} tickers in universe, {len(done)} already done, "
