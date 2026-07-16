@@ -28,7 +28,14 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
 
-BASE = os.path.expanduser("~/Downloads/code/python_files")
+# BASE hardcoded ~/Downloads/code/python_files — same bug already found and fixed
+# in sec_history_collector.py and screener_history_collector.py: that tree is
+# migrated away from and periodically wiped, so UNI_DIR/LTM_DIR/FUND_DIR all
+# resolved to nothing here even though the real cache_seed/ltm/*.parquet panels
+# live in this repo. Resolve against this file's own repo, legacy path as fallback.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_LEGACY = os.path.expanduser("~/Downloads/code/python_files")
+BASE = _HERE if os.path.exists(os.path.join(_HERE, "cache_seed")) else _LEGACY
 FUND_DIR = os.environ.get("FUND_HIST_DIR") or os.path.join(
     BASE, "cache_seed", "fundamentals_history"
 )
