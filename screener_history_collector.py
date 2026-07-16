@@ -468,26 +468,28 @@ def main():
         f"{len(todo)} to fetch (~{len(todo)*_RATE/60:.0f} min at {_RATE}s/req)"
     )
 
-    rows, n_ok, t0 = [], 0, time.time()
+    rows, n_ok, t0, _consec_empty = [], 0, time.time(), 0
     for i, tk in enumerate(todo, 1):
         time.sleep(_RATE)
-        # CIRCUIT BREAKER. Consecutive empties mean the session died or the host is
-        # blocking; continuing just deepens the block and produces a fake progress bar.
-        if not got:
-            _consec_empty += 1
-            if _consec_empty >= MAX_CONSECUTIVE_EMPTY:
-                print(f"\n  ABORT: {_consec_empty} consecutive tickers returned nothing "
-                      f"— session dead or host blocking. Collected {n_ok} before this.")
-                break
-        else:
-            _consec_empty = 0
         try:
             r = collect_ticker(sess_mod, tk)
-            if r:
-                rows.extend(r)
-                n_ok += 1
         except Exception:
-            pass
+            r = None
+        got = bool(r)
+        if got:
+            rows.extend(r)
+            n_ok += 1
+        # CIRCUIT BREAKER. Consecutive empties mean the session died or the host is
+        # blocking; continuing just deepens the block and produces a fake progress bar.
+        # Checked AFTER the fetch (needs this iteration's result, not the prior one —
+        # the previous version referenced `got`/`_consec_empty` before either was ever
+        # assigned, an unconditional NameError that meant this collector could not run
+        # at all).
+        _consec_empty = 0 if got else _consec_empty + 1
+        if _consec_empty >= MAX_CONSECUTIVE_EMPTY:
+            print(f"\n  ABORT: {_consec_empty} consecutive tickers returned nothing "
+                  f"— session dead or host blocking. Collected {n_ok} before this.")
+            break
         if i % 100 == 0 or i == len(todo):
             df = (
                 pd.concat(existing + [pd.DataFrame(rows)], ignore_index=True)
