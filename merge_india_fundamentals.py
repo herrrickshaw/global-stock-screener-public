@@ -56,11 +56,30 @@ BACKUP_PATH = os.path.join(FH_DIR, "IN_screener_only_backup.parquet")
 DRY_RUN_PATH = os.path.join(FH_DIR, "IN_merged_dryrun.parquet")
 
 TARGET_COLS = [
-    "ticker", "fy_end", "filed", "filed_source", "filed_nse", "source",
-    "equity", "cash", "cfo", "cost_of_revenue", "ebit", "capex", "d_and_a",
-    "total_assets", "current_assets", "current_liabilities", "long_term_debt",
-    "retained_earnings", "total_liabilities", "revenue", "short_term_debt",
-    "gross_profit", "shares", "net_income",
+    "ticker",
+    "fy_end",
+    "filed",
+    "filed_source",
+    "filed_nse",
+    "source",
+    "equity",
+    "cash",
+    "cfo",
+    "cost_of_revenue",
+    "ebit",
+    "capex",
+    "d_and_a",
+    "total_assets",
+    "current_assets",
+    "current_liabilities",
+    "long_term_debt",
+    "retained_earnings",
+    "total_liabilities",
+    "revenue",
+    "short_term_debt",
+    "gross_profit",
+    "shares",
+    "net_income",
 ]
 
 _NSE_TOLERANCE = pd.Timedelta(days=45)
@@ -68,11 +87,29 @@ _NSE_TOLERANCE = pd.Timedelta(days=45)
 
 def _map_yfinance(df: pd.DataFrame) -> pd.DataFrame:
     out = pd.DataFrame(index=df.index)
-    for c in ["ticker", "fy_end", "filed", "equity", "cash", "cfo",
-              "cost_of_revenue", "ebit", "capex", "d_and_a", "total_assets",
-              "current_assets", "current_liabilities", "long_term_debt",
-              "retained_earnings", "total_liabilities", "revenue",
-              "short_term_debt", "gross_profit", "shares", "net_income"]:
+    for c in [
+        "ticker",
+        "fy_end",
+        "filed",
+        "equity",
+        "cash",
+        "cfo",
+        "cost_of_revenue",
+        "ebit",
+        "capex",
+        "d_and_a",
+        "total_assets",
+        "current_assets",
+        "current_liabilities",
+        "long_term_debt",
+        "retained_earnings",
+        "total_liabilities",
+        "revenue",
+        "short_term_debt",
+        "gross_profit",
+        "shares",
+        "net_income",
+    ]:
         out[c] = df[c] if c in df.columns else pd.NA
     out["source"] = "yfinance"
     out["filed_source"] = out["filed"].notna().map({True: "yfinance", False: "missing"})
@@ -98,10 +135,21 @@ def _map_nse(df: pd.DataFrame) -> pd.DataFrame:
     eps = df["eps"]
     valid_eps = eps.notna() & (eps != 0)
     out["shares"] = (df["net_income"] / eps).where(valid_eps)
-    for c in ["equity", "cash", "cfo", "cost_of_revenue", "capex",
-              "total_assets", "current_assets", "current_liabilities",
-              "long_term_debt", "retained_earnings", "total_liabilities",
-              "short_term_debt", "gross_profit"]:
+    for c in [
+        "equity",
+        "cash",
+        "cfo",
+        "cost_of_revenue",
+        "capex",
+        "total_assets",
+        "current_assets",
+        "current_liabilities",
+        "long_term_debt",
+        "retained_earnings",
+        "total_liabilities",
+        "short_term_debt",
+        "gross_profit",
+    ]:
         out[c] = pd.NA
     out["source"] = "nse"
     out["filed_source"] = "nse"
@@ -132,9 +180,17 @@ def _map_screener(df: pd.DataFrame) -> pd.DataFrame:
     # `borrowings` exists in the source but mixes short+long-term debt with no
     # split available -- mapping it to long_term_debt alone would be a
     # fabricated split, so long_term_debt stays NaN too.
-    for c in ["capex", "d_and_a", "total_assets", "current_assets",
-              "current_liabilities", "long_term_debt", "retained_earnings",
-              "total_liabilities", "short_term_debt"]:
+    for c in [
+        "capex",
+        "d_and_a",
+        "total_assets",
+        "current_assets",
+        "current_liabilities",
+        "long_term_debt",
+        "retained_earnings",
+        "total_liabilities",
+        "short_term_debt",
+    ]:
         out[c] = pd.NA
     out["source"] = "screener_in"
     out["filed_source"] = "screener_in_proxy"
@@ -164,8 +220,12 @@ def _attach_nse_cross_reference(yf_rows: pd.DataFrame, nse_raw: pd.DataFrame) ->
     out = yf_rows.sort_values("fy_end").copy()
     out["_orig_idx"] = out.index
     merged = pd.merge_asof(
-        out, nse_small, by="ticker", on="fy_end",
-        direction="nearest", tolerance=_NSE_TOLERANCE,
+        out,
+        nse_small,
+        by="ticker",
+        on="fy_end",
+        direction="nearest",
+        tolerance=_NSE_TOLERANCE,
     )
     merged = merged.set_index("_orig_idx")
     yf_rows = yf_rows.copy()
@@ -177,20 +237,36 @@ def _attach_nse_cross_reference(yf_rows: pd.DataFrame, nse_raw: pd.DataFrame) ->
     return yf_rows
 
 
-def build_merged(yf_df: pd.DataFrame, nse_df: pd.DataFrame, screener_df: pd.DataFrame) -> pd.DataFrame:
+def build_merged(
+    yf_df: pd.DataFrame, nse_df: pd.DataFrame, screener_df: pd.DataFrame
+) -> pd.DataFrame:
     yf_tickers = set(yf_df["ticker"].astype(str).str.upper()) if not yf_df.empty else set()
     nse_tickers = set(nse_df["ticker"].astype(str).str.upper()) if not nse_df.empty else set()
 
     yf_mapped = _map_yfinance(yf_df) if not yf_df.empty else pd.DataFrame(columns=TARGET_COLS)
-    yf_mapped = _attach_nse_cross_reference(yf_mapped, nse_df if not nse_df.empty else pd.DataFrame())
+    yf_mapped = _attach_nse_cross_reference(
+        yf_mapped, nse_df if not nse_df.empty else pd.DataFrame()
+    )
 
-    nse_only_raw = nse_df[~nse_df["ticker"].astype(str).str.upper().isin(yf_tickers)] if not nse_df.empty else nse_df
-    nse_mapped = _map_nse(nse_only_raw) if not nse_only_raw.empty else pd.DataFrame(columns=TARGET_COLS)
+    nse_only_raw = (
+        nse_df[~nse_df["ticker"].astype(str).str.upper().isin(yf_tickers)]
+        if not nse_df.empty
+        else nse_df
+    )
+    nse_mapped = (
+        _map_nse(nse_only_raw) if not nse_only_raw.empty else pd.DataFrame(columns=TARGET_COLS)
+    )
 
-    screener_fallback_raw = screener_df[
-        ~screener_df["ticker"].astype(str).str.upper().isin(yf_tickers | nse_tickers)
-    ] if not screener_df.empty else screener_df
-    screener_mapped = _map_screener(screener_fallback_raw) if not screener_fallback_raw.empty else pd.DataFrame(columns=TARGET_COLS)
+    screener_fallback_raw = (
+        screener_df[~screener_df["ticker"].astype(str).str.upper().isin(yf_tickers | nse_tickers)]
+        if not screener_df.empty
+        else screener_df
+    )
+    screener_mapped = (
+        _map_screener(screener_fallback_raw)
+        if not screener_fallback_raw.empty
+        else pd.DataFrame(columns=TARGET_COLS)
+    )
 
     merged = pd.concat([yf_mapped, nse_mapped, screener_mapped], ignore_index=True)
     merged = merged[TARGET_COLS]
@@ -200,17 +276,29 @@ def build_merged(yf_df: pd.DataFrame, nse_df: pd.DataFrame, screener_df: pd.Data
 
 def main():
     ap = argparse.ArgumentParser(description="Merge India PIT fundamentals sources")
-    ap.add_argument("--dry-run", action="store_true", help="write to IN_merged_dryrun.parquet instead of overwriting IN.parquet")
-    ap.add_argument("--commit", action="store_true", help="back up current IN.parquet and overwrite it with the merged result")
+    ap.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="write to IN_merged_dryrun.parquet instead of overwriting IN.parquet",
+    )
+    ap.add_argument(
+        "--commit",
+        action="store_true",
+        help="back up current IN.parquet and overwrite it with the merged result",
+    )
     args = ap.parse_args()
 
     yf_df = pd.read_parquet(YF_PATH) if os.path.exists(YF_PATH) else pd.DataFrame()
     nse_df = pd.read_parquet(NSE_PATH) if os.path.exists(NSE_PATH) else pd.DataFrame()
-    screener_df = pd.read_parquet(SCREENER_PATH) if os.path.exists(SCREENER_PATH) else pd.DataFrame()
+    screener_df = (
+        pd.read_parquet(SCREENER_PATH) if os.path.exists(SCREENER_PATH) else pd.DataFrame()
+    )
 
-    print(f"Loaded: yfinance {len(yf_df)} rows / {yf_df['ticker'].nunique() if not yf_df.empty else 0} tickers, "
-          f"nse {len(nse_df)} rows / {nse_df['ticker'].nunique() if not nse_df.empty else 0} tickers, "
-          f"screener.in {len(screener_df)} rows / {screener_df['ticker'].nunique() if not screener_df.empty else 0} tickers")
+    print(
+        f"Loaded: yfinance {len(yf_df)} rows / {yf_df['ticker'].nunique() if not yf_df.empty else 0} tickers, "
+        f"nse {len(nse_df)} rows / {nse_df['ticker'].nunique() if not nse_df.empty else 0} tickers, "
+        f"screener.in {len(screener_df)} rows / {screener_df['ticker'].nunique() if not screener_df.empty else 0} tickers"
+    )
 
     merged = build_merged(yf_df, nse_df, screener_df)
 
@@ -220,18 +308,24 @@ def main():
     print(merged.groupby("source")["ticker"].nunique())
     full_bs_cols = ["total_assets", "current_assets", "current_liabilities", "long_term_debt"]
     has_full_bs = merged.groupby("ticker")[full_bs_cols].apply(lambda g: g.notna().any().all())
-    print(f"\nTickers with at least one full-balance-sheet row: {has_full_bs.sum()} / {merged['ticker'].nunique()}")
+    print(
+        f"\nTickers with at least one full-balance-sheet row: {has_full_bs.sum()} / {merged['ticker'].nunique()}"
+    )
 
     if args.commit:
         if os.path.exists(SCREENER_PATH) and not os.path.exists(BACKUP_PATH):
             shutil.copy2(SCREENER_PATH, BACKUP_PATH)
-            print(f"\nBacked up original screener.in-only file -> {os.path.relpath(BACKUP_PATH, BASE)}")
+            print(
+                f"\nBacked up original screener.in-only file -> {os.path.relpath(BACKUP_PATH, BASE)}"
+            )
         merged.to_parquet(SCREENER_PATH, index=False)
         print(f"Committed merged result -> {os.path.relpath(SCREENER_PATH, BASE)}")
     else:
         out_path = DRY_RUN_PATH
         merged.to_parquet(out_path, index=False)
-        print(f"\nDry run only -> {os.path.relpath(out_path, BASE)} (pass --commit to overwrite the real IN.parquet)")
+        print(
+            f"\nDry run only -> {os.path.relpath(out_path, BASE)} (pass --commit to overwrite the real IN.parquet)"
+        )
 
 
 if __name__ == "__main__":

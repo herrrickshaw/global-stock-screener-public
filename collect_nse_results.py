@@ -149,18 +149,32 @@ def fetch_ticker(session: requests.Session, ticker: str) -> list[dict]:
         fy_start = _parse_ddmonyyyy(row.get("re_from_dt"))
         if filed is None or fy_end is None:
             continue
-        rec = {"ticker": ticker, "filed": filed, "fy_end": fy_end, "fy_start": fy_start,
-               "seq_num": row.get("re_seq_num")}
+        rec = {
+            "ticker": ticker,
+            "filed": filed,
+            "fy_end": fy_end,
+            "fy_start": fy_start,
+            "seq_num": row.get("re_seq_num"),
+        }
         for src_col, dst_col in FIELD_MAP.items():
             val = row.get(src_col)
             if val in (None, "", "-"):
                 rec[dst_col] = None
             else:
                 try:
-                    rec[dst_col] = float(val) * 100_000 if dst_col not in (
-                        "eps", "debt_to_equity", "debt_service_coverage",
-                        "interest_coverage", "face_value", "result_type") else (
-                        val if dst_col == "result_type" else float(val))
+                    rec[dst_col] = (
+                        float(val) * 100_000
+                        if dst_col
+                        not in (
+                            "eps",
+                            "debt_to_equity",
+                            "debt_service_coverage",
+                            "interest_coverage",
+                            "face_value",
+                            "result_type",
+                        )
+                        else (val if dst_col == "result_type" else float(val))
+                    )
                 except (TypeError, ValueError):
                     rec[dst_col] = val
         out.append(rec)
@@ -196,15 +210,16 @@ def _universe(limit: int) -> list[str]:
     recent["tv"] = recent["Close"] * recent["Volume"]
     liq = recent.groupby("Symbol")["tv"].median()
     syms = sorted(liq[liq >= 10_000_000].index)
-    syms = [s for s in syms if not is_non_equity(s)
-            and not any(h in s for h in _ETF_HINTS)]
+    syms = [s for s in syms if not is_non_equity(s) and not any(h in s for h in _ETF_HINTS)]
     if limit:
         syms = syms[:limit]
     return syms
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Collect India point-in-time results from NSE's own API")
+    ap = argparse.ArgumentParser(
+        description="Collect India point-in-time results from NSE's own API"
+    )
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--tickers", nargs="*")
     args = ap.parse_args()
@@ -218,13 +233,19 @@ def main():
         done = set(prev["ticker"].astype(str).str.upper())
         existing = [prev]
     todo = [t for t in universe if t not in done]
-    print(f"NSE results-comparison: {len(universe)} tickers, {len(done)} already done, "
-          f"{len(todo)} to fetch (~{len(todo) * _RATE / 60:.0f} min at {_RATE}s/req)")
+    print(
+        f"NSE results-comparison: {len(universe)} tickers, {len(done)} already done, "
+        f"{len(todo)} to fetch (~{len(todo) * _RATE / 60:.0f} min at {_RATE}s/req)"
+    )
 
     session = _session()
 
     def _checkpoint(rows):
-        df = pd.concat(existing + [pd.DataFrame(rows)], ignore_index=True) if (existing or rows) else pd.DataFrame()
+        df = (
+            pd.concat(existing + [pd.DataFrame(rows)], ignore_index=True)
+            if (existing or rows)
+            else pd.DataFrame()
+        )
         if not df.empty:
             os.makedirs(OUT_DIR, exist_ok=True)
             df.to_parquet(OUT, index=False)
@@ -242,8 +263,10 @@ def main():
                 time.sleep(_RATE * 2)
                 r = fetch_ticker(session, tk)
             except Blocked as e2:
-                print(f"\n  ABORT: still blocked after session refresh ({e2}) at {tk}. "
-                      f"Collected {n_ok} before this.")
+                print(
+                    f"\n  ABORT: still blocked after session refresh ({e2}) at {tk}. "
+                    f"Collected {n_ok} before this."
+                )
                 _checkpoint(rows)
                 break
         got = bool(r)
@@ -252,13 +275,17 @@ def main():
             n_ok += 1
         consec_empty = 0 if got else consec_empty + 1
         if consec_empty >= MAX_CONSECUTIVE_EMPTY:
-            print(f"\n  ABORT: {consec_empty} consecutive tickers returned nothing -- "
-                  f"session dead or host blocking. Collected {n_ok} before this.")
+            print(
+                f"\n  ABORT: {consec_empty} consecutive tickers returned nothing -- "
+                f"session dead or host blocking. Collected {n_ok} before this."
+            )
             _checkpoint(rows)
             break
         if i % 50 == 0 or i == len(todo):
             df = _checkpoint(rows)
-            print(f"  {i}/{len(todo)} | {n_ok} with data | {len(df)} rows | {time.time() - t0:.0f}s")
+            print(
+                f"  {i}/{len(todo)} | {n_ok} with data | {len(df)} rows | {time.time() - t0:.0f}s"
+            )
     print(f"done -> {os.path.relpath(OUT, BASE)}")
 
 

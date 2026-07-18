@@ -64,16 +64,22 @@ BAL = {
     "long_term_debt": ["Long Term Debt"],
     "shares": ["Ordinary Shares Number", "Share Issued"],
     "equity": ["Stockholders Equity", "Total Equity Gross Minority Interest"],
-    "cash": ["Cash Cash Equivalents And Short Term Investments",
-             "Cash And Cash Equivalents", "CashAndCashEquivalents"],
+    "cash": [
+        "Cash Cash Equivalents And Short Term Investments",
+        "Cash And Cash Equivalents",
+        "CashAndCashEquivalents",
+    ],
     "total_liabilities": ["Total Liabilities Net Minority Interest", "Total Liab"],
     "retained_earnings": ["Retained Earnings"],
 }
 CASH = {
     "cfo": ["Operating Cash Flow", "Cash Flow From Continuing Operating Activities"],
     "capex": ["Capital Expenditure", "Capital Expenditures", "Purchase Of PPE"],
-    "d_and_a": ["Depreciation And Amortization", "Depreciation Amortization Depletion",
-                "Depreciation"],
+    "d_and_a": [
+        "Depreciation And Amortization",
+        "Depreciation Amortization Depletion",
+        "Depreciation",
+    ],
 }
 
 
@@ -154,8 +160,10 @@ def collect_market(market, workers):
             existing = [prev]
         else:
             missing = all_fields - set(prev.columns)
-            print(f"  {market}: new fields since last collection ({sorted(missing)}) "
-                  f"— re-fetching entire universe to backfill")
+            print(
+                f"  {market}: new fields since last collection ({sorted(missing)}) "
+                f"— re-fetching entire universe to backfill"
+            )
 
     def key(tk):
         return tk.replace(".NS", "").replace(".BO", "").upper() if bare else tk.upper()

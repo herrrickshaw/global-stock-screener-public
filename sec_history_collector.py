@@ -83,15 +83,19 @@ CONCEPTS = {
     # different ones for the current portion of long-term debt vs. short-term
     # borrowings (revolving credit, commercial paper) — first present wins, same
     # alternate-tag pattern as revenue/cost_of_revenue above.
-    "cash": ["CashAndCashEquivalentsAtCarryingValue",
-             "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents"],
+    "cash": [
+        "CashAndCashEquivalentsAtCarryingValue",
+        "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
+    ],
     "short_term_debt": ["LongTermDebtCurrent", "DebtCurrent", "ShortTermBorrowings"],
     # Added for the growth/risk factor block: FCF (P/FCF, FCF/EBITDA), Altman
     # Z-Score (retained_earnings, total_liabilities), Reinvestment Rate x ROCE.
-    "capex": ["PaymentsToAcquirePropertyPlantAndEquipment",
-              "PaymentsToAcquireProductiveAssets"],
-    "d_and_a": ["DepreciationDepletionAndAmortization",
-                "DepreciationAmortizationAndAccretionNet", "Depreciation"],
+    "capex": ["PaymentsToAcquirePropertyPlantAndEquipment", "PaymentsToAcquireProductiveAssets"],
+    "d_and_a": [
+        "DepreciationDepletionAndAmortization",
+        "DepreciationAmortizationAndAccretionNet",
+        "Depreciation",
+    ],
     "retained_earnings": ["RetainedEarningsAccumulatedDeficit"],
     # Liabilities is a DIRECT tag, preferred over deriving TL = TA - Equity: the
     # derived form silently inherits whatever noise/lag equity has, and Altman's
@@ -130,13 +134,14 @@ def _is_annual_period(rec) -> bool:
     """
     start = rec.get("start")
     if not start:
-        return True                     # instant (balance-sheet) fact
+        return True  # instant (balance-sheet) fact
     try:
         from datetime import date
+
         days = (date.fromisoformat(rec["end"]) - date.fromisoformat(start)).days
     except Exception:
-        return False                    # unparseable period -> do not guess
-    return 300 <= days <= 400           # ~1 year; 52/53-week filers land 364-371
+        return False  # unparseable period -> do not guess
+    return 300 <= days <= 400  # ~1 year; 52/53-week filers land 364-371
 
 
 def _series(facts, concepts):
@@ -225,8 +230,9 @@ def main():
             #   * SEC's own ticker->CIK map (fetched above) as the outer bound.
             ltm = os.path.join(BASE, "cache_seed", "ltm", "US.parquet")
             if os.path.exists(ltm):
-                universe = sorted(set(pd.read_parquet(ltm, columns=["Symbol"])["Symbol"]
-                                      .astype(str).str.upper()))
+                universe = sorted(
+                    set(pd.read_parquet(ltm, columns=["Symbol"])["Symbol"].astype(str).str.upper())
+                )
                 print(f"  universe from LTM price panel: {len(universe):,} symbols")
             else:
                 universe = sorted(cik.keys())
@@ -248,8 +254,10 @@ def main():
         # min, not the multi-hour cost a naive "diff and only add" scheme would save.
         missing = [c for c in CONCEPTS if c not in prev.columns]
         if missing:
-            print(f"  concepts added since last collection ({missing}) — "
-                  f"re-fetching entire universe to backfill")
+            print(
+                f"  concepts added since last collection ({missing}) — "
+                f"re-fetching entire universe to backfill"
+            )
         else:
             done = set(prev["ticker"].unique())
             existing = [prev]

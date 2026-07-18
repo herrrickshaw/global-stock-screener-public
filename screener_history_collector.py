@@ -110,9 +110,10 @@ def _zero(x):
 #
 # Structure, not value, is the discriminator — the same lesson as the ISIN prefix
 # (INE=equity, INF=fund, IN0-3=G-Sec).
-_BOND = re.compile(r"^\d{3,4}[A-Z]+\d{2,4}$")   # coupon + issuer + maturity year
+_BOND = re.compile(r"^\d{3,4}[A-Z]+\d{2,4}$")  # coupon + issuer + maturity year
 _GSEC = re.compile(r"GS\d{4}$|^SDL|SDL\d|GOI")
 _TBIL = re.compile(r"^(91D|182D|364D)|TB\d{2}")
+
 
 def is_non_equity(sym: str) -> bool:
     r"""True for bonds / G-secs / T-bills masquerading as equities.
@@ -176,8 +177,15 @@ def _is_annual_axis(vals):
 # check can ever fire. True ROE is 14.1-16.8%. 34/245 rows flip a live screen threshold.
 # An undetectable wrong number is worth 28 minutes to remove.
 _FINANCIAL_INDUSTRIES = (
-    "bank", "finance", "financial", "capital market", "nbfc", "insurance",
-    "asset management", "housing finance", "investment",
+    "bank",
+    "finance",
+    "financial",
+    "capital market",
+    "nbfc",
+    "insurance",
+    "asset management",
+    "housing finance",
+    "investment",
 )
 _INDUSTRY_RE = None
 
@@ -186,9 +194,9 @@ def industry_of(sess_mod, ticker):
     """Industry string from screener.in's company page, or None. One extra GET."""
     global _INDUSTRY_RE
     import re
+
     if _INDUSTRY_RE is None:
-        _INDUSTRY_RE = re.compile(
-            r"Industry[^<]*</[^>]+>\s*<[^>]+>([^<]{2,40})<", re.I)
+        _INDUSTRY_RE = re.compile(r"Industry[^<]*</[^>]+>\s*<[^>]+>([^<]{2,40})<", re.I)
     try:
         s = sess_mod.session()
         h = s.get(f"https://www.screener.in/company/{ticker}/", timeout=25).text
@@ -377,8 +385,7 @@ def collect_ticker(sess_mod, ticker):
         # Capital employed = shareholders' funds + debt. screener.in's balance
         # sheet gives the pieces directly (Equity Share Capital + Reserves +
         # Borrowings), so this is a sum of reported figures, not an inversion.
-        eq, res, bor = (row.get("equity_capital"), row.get("reserves"),
-                        row.get("borrowings"))
+        eq, res, bor = (row.get("equity_capital"), row.get("reserves"), row.get("borrowings"))
         if eq is not None and res is not None and bor is not None:
             ce = eq + res + bor
             # A NEGATIVE-NET-WORTH shell rescued into positive CE by borrowings is worse
@@ -399,8 +406,9 @@ def _universe(args):
         return [t.upper() for t in args.tickers]
     if os.path.exists(UNIVERSE):
         uni = pd.read_csv(UNIVERSE)
-        syms = sorted(set(uni["yf_ticker"].astype(str)
-                          .str.replace(r"\.(NS|BO)$", "", regex=True).str.upper()))
+        syms = sorted(
+            set(uni["yf_ticker"].astype(str).str.replace(r"\.(NS|BO)$", "", regex=True).str.upper())
+        )
         if args.liquid_only and os.path.exists(LTM):
             liq = set(pd.read_parquet(LTM, columns=["Symbol"])["Symbol"].astype(str).str.upper())
             syms = [s for s in syms if s in liq]
@@ -434,8 +442,10 @@ def _universe(args):
     equities = [s for s in syms if not is_non_equity(s)]
     dropped = len(syms) - len(equities)
     if dropped:
-        print(f"  dropped {dropped} non-equity instruments (bonds/G-secs/T-bills) "
-              f"that cleared the value gate")
+        print(
+            f"  dropped {dropped} non-equity instruments (bonds/G-secs/T-bills) "
+            f"that cleared the value gate"
+        )
     return equities
 
 
@@ -492,8 +502,10 @@ def main():
         try:
             r = collect_ticker(sess_mod, tk)
         except Blocked:
-            print(f"\n  ABORT: host refused the connection at {tk} — hard block, "
-                  f"not retrying. Collected {n_ok} before this.")
+            print(
+                f"\n  ABORT: host refused the connection at {tk} — hard block, "
+                f"not retrying. Collected {n_ok} before this."
+            )
             _checkpoint()
             break
         except Exception:
@@ -503,8 +515,10 @@ def main():
             try:
                 r = collect_ticker(sess_mod, tk)
             except Blocked:
-                print(f"\n  ABORT: host refused the connection at {tk} (on retry) — "
-                      f"hard block, not retrying. Collected {n_ok} before this.")
+                print(
+                    f"\n  ABORT: host refused the connection at {tk} (on retry) — "
+                    f"hard block, not retrying. Collected {n_ok} before this."
+                )
                 _checkpoint()
                 break
             except Exception:
@@ -521,9 +535,11 @@ def main():
         # unconditional NameError that meant this collector could not run at all).
         _consec_empty = 0 if got else _consec_empty + 1
         if _consec_empty >= MAX_CONSECUTIVE_EMPTY:
-            print(f"\n  ABORT: {_consec_empty} consecutive tickers returned nothing "
-                  f"(each retried once) — session dead or host blocking. "
-                  f"Collected {n_ok} before this.")
+            print(
+                f"\n  ABORT: {_consec_empty} consecutive tickers returned nothing "
+                f"(each retried once) — session dead or host blocking. "
+                f"Collected {n_ok} before this."
+            )
             _checkpoint()
             break
         if i % 100 == 0 or i == len(todo):

@@ -60,14 +60,24 @@ sys.path.insert(0, BASE)
 
 _DELAY = 0.4
 _CHECKPOINT_EVERY = 100
-_EARNINGS_TOLERANCE_DAYS = 120  # widest plausible reporting lag (NSE genuine lag was 9-53d; leave headroom)
+_EARNINGS_TOLERANCE_DAYS = (
+    120  # widest plausible reporting lag (NSE genuine lag was 9-53d; leave headroom)
+)
 
 # Ordered candidate labels -- first one present in the statement wins.
 # Built from actually inspecting RELIANCE.NS / TCS.NS / ABBOTINDIA.NS
 # index labels live (2026-07-17), not guessed blind.
 BS_CANDIDATES = {
-    "equity": ["Stockholders Equity", "Common Stock Equity", "Total Equity Gross Minority Interest"],
-    "cash": ["Cash And Cash Equivalents", "Cash Cash Equivalents And Short Term Investments", "Cash Financial"],
+    "equity": [
+        "Stockholders Equity",
+        "Common Stock Equity",
+        "Total Equity Gross Minority Interest",
+    ],
+    "cash": [
+        "Cash And Cash Equivalents",
+        "Cash Cash Equivalents And Short Term Investments",
+        "Cash Financial",
+    ],
     "total_assets": ["Total Assets"],
     "current_assets": ["Current Assets"],
     "current_liabilities": ["Current Liabilities"],
@@ -172,11 +182,14 @@ def fetch_ticker(nse_symbol: str) -> tuple[list[dict], str | None]:
 
 def _universe(limit: int) -> list[str]:
     from collect_nse_results import _universe as _nse_universe
+
     return _nse_universe(limit)
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Collect India PIT fundamentals from yfinance quarterly statements")
+    ap = argparse.ArgumentParser(
+        description="Collect India PIT fundamentals from yfinance quarterly statements"
+    )
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--tickers", nargs="*")
     ap.add_argument("--smoke-test", action="store_true", help="use a fixed 20-ticker smoke sample")
@@ -186,10 +199,26 @@ def main():
 
     if args.smoke_test:
         universe = [
-            "RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK",  # large-cap
-            "ABBOTINDIA", "BAJFINANCE", "ASIANPAINT", "MARUTI", "SUNPHARMA",
-            "TATASTEEL", "COALINDIA", "NTPC", "ITC", "HINDUNILVR",  # more large-cap
-            "PAGEIND", "MASTEK", "VBL", "SCHNEIDER", "20MICRONS",  # mid/small-cap mix
+            "RELIANCE",
+            "TCS",
+            "INFY",
+            "HDFCBANK",
+            "ICICIBANK",  # large-cap
+            "ABBOTINDIA",
+            "BAJFINANCE",
+            "ASIANPAINT",
+            "MARUTI",
+            "SUNPHARMA",
+            "TATASTEEL",
+            "COALINDIA",
+            "NTPC",
+            "ITC",
+            "HINDUNILVR",  # more large-cap
+            "PAGEIND",
+            "MASTEK",
+            "VBL",
+            "SCHNEIDER",
+            "20MICRONS",  # mid/small-cap mix
         ]
     elif args.tickers:
         universe = [t.upper() for t in args.tickers]
@@ -202,11 +231,17 @@ def main():
         done = set(prev["ticker"].astype(str).str.upper())
         existing = [prev]
     todo = [t for t in universe if t not in done]
-    print(f"yfinance PIT collector: {len(universe)} tickers, {len(done)} already done, "
-          f"{len(todo)} to fetch (~{len(todo) * _DELAY / 60:.1f} min minimum at {_DELAY}s/req)")
+    print(
+        f"yfinance PIT collector: {len(universe)} tickers, {len(done)} already done, "
+        f"{len(todo)} to fetch (~{len(todo) * _DELAY / 60:.1f} min minimum at {_DELAY}s/req)"
+    )
 
     def _checkpoint(rows):
-        df = pd.concat(existing + [pd.DataFrame(rows)], ignore_index=True) if (existing or rows) else pd.DataFrame()
+        df = (
+            pd.concat(existing + [pd.DataFrame(rows)], ignore_index=True)
+            if (existing or rows)
+            else pd.DataFrame()
+        )
         if not df.empty:
             df.to_parquet(OUT, index=False)
         return df
@@ -227,10 +262,14 @@ def main():
             print(f"  [{i}/{len(todo)}] {tk}: no data from yfinance (.NS or .BO), skipping")
         if i % _CHECKPOINT_EVERY == 0 or i == len(todo):
             df = _checkpoint(rows)
-            print(f"  {i}/{len(todo)} | {n_ok} ok | {n_fail} failed | {len(df)} rows | {time.time() - t0:.0f}s")
+            print(
+                f"  {i}/{len(todo)} | {n_ok} ok | {n_fail} failed | {len(df)} rows | {time.time() - t0:.0f}s"
+            )
 
     df = _checkpoint(rows)
-    print(f"done -> {os.path.relpath(OUT, BASE)} ({len(df)} rows, {df['ticker'].nunique() if not df.empty else 0} tickers)")
+    print(
+        f"done -> {os.path.relpath(OUT, BASE)} ({len(df)} rows, {df['ticker'].nunique() if not df.empty else 0} tickers)"
+    )
 
 
 if __name__ == "__main__":
