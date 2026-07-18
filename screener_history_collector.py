@@ -115,7 +115,7 @@ _GSEC = re.compile(r"GS\d{4}$|^SDL|SDL\d|GOI")
 _TBIL = re.compile(r"^(91D|182D|364D)|TB\d{2}")
 
 def is_non_equity(sym: str) -> bool:
-    """True for bonds / G-secs / T-bills masquerading as equities.
+    r"""True for bonds / G-secs / T-bills masquerading as equities.
 
     The trailing-digits requirement in _BOND matters: `^\d{3,4}[A-Z]` alone flags 360ONE
     (360 + ONE), a real equity. Real bonds carry a maturity year — 1010EFSL29 -> 1010,
