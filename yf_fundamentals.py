@@ -28,7 +28,14 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
 
-BASE = os.path.expanduser("~/Downloads/code/python_files")
+# BASE hardcoded ~/Downloads/code/python_files — same bug already found and fixed
+# in sec_history_collector.py and screener_history_collector.py: that tree is
+# migrated away from and periodically wiped, so UNI_DIR/LTM_DIR/FUND_DIR all
+# resolved to nothing here even though the real cache_seed/ltm/*.parquet panels
+# live in this repo. Resolve against this file's own repo, legacy path as fallback.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_LEGACY = os.path.expanduser("~/Downloads/code/python_files")
+BASE = _HERE if os.path.exists(os.path.join(_HERE, "cache_seed")) else _LEGACY
 FUND_DIR = os.environ.get("FUND_HIST_DIR") or os.path.join(
     BASE, "cache_seed", "fundamentals_history"
 )
@@ -37,10 +44,18 @@ LTM_DIR = os.path.join(BASE, "cache_seed", "ltm")
 BARE_MARKETS = {"IN"}  # store bare symbols to match ltm; all others keep the yf suffix
 SKIP = {"US"}  # US uses SEC EDGAR (true PIT) — don't downgrade to yfinance
 
+# ebit/cash/capex/d_and_a/retained_earnings/total_liabilities added for the
+# multi-factor framework (ROCE, Earnings Yield, Altman Z, P/FCF, FCF/EBITDA,
+# Reinvestment Rate) extending to JP/KR/EU — the original schema only carried
+# the 9 plain Piotroski inputs, which blocks every factor needing EBIT (ROCE,
+# Earnings Yield, Altman Z's X3 term) entirely. Label candidates match what
+# piotroski_plus.py's own live yfinance scorer already successfully extracts
+# from this identical data source (ticker.income_stmt/.balance_sheet/.cashflow).
 INCOME = {
     "net_income": ["Net Income"],
     "revenue": ["Total Revenue"],
     "gross_profit": ["Gross Profit"],
+    "ebit": ["EBIT", "Operating Income", "OperatingIncome"],
 }
 BAL = {
     "total_assets": ["Total Assets"],
@@ -49,8 +64,23 @@ BAL = {
     "long_term_debt": ["Long Term Debt"],
     "shares": ["Ordinary Shares Number", "Share Issued"],
     "equity": ["Stockholders Equity", "Total Equity Gross Minority Interest"],
+    "cash": [
+        "Cash Cash Equivalents And Short Term Investments",
+        "Cash And Cash Equivalents",
+        "CashAndCashEquivalents",
+    ],
+    "total_liabilities": ["Total Liabilities Net Minority Interest", "Total Liab"],
+    "retained_earnings": ["Retained Earnings"],
 }
-CASH = {"cfo": ["Operating Cash Flow", "Cash Flow From Continuing Operating Activities"]}
+CASH = {
+    "cfo": ["Operating Cash Flow", "Cash Flow From Continuing Operating Activities"],
+    "capex": ["Capital Expenditure", "Capital Expenditures", "Purchase Of PPE"],
+    "d_and_a": [
+        "Depreciation And Amortization",
+        "Depreciation Amortization Depletion",
+        "Depreciation",
+    ],
+}
 
 
 def _pick(df, labels):
@@ -112,12 +142,28 @@ def collect_market(market, workers):
         return
     bare = market in BARE_MARKETS
     out = os.path.join(FUND_DIR, f"{market}.parquet")
+    # Self-healing: a ticker only counts as "done" if EVERY current field is
+    # present as a column. Checking just "total_assets" (the original guard)
+    # would mark tickers done from before ebit/cash/capex/d_and_a/
+    # retained_earnings/total_liabilities existed as done forever, silently
+    # leaving those new columns NaN for the whole prior collection — the same
+    # bug already found and fixed in sec_history_collector.py for cash/
+    # short_term_debt, and again for capex/d_and_a/retained_earnings/
+    # total_liabilities. Re-fetching everyone once is cheap here: yfinance has
+    # no login and no hard throttle (see module docstring).
+    all_fields = set(INCOME) | set(BAL) | set(CASH)
     done, existing = set(), []
     if os.path.exists(out):
         prev = pd.read_parquet(out)
-        if "total_assets" in prev.columns:  # only reuse yfinance-schema rows
+        if all_fields.issubset(prev.columns):
             done = set(prev["ticker"].astype(str).str.upper())
             existing = [prev]
+        else:
+            missing = all_fields - set(prev.columns)
+            print(
+                f"  {market}: new fields since last collection ({sorted(missing)}) "
+                f"— re-fetching entire universe to backfill"
+            )
 
     def key(tk):
         return tk.replace(".NS", "").replace(".BO", "").upper() if bare else tk.upper()

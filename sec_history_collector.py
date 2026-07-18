@@ -24,7 +24,12 @@ import time
 import pandas as pd
 import requests
 
-BASE = os.path.expanduser("~/Downloads/code/python_files")
+# BASE hardcoded ~/Downloads/code/python_files — migrated away from AND periodically
+# mass-wiped, so the universe CSV, the LTM parquet and OUT_DIR all resolved to nothing.
+# Same bug as screener_history_collector.py. Resolve against this file's own repo.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_LEGACY = os.path.expanduser("~/Downloads/code/python_files")
+BASE = _HERE if os.path.exists(os.path.join(_HERE, "cache_seed")) else _LEGACY
 OUT_DIR = os.environ.get("FUND_HIST_DIR") or os.path.join(
     BASE, "cache_seed", "fundamentals_history"
 )
@@ -40,15 +45,62 @@ CONCEPTS = {
     "current_assets": ["AssetsCurrent"],
     "current_liabilities": ["LiabilitiesCurrent"],
     "long_term_debt": ["LongTermDebtNoncurrent", "LongTermDebt"],
+    # 🔴 ORDER MATTERS AND WAS WRONG. RevenueFromContractWithCustomerExcludingAssessedTax
+    # was FIRST, but it is the ASC-606 CONTRACT-revenue subset, not total revenue. For a
+    # multi-segment filer it omits derivative/trading revenue entirely:
+    #     ADM FY2023 stored $25.69B against a 10-K total of ~$93.9B — wrong by 3.7x.
+    # `cost_of_revenue` matched the filing exactly; only revenue didn't, which is why
+    # `cost_of_revenue > revenue` fires on 262/5,418 rows (4.8%) — arithmetically
+    # impossible, e.g. CPT FY2023 revenue ~$0 against $550M of cost.
+    # Revenue feeds P/S, every margin and every growth rate, so a 3.7x error propagates
+    # into everything downstream.
+    # `Revenues` is the US-GAAP TOTAL and now goes first; the ASC-606 tag remains as a
+    # fallback for filers who only report that one.
     "revenue": [
-        "RevenueFromContractWithCustomerExcludingAssessedTax",
         "Revenues",
+        "RevenueFromContractWithCustomerExcludingAssessedTax",
         "SalesRevenueNet",
     ],
+    # GrossProfit is tagged by only ~41% of filers — many report the COST line and
+    # leave the subtraction to the reader, so asking for one tag threw away more than
+    # half the universe. Both are collected; gross_profit is DERIVED from
+    # revenue - cost_of_revenue when the direct tag is absent (see collect_ticker).
+    # Same pattern `revenue` above already uses, and the same move that recovered EBIT
+    # for India (pbt + interest) — build from reported components rather than hoping
+    # for one convenience tag.
     "gross_profit": ["GrossProfit"],
+    "cost_of_revenue": [
+        "CostOfRevenue",
+        "CostOfGoodsAndServicesSold",
+        "CostOfGoodsSold",
+        "CostOfServices",
+    ],
     "ebit": ["OperatingIncomeLoss"],
     "equity": ["StockholdersEquity"],
     "shares": ["CommonStockSharesOutstanding", "WeightedAverageNumberOfSharesOutstandingBasic"],
+    # Added for Enterprise Value (Earnings Yield = EBIT / EV). Cash is a single
+    # dominant tag; "current debt" is split across three tags because filers use
+    # different ones for the current portion of long-term debt vs. short-term
+    # borrowings (revolving credit, commercial paper) — first present wins, same
+    # alternate-tag pattern as revenue/cost_of_revenue above.
+    "cash": [
+        "CashAndCashEquivalentsAtCarryingValue",
+        "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
+    ],
+    "short_term_debt": ["LongTermDebtCurrent", "DebtCurrent", "ShortTermBorrowings"],
+    # Added for the growth/risk factor block: FCF (P/FCF, FCF/EBITDA), Altman
+    # Z-Score (retained_earnings, total_liabilities), Reinvestment Rate x ROCE.
+    "capex": ["PaymentsToAcquirePropertyPlantAndEquipment", "PaymentsToAcquireProductiveAssets"],
+    "d_and_a": [
+        "DepreciationDepletionAndAmortization",
+        "DepreciationAmortizationAndAccretionNet",
+        "Depreciation",
+    ],
+    "retained_earnings": ["RetainedEarningsAccumulatedDeficit"],
+    # Liabilities is a DIRECT tag, preferred over deriving TL = TA - Equity: the
+    # derived form silently inherits whatever noise/lag equity has, and Altman's
+    # own formula uses reported total liabilities, not a residual.
+    "total_liabilities": ["Liabilities"],
 }
 
 
@@ -56,6 +108,40 @@ def _ticker_cik(sess):
     r = sess.get("https://www.sec.gov/files/company_tickers.json", headers=_UA, timeout=30)
     r.raise_for_status()
     return {v["ticker"].upper(): str(v["cik_str"]).zfill(10) for v in r.json().values()}
+
+
+def _is_annual_period(rec) -> bool:
+    """Is this fact an ANNUAL period, or a quarter wearing an annual label?
+
+    🔴 `form == "10-K" and fp == "FY"` DOES NOT MEAN ANNUAL. A 10-K reports quarterly
+    breakouts tagged fp=FY, and each was being stored keyed by its own `end` date — so
+    quarters entered the series as if they were fiscal years. Proven on ADM 2023
+    (form=10-K, fp=FY, concept Revenues):
+
+        start=2023-01-01 end=2023-03-31 days= 89  $24.07bn   <- QUARTER
+        start=2023-04-01 end=2023-06-30 days= 90  $25.19bn   <- QUARTER
+        start=2023-07-01 end=2023-09-30 days= 91  $21.70bn   <- QUARTER
+        start=2023-01-01 end=2023-12-31 days=364  $93.94bn   <- the real annual
+        start=2023-10-01 end=2023-12-31 days= 91  $22.98bn   <- QUARTER
+
+    Only the DURATION separates them. This is the same trap as India's "Operating
+    Profit", which exists only in screener.in's QUARTERLY block — caught there, then
+    not checked for here. The label lies; the structure does not.
+
+    INSTANT concepts (Assets, LiabilitiesCurrent, StockholdersEquity — balance-sheet
+    items) carry NO `start` and are a point in time, not a period. They are kept as-is:
+    a blanket duration test would delete every balance sheet in the dataset.
+    """
+    start = rec.get("start")
+    if not start:
+        return True  # instant (balance-sheet) fact
+    try:
+        from datetime import date
+
+        days = (date.fromisoformat(rec["end"]) - date.fromisoformat(start)).days
+    except Exception:
+        return False  # unparseable period -> do not guess
+    return 300 <= days <= 400  # ~1 year; 52/53-week filers land 364-371
 
 
 def _series(facts, concepts):
@@ -69,10 +155,13 @@ def _series(facts, concepts):
         out = {}
         for unit_vals in node.get("units", {}).values():
             for r in unit_vals:
-                if r.get("form") == "10-K" and r.get("fp") == "FY" and r.get("val") is not None:
-                    end, filed = r["end"], (r.get("filed") or "9999-99-99")
-                    if end not in out or filed < out[end][1]:  # earliest filing wins
-                        out[end] = (r["val"], filed)
+                if r.get("form") != "10-K" or r.get("fp") != "FY" or r.get("val") is None:
+                    continue
+                if not _is_annual_period(r):
+                    continue
+                end, filed = r["end"], (r.get("filed") or "9999-99-99")
+                if end not in out or filed < out[end][1]:  # earliest filing wins
+                    out[end] = (r["val"], filed)
         if out:
             return out
     return {}
@@ -96,6 +185,23 @@ def collect_ticker(sess, ticker, cik):
                 row[field] = s[fy][0]
                 filed = filed or s[fy][1]
         row["filed"] = filed
+        # Derive gross_profit when the filer never tagged GrossProfit. ~59% of filers
+        # do not, but nearly all tag a cost line — so the field was absent by
+        # COLLECTION METHOD, not by disclosure. This is subtraction of two reported
+        # figures, NOT the ratio-inversion that previously produced absurd ROCE of
+        # 95-137%. Where BOTH exist they must agree, which is checkable and is the
+        # reason the direct tag always wins.
+        # Sanity flag, not a silent repair: cost > revenue is impossible and means the
+        # revenue tag captured a subset. Surfaced so a consumer can exclude the row
+        # rather than quietly inheriting a 3.7x error.
+        _r, _c = row.get("revenue"), row.get("cost_of_revenue")
+        if _r is not None and _c is not None and _r > 0:
+            row["revenue_suspect"] = bool(_c > _r)
+        if row.get("gross_profit") is None:
+            rev, cost = row.get("revenue"), row.get("cost_of_revenue")
+            if rev is not None and cost is not None:
+                row["gross_profit"] = rev - cost
+                row["gross_profit_derived"] = True
         rows.append(row)
     return rows
 
@@ -114,7 +220,23 @@ def main():
         universe = [t.upper() for t in args.tickers]
     else:
         uni_csv = os.path.join(BASE, "data", "global_universe", "US.csv")
-        universe = sorted(set(pd.read_csv(uni_csv)["yf_ticker"].astype(str).str.upper()))
+        if os.path.exists(uni_csv):
+            universe = sorted(set(pd.read_csv(uni_csv)["yf_ticker"].astype(str).str.upper()))
+        else:
+            # The universe CSV is a build artifact and is usually absent. Two better
+            # sources are already to hand, so crashing on it is pointless:
+            #   * the LTM price panel — the TRADED universe, and analysis needs prices
+            #     anyway, so a filer with no price data cannot be used;
+            #   * SEC's own ticker->CIK map (fetched above) as the outer bound.
+            ltm = os.path.join(BASE, "cache_seed", "ltm", "US.parquet")
+            if os.path.exists(ltm):
+                universe = sorted(
+                    set(pd.read_parquet(ltm, columns=["Symbol"])["Symbol"].astype(str).str.upper())
+                )
+                print(f"  universe from LTM price panel: {len(universe):,} symbols")
+            else:
+                universe = sorted(cik.keys())
+                print(f"  universe from SEC ticker->CIK map: {len(universe):,} filers")
     universe = [t for t in universe if t in cik]
     if args.limit:
         universe = universe[: args.limit]
@@ -123,8 +245,22 @@ def main():
     existing = []
     if os.path.exists(OUT):
         prev = pd.read_parquet(OUT)
-        done = set(prev["ticker"].unique())
-        existing = [prev]
+        # collect_ticker() re-derives ALL concepts from a fresh companyfacts fetch —
+        # it never does a partial/incremental extraction — so a ticker collected
+        # before a new concept (e.g. cash, short_term_debt) was added has no way to
+        # backfill just that column. Self-heal: if the file predates the CURRENT
+        # concept set, treat nothing as done and re-fetch the whole universe. HTTP
+        # cost is the only cost here (~8 req/s), so a full re-collection is ~10-15
+        # min, not the multi-hour cost a naive "diff and only add" scheme would save.
+        missing = [c for c in CONCEPTS if c not in prev.columns]
+        if missing:
+            print(
+                f"  concepts added since last collection ({missing}) — "
+                f"re-fetching entire universe to backfill"
+            )
+        else:
+            done = set(prev["ticker"].unique())
+            existing = [prev]
     todo = [t for t in universe if t not in done]
     print(
         f"SEC history: {len(universe)} tickers in universe, {len(done)} already done, "

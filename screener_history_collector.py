@@ -29,6 +29,7 @@ Output: cache_seed/fundamentals_history/IN.parquet — long format, one row per
 import argparse
 import io
 import os
+import re
 import time
 
 import pandas as pd
@@ -49,6 +50,9 @@ OUT = os.path.join(OUT_DIR, "IN.parquet")
 UNIVERSE = os.path.join(BASE, "data", "global_universe", "IN.csv")
 LTM = os.path.join(BASE, "cache_seed", "ltm", "IN.parquet")
 _RATE = 0.7  # polite delay between screener.in fetches (ToS-friendly)
+# Consecutive empty fetches before aborting. A real universe has gaps (BSE-only names
+# 404 on the NSE-shaped URL), but ~30 in a row is a block, not a coincidence.
+MAX_CONSECUTIVE_EMPTY = 30
 
 # Data-Sheet row label → our field name (annual series only; first present wins).
 FIELDS = {
@@ -88,6 +92,40 @@ FIELDS = {
 }
 
 
+def _zero(x):
+    """NaN/None -> 0.0. `(x or 0)` cannot do this: NaN is TRUTHY, so `nan or 0` is nan."""
+    return 0.0 if x is None or x != x else float(x)
+
+
+# ── non-equity instruments ────────────────────────────────────────────────────
+# The GSS price panel is 23% NON-EQUITY: 1,984 coupon-prefixed bonds (1010EFSL29,
+# 805HDFCB29), 141 G-secs/SDLs (1018GS2026), 169 T-bills. Median 90 shares/day against
+# 76,887 for real equities.
+#
+# A VALUE-based liquidity floor does NOT remove them — that is the whole trap. A bond
+# trading 90 units/day at Rs 1 lakh face value turns over Rs 90 lakh and sails through a
+# Rs 1 crore gate. This is the LIQUIDSBI incident (an ETF shipped as a golden-cross pick)
+# at 2,593x scale, and it is why the India collection wasted fetches on bonds screener.in
+# will never serve.
+#
+# Structure, not value, is the discriminator — the same lesson as the ISIN prefix
+# (INE=equity, INF=fund, IN0-3=G-Sec).
+_BOND = re.compile(r"^\d{3,4}[A-Z]+\d{2,4}$")  # coupon + issuer + maturity year
+_GSEC = re.compile(r"GS\d{4}$|^SDL|SDL\d|GOI")
+_TBIL = re.compile(r"^(91D|182D|364D)|TB\d{2}")
+
+
+def is_non_equity(sym: str) -> bool:
+    r"""True for bonds / G-secs / T-bills masquerading as equities.
+
+    The trailing-digits requirement in _BOND matters: `^\d{3,4}[A-Z]` alone flags 360ONE
+    (360 + ONE), a real equity. Real bonds carry a maturity year — 1010EFSL29 -> 1010,
+    EFSL, 29. Verified: this pattern keeps 360ONE and drops 1010EFSL29.
+    """
+    s = (sym or "").strip().upper()
+    return bool(_BOND.match(s) or _GSEC.search(s) or _TBIL.search(s))
+
+
 def _num(x):
     try:
         return float(str(x).replace(",", "").replace("%", "").strip())
@@ -105,6 +143,80 @@ def _is_annual_axis(vals):
     if all(getattr(d, "month", 0) == 3 for d in dates):
         return [pd.Timestamp(d).normalize() for d in dates]
     return None
+
+
+# ── lender detection: the SECTOR FIELD, from the company page ─────────────────
+# THREE RATIO/STRUCTURE DETECTORS WERE REFUTED BEFORE THIS ONE, and the reason matters:
+#   1. interest/revenue >= 25%  -> caught ADANIPOWER (a POWER utility), missed 360ONE.
+#                                  Measures LEVERAGE, not LENDING.
+#   2. EBIT margin, any cut     -> lenders -24.6%..+95.8%, non-lenders +7.7%..+902.8%.
+#                                  TOTAL OVERLAP. Ratios are the OUTPUT of a business
+#                                  model; they cannot reveal it.
+#   3. "Financing Profit" rows  -> HDFCBANK detected as NOT-lender. screener.in
+#                                  NORMALISES every company into one Data Sheet template:
+#                                  HDFCBANK shows Sales 69,305.96 (interest income written
+#                                  into the Sales line), Raw Material Cost nan, Interest
+#                                  36,166.73 (52% of Sales). The EXPORT has no sector signal.
+#
+# The company PAGE does. It carries an Industry field the export omits:
+#     HDFCBANK   Banks               IN05      AADHARHFC  Finance          IN05
+#     360ONE     Capital Markets     IN05      5PAISA     Capital Markets  IN05
+#     ADANIPOWER Power               IN11      TCS        IT - Software    IN08
+#     3MINDIA    Diversified         IN12      APCOTEXIND Industrial Prod. IN07
+# Verified against the exact cases that broke all three earlier detectors: every lender
+# is IN05, every industrial is not.
+#
+# ⚠️ 3PLAND classifies as Finance/IN05 and I had labelled it "not-lender" from its name
+# (3P LAND -> real estate). The classifier is right and my label was wrong — its interest
+# is 908% of revenue. Sector comes from the source, not from reading tickers.
+#
+# WHY IT IS WORTH ONE EXTRA FETCH PER TICKER (~+28 min on 2,367 names): for a bank/NBFC
+# `ebit = pbt + interest` adds back their cost of goods sold. EBIT inflates ~4x,
+# borrowings inflate capital_employed ~9x, and THE ERRORS PARTIALLY CANCEL — AADHARHFC
+# lands at ROCE 8.5-10.7% every year, INSIDE the 5-25% plausibility band, so no range
+# check can ever fire. True ROE is 14.1-16.8%. 34/245 rows flip a live screen threshold.
+# An undetectable wrong number is worth 28 minutes to remove.
+_FINANCIAL_INDUSTRIES = (
+    "bank",
+    "finance",
+    "financial",
+    "capital market",
+    "nbfc",
+    "insurance",
+    "asset management",
+    "housing finance",
+    "investment",
+)
+_INDUSTRY_RE = None
+
+
+def industry_of(sess_mod, ticker):
+    """Industry string from screener.in's company page, or None. One extra GET."""
+    global _INDUSTRY_RE
+    import re
+
+    if _INDUSTRY_RE is None:
+        _INDUSTRY_RE = re.compile(r"Industry[^<]*</[^>]+>\s*<[^>]+>([^<]{2,40})<", re.I)
+    try:
+        s = sess_mod.session()
+        h = s.get(f"https://www.screener.in/company/{ticker}/", timeout=25).text
+    except Exception:
+        return None
+    m = _INDUSTRY_RE.search(h)
+    return m.group(1).strip() if m else None
+
+
+def is_financial(industry) -> bool:
+    """True when the SOURCE classifies this as a lender/financial.
+
+    Returns False on None: an unknown industry is not evidence of being industrial, but
+    declining every un-fetched company would empty the dataset. Callers get `industry`
+    on the row and can filter harder.
+    """
+    if not industry:
+        return False
+    i = industry.strip().lower()
+    return any(k in i for k in _FINANCIAL_INDUSTRIES)
 
 
 def _extract_annual(df):
@@ -141,9 +253,26 @@ def _extract_annual(df):
     return out
 
 
+class Blocked(RuntimeError):
+    """screener.in stopped serving us. Raised so the caller can ABORT, not grind on."""
+
+
 def collect_ticker(sess_mod, ticker):
-    """Fetch + parse one company. Returns list of per-fiscal-year row dicts."""
-    raw = sess_mod.company_export_bytes(ticker)
+    """Fetch + parse one company. Returns list of per-fiscal-year row dicts.
+
+    Raises Blocked when the host refuses the connection, so main() can stop.
+    Previously every failure was swallowed into `return []`, which turned a block into a
+    silent no-op: on 2026-07-15 a run was blocked ~1 MINUTE in, then spent 40 MINUTES
+    walking 2,367 tickers whose every fetch failed, and reported "2367/2367 | 31 with
+    data" — a completion message for a job that collected nothing after the first
+    minute. A failure that looks like progress is worse than a crash.
+    """
+    try:
+        raw = sess_mod.company_export_bytes(ticker)
+    except Exception as e:
+        if "Max retries" in str(e) or "Connection" in type(e).__name__:
+            raise Blocked(f"host refused connection at {ticker}: {str(e)[:60]}") from e
+        return []
     if not raw:
         return []
     try:
@@ -153,6 +282,8 @@ def collect_ticker(sess_mod, ticker):
     except Exception:
         return []
     annual = _extract_annual(df)
+    industry = industry_of(sess_mod, ticker)
+    lender = is_financial(industry)
     rows = []
     for fy, fields in sorted(annual.items()):
         row = {"ticker": ticker, "fy_end": fy.strftime("%Y-%m-%d")}
@@ -160,7 +291,40 @@ def collect_ticker(sess_mod, ticker):
         # EBIT and capital employed, derived from reported annual line items so
         # downstream ROCE consumers never re-derive them inconsistently.
         pbt, interest = row.get("profit_before_tax"), row.get("interest")
-        if pbt is not None and interest is not None:
+        rev = row.get("revenue")
+        # 🔴 EBIT IS NOT DEFINED FOR LENDERS, AND THIS FILE CANNOT RELIABLY DETECT THEM.
+        # `pbt + interest` adds interest back as a financing cost. For a bank/HFC/NBFC
+        # interest IS cost of goods sold — borrowing is the raw material. EBIT inflates
+        # ~4x, borrowings inflate capital_employed ~9x, AND THE ERRORS PARTIALLY CANCEL:
+        # AADHARHFC lands at ROCE 8.5-10.7% every year, INSIDE the 5-25% plausibility
+        # band, so no range check can fire. True ROE is 14.1-16.8% — a systematic ~5pp
+        # understatement reading as a mediocre business. 34/245 rows flip a live screen
+        # threshold. It survived the validation that was run because RELIANCE 8.9% /
+        # TCS 56.8% are both NON-financials.
+        #
+        # An interest/revenue >= 25% gate was tried and REFUTED by the data:
+        #     AADHARHFC  48.8%  lender      caught
+        #     ADANIPOWER 41.1%  POWER co    FALSE POSITIVE — would void a valid ROCE
+        #     360ONE     14.1%  NBFC        FALSE NEGATIVE — missed
+        #     5PAISA      9.6%  broker      FALSE NEGATIVE — missed
+        # interest/revenue measures LEVERAGE, not LENDING. A heuristic wrong in both
+        # directions is worse than none: it would silently void Adani Power while still
+        # passing the NBFC the validator flagged.
+        #
+        # So: FLAG, do not silently decide. `interest_share_of_revenue` is emitted for
+        # every row and consumers MUST exclude financials themselves using a real sector
+        # source (screener.in renders a different P&L for banks — "Financing Profit" /
+        # "Financing Margin" instead of Operating Profit — which is the honest detector,
+        # but this collector does not read those rows yet).
+        # Until then ROCE for lenders is WRONG and there is no guard. Documented rather
+        # than papered over.
+        if interest is not None and rev not in (None, 0):
+            row["interest_share_of_revenue"] = abs(interest) / abs(rev)
+        row["industry"] = industry
+        row["is_financial"] = lender
+        # DECLINE for financials. A null is honest; ROCE 9.6% for an HFC is not, and it
+        # is invisible to every guard the pipeline has.
+        if pbt is not None and interest is not None and not lender:
             row["ebit"] = pbt + interest
         # Gross profit. screener.in publishes no Gross Profit / COGS row, so COGS is
         # assembled from the itemised annual cost lines. The sign convention is NOT
@@ -208,7 +372,12 @@ def collect_ticker(sess_mod, ticker):
         if rm is not None and sales:
             row["rm_share"] = rm / sales
             if row["rm_share"] >= MFR_RM_SHARE_MIN:
-                cogs = rm - (chg or 0) + (pf or 0) + (omf or 0)
+                # `(x or 0)` LOOKS safe and is not: _num(np.nan) returns nan, because
+                # float(str(nan)) SUCCEEDS so the None fallback never fires — and then
+                # `nan or 0` yields nan, because NaN is TRUTHY. That silently voided 15%
+                # of gate-passing rows and hit FY2026 for six tickers: the most recent
+                # year, the most damaged.
+                cogs = rm - _zero(chg) + _zero(pf) + _zero(omf)
                 row["cogs"] = cogs
                 row["gross_profit"] = sales - cogs
                 row["gross_margin"] = row["gross_profit"] / sales
@@ -216,10 +385,16 @@ def collect_ticker(sess_mod, ticker):
         # Capital employed = shareholders' funds + debt. screener.in's balance
         # sheet gives the pieces directly (Equity Share Capital + Reserves +
         # Borrowings), so this is a sum of reported figures, not an inversion.
-        eq, res, bor = (row.get("equity_capital"), row.get("reserves"),
-                        row.get("borrowings"))
+        eq, res, bor = (row.get("equity_capital"), row.get("reserves"), row.get("borrowings"))
         if eq is not None and res is not None and bor is not None:
-            row["capital_employed"] = eq + res + bor
+            ce = eq + res + bor
+            # A NEGATIVE-NET-WORTH shell rescued into positive CE by borrowings is worse
+            # than a negative denominator: the `ce > 0` guard fires on ZERO rows and the
+            # ratio looks computable. 505196 has net worth -292.07 and CE +118.62, printing
+            # +109.4% ROCE off a restructuring write-back. Require positive SHAREHOLDER
+            # FUNDS, not just positive CE.
+            row["capital_employed"] = ce if (eq + res) > 0 and ce > 0 else None
+        # roce only where EBIT is defined — i.e. never for lenders
         if row.get("ebit") is not None and row.get("capital_employed"):
             row["roce"] = row["ebit"] / row["capital_employed"]
         rows.append(row)
@@ -231,8 +406,9 @@ def _universe(args):
         return [t.upper() for t in args.tickers]
     if os.path.exists(UNIVERSE):
         uni = pd.read_csv(UNIVERSE)
-        syms = sorted(set(uni["yf_ticker"].astype(str)
-                          .str.replace(r"\.(NS|BO)$", "", regex=True).str.upper()))
+        syms = sorted(
+            set(uni["yf_ticker"].astype(str).str.replace(r"\.(NS|BO)$", "", regex=True).str.upper())
+        )
         if args.liquid_only and os.path.exists(LTM):
             liq = set(pd.read_parquet(LTM, columns=["Symbol"])["Symbol"].astype(str).str.upper())
             syms = [s for s in syms if s in liq]
@@ -260,7 +436,17 @@ def _universe(args):
     recent["tv"] = recent["Close"] * recent["Volume"]
     liq = recent.groupby("Symbol")["tv"].median()
     keep = liq[liq >= 10_000_000].index
-    return sorted(set(pd.Series(list(keep)).astype(str).str.upper()))
+    syms = sorted(set(pd.Series(list(keep)).astype(str).str.upper()))
+    # Instrument filter AFTER the value gate, because the value gate cannot do this job:
+    # bonds pass it on face value. Structure is the discriminator.
+    equities = [s for s in syms if not is_non_equity(s)]
+    dropped = len(syms) - len(equities)
+    if dropped:
+        print(
+            f"  dropped {dropped} non-equity instruments (bonds/G-secs/T-bills) "
+            f"that cleared the value gate"
+        )
+    return equities
 
 
 def main():
@@ -292,25 +478,72 @@ def main():
         f"{len(todo)} to fetch (~{len(todo)*_RATE/60:.0f} min at {_RATE}s/req)"
     )
 
-    rows, n_ok, t0 = [], 0, time.time()
+    def _checkpoint():
+        df = (
+            pd.concat(existing + [pd.DataFrame(rows)], ignore_index=True)
+            if (existing or rows)
+            else pd.DataFrame()
+        )
+        if not df.empty:
+            os.makedirs(OUT_DIR, exist_ok=True)  # survive a mid-run dir wipe
+            df.to_parquet(OUT, index=False)
+        return df
+
+    rows, n_ok, t0, _consec_empty = [], 0, time.time(), 0
     for i, tk in enumerate(todo, 1):
         time.sleep(_RATE)
+        # ONE retry on empty before it counts against the circuit breaker. Proven
+        # transient, not a block: 500002 (ABB India, a large well-covered company —
+        # not a genuine data gap) returned empty once during a live run, then
+        # succeeded on an immediate manual re-fetch seconds later. The endpoint is
+        # occasionally flaky under sustained load; a single retry absorbs that
+        # without weakening real-block detection, since a genuine block fails the
+        # retry too and still counts.
         try:
             r = collect_ticker(sess_mod, tk)
-            if r:
-                rows.extend(r)
-                n_ok += 1
-        except Exception:
-            pass
-        if i % 100 == 0 or i == len(todo):
-            df = (
-                pd.concat(existing + [pd.DataFrame(rows)], ignore_index=True)
-                if (existing or rows)
-                else pd.DataFrame()
+        except Blocked:
+            print(
+                f"\n  ABORT: host refused the connection at {tk} — hard block, "
+                f"not retrying. Collected {n_ok} before this."
             )
-            if not df.empty:
-                os.makedirs(OUT_DIR, exist_ok=True)  # survive a mid-run dir wipe
-                df.to_parquet(OUT, index=False)
+            _checkpoint()
+            break
+        except Exception:
+            r = None
+        if not r:
+            time.sleep(_RATE * 2)
+            try:
+                r = collect_ticker(sess_mod, tk)
+            except Blocked:
+                print(
+                    f"\n  ABORT: host refused the connection at {tk} (on retry) — "
+                    f"hard block, not retrying. Collected {n_ok} before this."
+                )
+                _checkpoint()
+                break
+            except Exception:
+                r = None
+        got = bool(r)
+        if got:
+            rows.extend(r)
+            n_ok += 1
+        # CIRCUIT BREAKER. Consecutive empties (after the retry above already absorbed
+        # one-off flakiness) mean the session died or the host is blocking; continuing
+        # just deepens the block and produces a fake progress bar. Checked AFTER the
+        # fetch (needs this iteration's result, not the prior one — the previous
+        # version referenced `got`/`_consec_empty` before either was ever assigned, an
+        # unconditional NameError that meant this collector could not run at all).
+        _consec_empty = 0 if got else _consec_empty + 1
+        if _consec_empty >= MAX_CONSECUTIVE_EMPTY:
+            print(
+                f"\n  ABORT: {_consec_empty} consecutive tickers returned nothing "
+                f"(each retried once) — session dead or host blocking. "
+                f"Collected {n_ok} before this."
+            )
+            _checkpoint()
+            break
+        if i % 100 == 0 or i == len(todo):
+            df = _checkpoint()
             print(f"  {i}/{len(todo)} | {n_ok} with data | {len(df)} rows | {time.time()-t0:.0f}s")
     print(f"done → {os.path.relpath(OUT, BASE)}")
 
