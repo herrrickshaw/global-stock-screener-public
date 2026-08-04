@@ -1,0 +1,615 @@
+yf_ticker,name,exchange,market
+1A0.SI,Katrina,SGX,SG
+1A1.SI,Wong Fong Ind,SGX,SG
+1AZ.SI,Audience,SGX,SG
+1B0.SI,MM2 Asia,SGX,SG
+1B1.SI,HC Surgical,SGX,SG
+1B6.SI,Ocean Sky Intl,SGX,SG
+1C0.SI,ETC Singapore,SGX,SG
+1D0.SI,Kimly,SGX,SG
+1D1.SI,UnUsUaL,SGX,SG
+1D4.SI,Aoxin Q & M,SGX,SG
+1D5.SI,Capital World,SGX,SG
+1E3.SI,Sanli Env,SGX,SG
+1F0.SI,Shopper360,SGX,SG
+1F1.SI,Y Ventures,SGX,SG
+1F2.SI,Union Gas,SGX,SG
+1F3.SI,Aspen,SGX,SG
+1H2.SI,EVO,SGX,SG
+1H3.SI,Clearbridge,SGX,SG
+1H8.SI,LY Corp,SGX,SG
+1J4.SI,JEP,SGX,SG
+1J5.SI,Hyphens Pharma,SGX,SG
+1J7.SI,Jawala,SGX,SG
+1L2.SI,Hiap Seng Ind,SGX,SG
+1MZ.SI,NamCheong,SGX,SG
+1R6.SI,Avi-Tech Hldg,SGX,SG
+1U8.SI,RichCapital,SGX,SG
+1V3.SI,Mooreast,SGX,SG
+1Y1.SI,9R,SGX,SG
+40B.SI,HealthBank,SGX,SG
+40F.SI,Alita Resources,SGX,SG
+40N.SI,Versalink,SGX,SG
+40T.SI,ISEC,SGX,SG
+40V.SI,Alset,SGX,SG
+40W.SI,ZICO Hldgs,SGX,SG
+41B.SI,Huationg Global,SGX,SG
+41F.SI,GSS Energy,SGX,SG
+41H.SI,BlackGoldNatural,SGX,SG
+41O.SI,LHN,SGX,SG
+41T.SI,GCCP,SGX,SG
+42C.SI,IX Biopharma,SGX,SG
+42E.SI,Choo Chiang,SGX,SG
+42F.SI,Totm Tech,SGX,SG
+42L.SI,Taka Jewellery,SGX,SG
+42N.SI,IPS Securex,SGX,SG
+42R.SI,Jumbo,SGX,SG
+42S.SI,Astaka,SGX,SG
+42T.SI,Trendlines,SGX,SG
+42W.SI,Zixin,SGX,SG
+42Z.SI,Eindec,SGX,SG
+43A.SI,OCTOPUS,SGX,SG
+43B.SI,Secura,SGX,SG
+43E.SI,VCPlus,SGX,SG
+43F.SI,AcroMeta,SGX,SG
+43Q.SI,Advancer Global,SGX,SG
+49B.SI,AMOS Group,SGX,SG
+500.SI,Tai Sin Electric,SGX,SG
+504.SI,HS Optimus,SGX,SG
+505.SI,AsiaMedic,SGX,SG
+508.SI,Fuji Offset,SGX,SG
+51O.SI,MSMIntl,SGX,SG
+532.SI,DISA,SGX,SG
+533.SI,ABR,SGX,SG
+53W.SI,Attika Group,SGX,SG
+540.SI,Tung Lok Rest,SGX,SG
+541.SI,Abundance Intl,SGX,SG
+543.SI,Noel Gifts Intl,SGX,SG
+544.SI,CSE Global,SGX,SG
+546.SI,Medtecs Intl,SGX,SG
+554.SI,King Wan,SGX,SG
+558.SI,UMS,SGX,SG
+566.SI,SHS,SGX,SG
+569.SI,Vicplas Intl,SGX,SG
+570.SI,Abundante,SGX,SG
+575.SI,ASTI,SGX,SG
+579.SI,Oceanus,SGX,SG
+580.SI,Santak,SGX,SG
+581.SI,Sunrise Shares,SGX,SG
+583.SI,Progen,SGX,SG
+584.SI,AJJ Medtech,SGX,SG
+585.SI,Asian Micro,SGX,SG
+594.SI,CapAllianz,SGX,SG
+595.SI,GKE,SGX,SG
+596.SI,Pavillon,SGX,SG
+5AB.SI,Trek 2000 Intl,SGX,SG
+5AE.SI,Pollux Prop,SGX,SG
+5AI.SI,H2G Green,SGX,SG
+5AU.SI,AP Oil,SGX,SG
+5BI.SI,Polaris,SGX,SG
+5CF.SI,OKP,SGX,SG
+5CR.SI,Asiatic,SGX,SG
+5CT.SI,EcoWise,SGX,SG
+5DD.SI,Micro-Mechanics,SGX,SG
+5DM.SI,Ying Li Intl,SGX,SG
+5DN.SI,Ezra,SGX,SG
+5DO.SI,Sakae,SGX,SG
+5DP.SI,Heeton,SGX,SG
+5DS.SI,MegaChem,SGX,SG
+5DX.SI,Meta Health,SGX,SG
+5E2.SI,Seatrium Ltd,SGX,SG
+5EB.SI,CFM,SGX,SG
+5EF.SI,Adventus,SGX,SG
+5EG.SI,Zhongxin Fruit,SGX,SG
+5EV.SI,Hosen,SGX,SG
+5EW.SI,Sevens Atelier,SGX,SG
+5F4.SI,Figtree,SGX,SG
+5F7.SI,Wilton Resources,SGX,SG
+5FW.SI,Acesian Partners,SGX,SG
+5FX.SI,New Wave,SGX,SG
+5G1.SI,EuroSports Gbl,SGX,SG
+5G2.SI,Kim Heng,SGX,SG
+5G9.SI,Tritech,SGX,SG
+5GD.SI,Sunpower,SGX,SG
+5GI.SI,Interra Resource,SGX,SG
+5GJ.SI,AusGroup,SGX,SG
+5GZ.SI,HGH,SGX,SG
+5HG.SI,Edition,SGX,SG
+5HH.SI,ProsperaGlobal,SGX,SG
+5HV.SI,Koh Eco,SGX,SG
+5I1.SI,KOP,SGX,SG
+5IC.SI,SingHoldings,SGX,SG
+5IE.SI,Lorenzo Intl,SGX,SG
+5IF.SI,Natural Cool,SGX,SG
+5IG.SI,Gallant Venture,SGX,SG
+5JK.SI,Hiap Hoe,SGX,SG
+5JS.SI,Indofood Agri,SGX,SG
+5KI.SI,Soup Holdings,SGX,SG
+5LE.SI,Sitra,SGX,SG
+5LY.SI,MarcoPolo Marine,SGX,SG
+5MD.SI,Soon Lian,SGX,SG
+5ML.SI,Old Chang Kee,SGX,SG
+5MZ.SI,KingsmenCreative,SGX,SG
+5NF.SI,Mencast,SGX,SG
+5NV.SI,Chasen,SGX,SG
+5OC.SI,Koyo Intl,SGX,SG
+5OI.SI,Japan Foods,SGX,SG
+5OQ.SI,Teho Intl,SGX,SG
+5OR.SI,Heatec Jietong,SGX,SG
+5OX.SI,Mary Chia,SGX,SG
+5PC.SI,Goodland,SGX,SG
+5PD.SI,Hengyang Petro,SGX,SG
+5PF.SI,Jason Marine,SGX,SG
+5PO.SI,Hiap Tong,SGX,SG
+5QY.SI,Net Pac Hldgs,SGX,SG
+5RA.SI,AP Strategic,SGX,SG
+5RC.SI,ES,SGX,SG
+5RE.SI,Asia Vets,SGX,SG
+5RF.SI,Mercurius,SGX,SG
+5SO.SI,Duty Free Intl,SGX,SG
+5SR.SI,Zhongmin Baihui,SGX,SG
+5SY.SI,OneApex,SGX,SG
+5TI.SI,SDAI,SGX,SG
+5TJ.SI,Far East,SGX,SG
+5TP.SI,CNMC Goldmine,SGX,SG
+5TT.SI,Keong Hong,SGX,SG
+5UA.SI,Luminor,SGX,SG
+5UF.SI,Aspial Lifestyle,SGX,SG
+5UL.SI,Atlantic Nav,SGX,SG
+5UX.SI,Oxley,SGX,SG
+5VC.SI,Kori,SGX,SG
+5VI.SI,Boldtek,SGX,SG
+5VJ.SI,Halcyon Agri,SGX,SG
+5VP.SI,GDS Global,SGX,SG
+5VS.SI,Hafary,SGX,SG
+5WA.SI,OUE Healthcare,SGX,SG
+5WF.SI,ISOTeam,SGX,SG
+5WG.SI,SingaporeKitchen,SGX,SG
+5WH.SI,Rex Intl,SGX,SG
+5WJ.SI,MoneyMax Fin,SGX,SG
+5WV.SI,AsiaPhos,SGX,SG
+600.SI,Hyflux,SGX,SG
+8A1.SI,Heptamax,SGX,SG
+8A8.SI,CMS,SGX,SG
+8AZ.SI,Aztech Gbl,SGX,SG
+8C8U.SI,Cent Accom REIT,SGX,SG
+8K7.SI,UGHealthcare,SGX,SG
+8M4R.SI,Duty Free Intl R,SGX,SG
+8U7U.SI,IREIT Global EUR,SGX,SG
+8YY.SI,EFH Ltd,SGX,SG
+8YZ.SI,YZJ Maritime,SGX,SG
+9A4U.SI,ESR REIT,SGX,SG
+9CI.SI,CapitaLandInvest,SGX,SG
+9G2.SI,SAM Holdings,SGX,SG
+9I7.SI,Bromat,SGX,SG
+9MT.SI,METAOPTICS LTD,SGX,SG
+9QX.SI,B Wilshire Ltd,SGX,SG
+9VW.SI,Polaris E&M,SGX,SG
+A04.SI,ASL Marine,SGX,SG
+A17U.SI,CapLand Ascendas REIT,SGX,SG
+A30.SI,Aspial Corp,SGX,SG
+A31.SI,Addvalue Tech,SGX,SG
+A33.SI,Southern Arch,SGX,SG
+A50.SI,Thomson Medical,SGX,SG
+A52.SI,AnnAik,SGX,SG
+A55.SI,Asia Enterprises,SGX,SG
+A78.SI,Shen Yao,SGX,SG
+A7RU.SI,Kep Infra Tr,SGX,SG
+AAJ.SI,SunMoonFood,SGX,SG
+ADN.SI,First Sponsor,SGX,SG
+AGS.SI,TheHourGlass,SGX,SG
+AIY.SI,IFAST,SGX,SG
+AJ2.SI,Ouhua Energy,SGX,SG
+AJBU.SI,Keppel DC Reit,SGX,SG
+AOF.SI,Amplefield Ltd,SGX,SG
+AP4.SI,Riverstone,SGX,SG
+AU8U.SI,CapLand China T,SGX,SG
+AVP.SI,AvePoint,SGX,SG
+AVX.SI,HL Global Ent,SGX,SG
+AW9U.SI,First Reit,SGX,SG
+AWC.SI,Brook Crompton,SGX,SG
+AWG.SI,Ascent Bridge,SGX,SG
+AWI.SI,Thakral,SGX,SG
+AWK.SI,Fuxing China,SGX,SG
+AWM.SI,Shanghai Turbo,SGX,SG
+AWV.SI,Captii,SGX,SG
+AWX.SI,AEM SGD,SGX,SG
+AWZ.SI,Multi-Chem,SGX,SG
+AYN.SI,Global Testing,SGX,SG
+AYV.SI,Acma,SGX,SG
+AZA.SI,IPC Corp,SGX,SG
+AZG.SI,8Telecom,SGX,SG
+AZR.SI,United Food,SGX,SG
+AZT.SI,NutryFarm,SGX,SG
+B0Z.SI,China Fishery,SGX,SG
+B28.SI,Bonvests,SGX,SG
+B49.SI,World Precision,SGX,SG
+B58.SI,Banyan Tree,SGX,SG
+B61.SI,Bukit Sembawang,SGX,SG
+B73.SI,Global Inv,SGX,SG
+BAC.SI,Camsing Hc,SGX,SG
+BAI.SI,Digilife Tech,SGX,SG
+BAZ.SI,Lion Asiapac,SGX,SG
+BBP.SI,Hor Kew,SGX,SG
+BBW.SI,Azeus,SGX,SG
+BCD.SI,China Yuanbang,SGX,SG
+BCV.SI,Qian Hu,SGX,SG
+BCY.SI,Powermatic Data,SGX,SG
+BCZ.SI,Travelite,SGX,SG
+BDA.SI,PNE Industries,SGX,SG
+BDR.SI,Willas-Array,SGX,SG
+BDU.SI,Federal Int,SGX,SG
+BDX.SI,GSH,SGX,SG
+BEC.SI,BRC Asia,SGX,SG
+BEH.SI,China Intl,SGX,SG
+BEI.SI,LHT,SGX,SG
+BEW.SI,JB Foods,SGX,SG
+BEZ.SI,Beng Kuang,SGX,SG
+BFI.SI,Tiong Seng,SGX,SG
+BFK.SI,Pharmesis Intl,SGX,SG
+BFT.SI,Lincotrade,SGX,SG
+BFU.SI,Tye Soon,SGX,SG
+BGO.SI,Universal Res,SGX,SG
+BHD.SI,China Mining,SGX,SG
+BHK.SI,SIIC Environment,SGX,SG
+BHU.SI,SUTL Enterprise,SGX,SG
+BIP.SI,Vibrant Group,SGX,SG
+BIX.SI,Ellipsiz,SGX,SG
+BJD.SI,VibroPower,SGX,SG
+BJV.SI,Yamada Green Res,SGX,SG
+BJZ.SI,Koda,SGX,SG
+BKA.SI,Sin Heng Mach,SGX,SG
+BKK.SI,Luxking,SGX,SG
+BKV.SI,Shenshan,SGX,SG
+BKW.SI,Datapulse Tech,SGX,SG
+BKX.SI,Yongmao,SGX,SG
+BKZ.SI,Suntar Eco-City,SGX,SG
+BLR.SI,Darco Water Tech,SGX,SG
+BLS.SI,Hotung Inv,SGX,SG
+BLU.SI,GRP,SGX,SG
+BLZ.SI,Advanced,SGX,SG
+BMGU.SI,BHG Retail Reit,SGX,SG
+BMT.SI,Coolan Group,SGX,SG
+BN2.SI,Valuetronics,SGX,SG
+BN4.SI,Keppel,SGX,SG
+BNE.SI,Kencana Agri,SGX,SG
+BPF.SI,YHI Intl,SGX,SG
+BQC.SI,A-Smart,SGX,SG
+BQD.SI,Envictus,SGX,SG
+BQF.SI,XMH,SGX,SG
+BQM.SI,Tiong Woon,SGX,SG
+BQN.SI,BH Global,SGX,SG
+BQP.SI,Southern Pkg,SGX,SG
+BRD.SI,Sapphire,SGX,SG
+BRS.SI,USP Group,SGX,SG
+BS6.SI,YZJ Shipbldg SGD,SGX,SG
+BSL.SI,Raffles Medical,SGX,SG
+BTE.SI,Bund Center,SGX,SG
+BTF.SI,Debao Property,SGX,SG
+BTG.SI,HG Metal,SGX,SG
+BTJ.SI,A-Sonic Aero,SGX,SG
+BTM.SI,Penguin Intl,SGX,SG
+BTOU.SI,ManulifeReit USD,SGX,SG
+BTP.SI,Baker Technology,SGX,SG
+BTX.SI,Anchun Intl,SGX,SG
+BUOU.SI,Frasers L&C Tr,SGX,SG
+BVA.SI,Top Glove,SGX,SG
+BWCU.SI,EC World Reit,SGX,SG
+BWM.SI,Zheneng Jinjiang,SGX,SG
+BXE.SI,CDW,SGX,SG
+C04.SI,Casa,SGX,SG
+C05.SI,Chemical Ind,SGX,SG
+C06.SI,CSC,SGX,SG
+C07.SI,Jardine C&C,SGX,SG
+C09.SI,CityDev,SGX,SG
+C13.SI,CH Offshore,SGX,SG
+C2PU.SI,ParkwayLife Reit,SGX,SG
+C33.SI,Chuan Hup,SGX,SG
+C38U.SI,CapLand IntCom T,SGX,SG
+C41.SI,Cortina,SGX,SG
+C52.SI,ComfortDelGro,SGX,SG
+C6L.SI,SIA,SGX,SG
+C76.SI,Creative,SGX,SG
+C8R.SI,Jiutian Chemical,SGX,SG
+C9Q.SI,Sinostar Pec,SGX,SG
+CC3.SI,StarHub,SGX,SG
+CEDU.SI,Dasin Retail Tr,SGX,SG
+CHJ.SI,Uni-Asia Grp,SGX,SG
+CHZ.SI,HRnetGroup,SGX,SG
+CIN.SI,Courage Inv,SGX,SG
+CJLU.SI,NetLink NBN Tr,SGX,SG
+CJN.SI,B&M Hldg,SGX,SG
+CLN.SI,APAC Realty,SGX,SG
+CMOU.SI,KOREReitUSD,SGX,SG
+CNE.SI,MindChamps,SGX,SG
+CRPU.SI,Sasseur Reit,SGX,SG
+CTO.SI,Hong Lai Huat,SGX,SG
+CY6U.SI,CapLand India T,SGX,SG
+CYW.SI,TrickleStar,SGX,SG
+D01.SI,DFIRG USD,SGX,SG
+D03.SI,Del Monte Pac,SGX,SG
+D05.SI,DBS,SGX,SG
+D5IU.SI,Landmark REIT,SGX,SG
+D8DU.SI,FSL Trust,SGX,SG
+DCRU.SI,DigiCore Reit USD,SGX,SG
+DHLU.SI,Daiwa Hse Log Tr,SGX,SG
+DM0.SI,PSC Corporation,SGX,SG
+DRX.SI,ST Group Food,SGX,SG
+DU4.SI,Mermaid Maritime,SGX,SG
+E27.SI,The Place Hldg,SGX,SG
+E28.SI,Frencken,SGX,SG
+E3B.SI,Wee Hur,SGX,SG
+E5H.SI,Golden Agri-Res,SGX,SG
+E6R.SI,Le Tree Holdings,SGX,SG
+E9L.SI,Joyas Intl,SGX,SG
+EB5.SI,First Resources,SGX,SG
+EH5.SI,UOA,SGX,SG
+EMI.SI,Emperador Inc.,SGX,SG
+ENV.SI,LS 2 Holdings,SGX,SG
+ER0.SI,KSH,SGX,SG
+F03.SI,Food Empire,SGX,SG
+F10.SI,FJ Benjamin,SGX,SG
+F13.SI,Fu Yu,SGX,SG
+F17.SI,GuocoLand,SGX,SG
+F34.SI,Wilmar Intl,SGX,SG
+F83.SI,COSCO SHP SG,SGX,SG
+F86.SI,MYP,SGX,SG
+F99.SI,F & N,SGX,SG
+F9D.SI,Boustead,SGX,SG
+FHH.SI,FoundationHealth,SGX,SG
+FQ7.SI,Salt Investments,SGX,SG
+FRQ.SI,Sing Paincare,SGX,SG
+G07.SI,Great Eastern,SGX,SG
+G0I.SI,Nam Lee Metal,SGX,SG
+G13.SI,Genting Sing,SGX,SG
+G20.SI,GP Industries,SGX,SG
+G50.SI,Grand Banks,SGX,SG
+G92.SI,China Aviation,SGX,SG
+GEH.SI,Goodwill,SGX,SG
+GRQ.SI,UpHealth Group,SGX,SG
+GU5.SI,ChinaKundaTech,SGX,SG
+H02.SI,Haw Par,SGX,SG
+H07.SI,Stamford Land,SGX,SG
+H12.SI,Hotel Royal,SGX,SG
+H13.SI,Ho Bee Land,SGX,SG
+H15.SI,HPL,SGX,SG
+H18.SI,Hotel Grand,SGX,SG
+H20.SI,Hoe Leong,SGX,SG
+H22.SI,Hong Leong Asia,SGX,SG
+H30.SI,Hong Fok,SGX,SG
+H78.SI,HongkongLand USD,SGX,SG
+HKB.SI,AMTD IDEA OV,SGX,SG
+HLS.SI,Helens,SGX,SG
+HMN.SI,CapLand Ascott T,SGX,SG
+HQU.SI,Oiltek,SGX,SG
+I06.SI,Intraco,SGX,SG
+I07.SI,ISDN,SGX,SG
+I11.SI,Renaissance United,SGX,SG
+I49.SI,IFS Capital,SGX,SG
+ITS.SI,Info-Tech,SGX,SG
+J03.SI,Jadason,SGX,SG
+J2T.SI,Hock Lian Seng,SGX,SG
+J36.SI,JMH USD,SGX,SG
+J69U.SI,Frasers Cpt Tr,SGX,SG
+J85.SI,CDL HTrust,SGX,SG
+JCO.SI,JustCo,SGX,SG
+JFQ.SI,AnnicaHoldings,SGX,SG
+JYEU.SI,Lendlease Reit,SGX,SG
+K03.SI,Khong Guan,SGX,SG
+K29.SI,Karin Tech,SGX,SG
+K6S.SI,Prudential USD,SGX,SG
+K71U.SI,Keppel Reit,SGX,SG
+K75.SI,Koh Bros,SGX,SG
+KIN.SI,KIN,SGX,SG
+KJ5.SI,BBR,SGX,SG
+KUH.SI,TSH,SGX,SG
+KUO.SI,Intl Cement,SGX,SG
+KUX.SI,OIO,SGX,SG
+KYB.SI,FoodInnovators,SGX,SG
+L02.SI,Metis Energy,SGX,SG
+L19.SI,Lum Chang,SGX,SG
+L23.SI,Enviro-Hub,SGX,SG
+LCC.SI,Lum Chang Creat,SGX,SG
+LGH.SI,Leong Guan Hldgs,SGX,SG
+LIW.SI,Eagle HTrust USD,SGX,SG
+LJ3.SI,OUE,SGX,SG
+LMS.SI,LMS Compliance,SGX,SG
+LQPR.SI,AcroMeta Grp R1,SGX,SG
+LS9.SI,Leader Env,SGX,SG
+LUY.SI,Raffles Infrastructure,SGX,SG
+LVR.SI,17LIVE GROUP,SGX,SG
+LYY.SI,SinoCloud Grp,SGX,SG
+M01.SI,Metro,SGX,SG
+M03.SI,Miyoshi,SGX,SG
+M05.SI,MTQ,SGX,SG
+M11.SI,MFG Integration,SGX,SG
+M12.SI,Maruwa Yen1k,SGX,SG
+M14.SI,InnoTek,SGX,SG
+M15.SI,Nanyang NewDev,SGX,SG
+M1GU.SI,Alpha Integrated REIT,SGX,SG
+M44U.SI,Mapletree Log Tr,SGX,SG
+ME8U.SI,Mapletree Ind Tr,SGX,SG
+MENU.SI,EliteUKREIT SGD,SGX,SG
+MF6.SI,Mun Siong Engg,SGX,SG
+MIJ.SI,Alliance HC,SGX,SG
+MR7.SI,Nordic,SGX,SG
+MV4.SI,Mewah Intl,SGX,SG
+MXNU.SI,EliteUKREIT GBP,SGX,SG
+MZH.SI,Nanofilm,SGX,SG
+N01.SI,NeraTel,SGX,SG
+N02.SI,NSL,SGX,SG
+N08.SI,New Toyo,SGX,SG
+N0Z.SI,Combine Will,SGX,SG
+N2IU.SI,Mapletree PanAsia Com Tr,SGX,SG
+N32.SI,Nippecraft,SGX,SG
+N33.SI,Nomura Yen1k,SGX,SG
+NC2.SI,Sri Trang Agro,SGX,SG
+NEX.SI,Reclaims Global,SGX,SG
+NHD.SI,Jubilee,SGX,SG
+NIO.SI,NIO Inc. USD OV,SGX,SG
+NPW.SI,MSC,SGX,SG
+NR7.SI,Raffles Edu,SGX,SG
+NS8U.SI,HPH Trust USD,SGX,SG
+NTDU.SI,NTT DC REIT USD,SGX,SG
+NXR.SI,iWOW Tech,SGX,SG
+O08.SI,Ossia Intl,SGX,SG
+O10.SI,Far East Orchard,SGX,SG
+O39.SI,OCBC Bank,SGX,SG
+O5RU.SI,AIMS APAC Reit,SGX,SG
+O6Z.SI,Lonza,SGX,SG
+O9E.SI,Parkson Retail,SGX,SG
+OAJ.SI,FortressMinerals,SGX,SG
+ODBU.SI,UtdHampshReitUSD,SGX,SG
+OMK.SI,Vividthree,SGX,SG
+OTS.SI,OTS Holdings,SGX,SG
+OTX.SI,Medinex,SGX,SG
+OU8.SI,Centurion,SGX,SG
+OV8.SI,Sheng Siong,SGX,SG
+OXMU.SI,Prime US ReitUSD,SGX,SG
+OYY.SI,PropNex,SGX,SG
+P11.SI,Pacific Andes,SGX,SG
+P15.SI,Pacific Century,SGX,SG
+P34.SI,Delfi,SGX,SG
+P36.SI,Pan Hong,SGX,SG
+P40U.SI,StarhillGbl Reit,SGX,SG
+P52.SI,PanUnited,SGX,SG
+P74.SI,ChinaKangdaFood,SGX,SG
+P7VU.SI,HPH Trust SGD,SGX,SG
+P8A.SI,Cordlife,SGX,SG
+P8Z.SI,Bumitama Agri,SGX,SG
+P9D.SI,Civmec,SGX,SG
+PA3.SI,TA,SGX,SG
+PCT.SI,PC Partner,SGX,SG
+PH0.SI,Hatten Land,SGX,SG
+PPC.SI,ProsperCap,SGX,SG
+PRH.SI,Livingstone,SGX,SG
+Q01.SI,QAF,SGX,SG
+Q0F.SI,IHH,SGX,SG
+Q0X.SI,Ley Choon,SGX,SG
+Q5T.SI,Far East HTrust,SGX,SG
+QC7.SI,Q&M Dental,SGX,SG
+QES.SI,ChinaSunsine,SGX,SG
+QNS.SI,SouthernAlliance,SGX,SG
+QS9.SI,G Invacom,SGX,SG
+QZG.SI,Accrelist Ltd,SGX,SG
+R14.SI,Eneco Energy,SGX,SG
+RC5.SI,Triyards,SGX,SG
+RCU.SI,Assurance HC,SGX,SG
+RDR.SI,Incredible,SGX,SG
+RE4.SI,Geo Energy Res,SGX,SG
+RQ1.SI,Overseas Edu,SGX,SG
+RXS.SI,PacificRadiance,SGX,SG
+S07.SI,Shangri-La HKD,SGX,SG
+S08.SI,SingPost,SGX,SG
+S19.SI,SingShipping,SGX,SG
+S20.SI,Straits Trading,SGX,SG
+S23.SI,Spura Finance,SGX,SG
+S29.SI,Stamford Tyres,SGX,SG
+S2D.SI,Tosei,SGX,SG
+S35.SI,Sing Inv & Fin,SGX,SG
+S3N.SI,GRC,SGX,SG
+S41.SI,Hong Leong Fin,SGX,SG
+S44.SI,EnGro,SGX,SG
+S56.SI,SamuderaShipping,SGX,SG
+S58.SI,SATS,SGX,SG
+S59.SI,SIA Engineering,SGX,SG
+S61.SI,SBS Transit,SGX,SG
+S63.SI,ST Engineering,SGX,SG
+S68.SI,SGX,SGX,SG
+S69.SI,Serial System,SGX,SG
+S71.SI,Sunright,SGX,SG
+S7OU.SI,Asian Pay Tv Tr,SGX,SG
+S85.SI,Straco,SGX,SG
+S9B.SI,Amcorp Global,SGX,SG
+SEB.SI,Stoneweg EUTrust SGD,SGX,SG
+SEG.SI,CONCORD NE,SGX,SG
+SEJ.SI,NoonTalk Media,SGX,SG
+SES.SI,Shanaya,SGX,SG
+SET.SI,Stoneweg EUTrust EUR,SGX,SG
+SGR.SI,Sheffield Green,SGX,SG
+SHE.SI,Soon Hock,SGX,SG
+SJY.SI,MeGroup,SGX,SG
+SO7.SI,YZJ Shipbldg CNY,SGX,SG
+STC.SI,Comba,SGX,SG
+STG.SI,Sri Trang Gloves,SGX,SG
+T12.SI,Tat Seng Pkg,SGX,SG
+T13.SI,RH PetroGas,SGX,SG
+T14.SI,TJ DaRenTang USD,SGX,SG
+T15.SI,TCIL HK$,SGX,SG
+T24.SI,Tuan Sing,SGX,SG
+T41.SI,TeleChoice Intl,SGX,SG
+T43.SI,Yunnan Energy,SGX,SG
+T4B.SI,Sino Grandness,SGX,SG
+T55.SI,TIH,SGX,SG
+T6I.SI,ValueMax,SGX,SG
+T82U.SI,Suntec Reit,SGX,SG
+TAP.SI,TAP,SGX,SG
+TCU.SI,CreditBureauAsia,SGX,SG
+TKU.SI,Toku Ltd,SGX,SG
+TQ5.SI,Frasers Property,SGX,SG
+TS0U.SI,OUEREIT,SGX,SG
+TSH.SI,TSH Resources,SGX,SG
+TVV.SI,OxPay Financial,SGX,SG
+TWL.SI,Memiontec Hldgs,SGX,SG
+U06.SI,SingaporeLandGrp,SGX,SG
+U10.SI,UOB Kay Hian,SGX,SG
+U11.SI,UOB,SGX,SG
+U13.SI,UOI,SGX,SG
+U14.SI,UOL,SGX,SG
+U77.SI,Sarine Tech,SGX,SG
+U96.SI,Sembcorp Ind,SGX,SG
+U9E.SI,China Everbright,SGX,SG
+UD1U.SI,IREIT Global SGD,SGX,SG
+UGS.SI,ULTRAGREEN AI SGD,SGX,SG
+UIBU.SI,UIBREIT,SGX,SG
+UIX.SI,China EnvRes,SGX,SG
+ULG.SI,ULTRAGREEN AI USD,SGX,SG
+URR.SI,Sim Leisure,SGX,SG
+UUK.SI,Pasture Holdings,SGX,SG
+UV1.SI,Regal Intl,SGX,SG
+UZF.SI,Dezign Format,SGX,SG
+V03.SI,Venture,SGX,SG
+V2Y.SI,OceanScape Intl,SGX,SG
+V3M.SI,Metech Intl,SGX,SG
+V7R.SI,ResourcesGbl,SGX,SG
+V8Y.SI,Quantum Health,SGX,SG
+VC2.SI,Olam Group,SGX,SG
+VDCR.SI,AcroMeta Grp R,SGX,SG
+VI2.SI,TC Auto,SGX,SG
+VIN.SI,Vins Holdings,SGX,SG
+VVL.SI,AlphaDX,SGX,SG
+W05.SI,Wing Tai,SGX,SG
+W8W.SI,Coliwoo Hldgs,SGX,SG
+WJ9.SI,AdvancedSystems,SGX,SG
+WJP.SI,VICOM Ltd,SGX,SG
+WKS.SI,WinkingStudios,SGX,SG
+WNH.SI,Autagco Ltd,SGX,SG
+WPC.SI,Vallianz,SGX,SG
+X5N.SI,Avarga Ltd,SGX,SG
+XCF.SI,KTMG,SGX,SG
+XHV.SI,Serial Achieva,SGX,SG
+XJB.SI,GHY Culture,SGX,SG
+XVG.SI,Aedge Group,SGX,SG
+XWA.SI,AEM USD,SGX,SG
+XZB.SI,Skylink,SGX,SG
+XZL.SI,Acro HTrust USD,SGX,SG
+Y03.SI,Yeo Hiap Seng,SGX,SG
+Y06.SI,Green Build,SGX,SG
+Y35.SI,AnAn Intl,SGX,SG
+Y3D.SI,MDR Limited,SGX,SG
+Y8E.SI,Samurai 2K,SGX,SG
+Y92.SI,ThaiBev,SGX,SG
+YF8.SI,YZJ Fin Hldg,SGX,SG
+YK9.SI,YKGI,SGX,SG
+YSV.SI,Khen Energy,SGX,SG
+YV4R.SI,Duty Free Intl R1,SGX,SG
+YYB.SI,BACUI TECH,SGX,SG
+Z25.SI,Yanlord Land,SGX,SG
+Z4D.SI,MediLifestyle,SGX,SG
+Z59.SI,Yoma Strategic,SGX,SG
+Z74.SI,Singtel,SGX,SG
+Z77.SI,Singtel 10,SGX,SG
+ZB9.SI,UnionSteel,SGX,SG
+ZBA.SI,Infinity Dev,SGX,SG
+ZKX.SI,Ever Glory,SGX,SG
+ZQM.SI,SoilbuildConstr,SGX,SG
