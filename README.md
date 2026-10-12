@@ -1,5 +1,9 @@
 # 📈 Global Stock Screener
 
+<!-- how-to-use-with-ai -->
+> **New here?** See [How to use this repo with AI (Claude, Gemini, ChatGPT)](HOW_TO_USE_WITH_AI.md) — clone it, paste it into an AI tool, and ask in plain English.
+
+
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/herrrickshaw/global-stock-screener/blob/main/colab_quickstart.ipynb)
 
 A 20-market equity screener that **ships with ~1 year of cached price data** (≈40,000 symbols across the world's major exchanges), so you can clone and get results in minutes — no API keys, no LLM tokens.
