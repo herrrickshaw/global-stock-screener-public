@@ -1,5 +1,8 @@
 # 📈 Global Stock Screener
 
+> **Public copy of a private repository. Left out of this copy and its history: screener.in data (the 26 public-screen exports in cache_seed/public_screens/, cache_seed/india_ccc_screen.parquet and the India fundamentals cache cache_seed/fundamentals/IN.parquet), which may not be redistributed, and an unrelated automation export. The collectors that fetch screener.in data are included; they need your own access and credentials, and the India screens run without those files until you fetch your own.**
+
+
 <!-- how-to-use-with-ai -->
 > **New here?** See [How to use this repo with AI (Claude, Gemini, ChatGPT)](HOW_TO_USE_WITH_AI.md) — clone it, paste it into an AI tool, and ask in plain English.
 
