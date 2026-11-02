@@ -16,12 +16,14 @@
 
 from __future__ import annotations
 
+import logging
 import warnings
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Callable, Dict, Iterable, List, Optional
 
 import pandas as pd
 
+log = logging.getLogger(__name__)
 warnings.filterwarnings("ignore")
 
 INDEX_PATH = Path(__file__).parent / "cache_seed" / "liquidity_index.parquet"
@@ -52,57 +54,82 @@ CCY = {
 UNIT = {"UK": 100.0, "ZA": 100.0}
 
 
-def _fx_rates(currencies) -> Dict[str, float]:
-    """USD value of 1 unit-of-USD in each currency (live, with cache fallback)."""
+TURNOVER_WINDOW = 20  # trading days used for the median turnover
+
+
+def _fx_rates(currencies) -> Dict[str, Optional[float]]:
+    """Units of each currency per 1 USD (live Yahoo quotes; None where unavailable)."""
     import yfinance as yf
 
     need = sorted(set(currencies) - {"USD"})
-    fx = {"USD": 1.0}
+    fx: Dict[str, Optional[float]] = {"USD": 1.0}
     try:
         d = yf.download([f"{c}=X" for c in need], period="5d", progress=False)["Close"]
         for c in need:
             try:
                 fx[c] = float(d[f"{c}=X"].dropna().iloc[-1])
-            except Exception:
+            except Exception:  # missing column / empty series: treat as no rate
+                log.warning("no FX quote for %s", c)
                 fx[c] = None
-    except Exception:
+    except Exception:  # network / yfinance failures: markets without a rate are skipped
+        log.warning("FX download failed", exc_info=True)
         for c in need:
             fx[c] = None
     return fx
 
 
-def build_index(verbose: bool = True) -> pd.DataFrame:
-    """Compute per-symbol 20-day median turnover (USD) across all market seeds."""
-    import screener_kit as kit
+def median_turnover_usd(df: pd.DataFrame, rate: float, unit: float = 1.0) -> Optional[float]:
+    """20-day median of Close*Volume converted to USD (None if too short / no volume).
 
-    fx = _fx_rates(CCY.values())
+    `rate` is local-currency units per USD; `unit` is the quote sub-unit (pence=100)."""
+    if df is None or len(df) < TURNOVER_WINDOW or "Volume" not in df.columns:
+        return None
+    t = float((df["Close"] * df["Volume"]).tail(TURNOVER_WINDOW).median())
+    return (t / unit) / rate if t > 0 else None
+
+
+def build_index(
+    verbose: bool = True,
+    loader: Optional[Callable[[str], Dict[str, pd.DataFrame]]] = None,
+    fx: Optional[Dict[str, Optional[float]]] = None,
+    markets: Optional[Iterable[str]] = None,
+    out_path: Optional[Path] = None,
+) -> pd.DataFrame:
+    """Compute per-symbol 20-day median turnover (USD) across all market seeds.
+
+    loader/fx/markets/out_path default to the live seeds, Yahoo FX and INDEX_PATH;
+    they exist so the logic can be exercised with synthetic data."""
+    if loader is None or markets is None:
+        import screener_kit as kit
+
+        loader = loader or kit.load
+        markets = markets if markets is not None else kit.MARKETS
+    fx = fx if fx is not None else _fx_rates(CCY.values())
+    out_path = out_path or INDEX_PATH
     rows = []
-    for m in kit.MARKETS:
+    for m in markets:
         rate = fx.get(CCY.get(m))
         if not rate:
             continue
-        data = kit.load(m)
         unit = UNIT.get(m, 1.0)
-        for s, df in data.items():
-            if df is None or len(df) < 20 or "Volume" not in df.columns:
-                continue
-            t = float((df["Close"] * df["Volume"]).tail(20).median())
-            if t > 0:
+        for s, df in loader(m).items():
+            t = median_turnover_usd(df, rate, unit)
+            if t is not None:
                 rows.append(
                     {
                         "Symbol": s,
                         "Market": m,
-                        "turnover_usd": (t / unit) / rate,
+                        "turnover_usd": t,
                         "ltp": float(df["Close"].iloc[-1]),
                     }
                 )
         if verbose:
-            print(f"  {m}: indexed {sum(1 for r in rows if r['Market']==m)} stocks")
+            print(f"  {m}: indexed {sum(1 for r in rows if r['Market'] == m)} stocks")
     idx = pd.DataFrame(rows)
     if not idx.empty:
-        idx.to_parquet(INDEX_PATH, compression="zstd", index=False)
+        idx.to_parquet(out_path, compression="zstd", index=False)
     if verbose:
-        print(f"  liquidity index: {len(idx)} symbols → {INDEX_PATH.name}")
+        print(f"  liquidity index: {len(idx)} symbols → {out_path.name}")
     return idx
 
 

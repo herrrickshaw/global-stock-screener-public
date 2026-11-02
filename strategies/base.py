@@ -18,7 +18,6 @@ from typing import Optional
 
 import pandas as pd
 
-
 TRADING_DAYS_1Y = 252
 
 

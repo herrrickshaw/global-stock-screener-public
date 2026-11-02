@@ -12,6 +12,7 @@ from typing import Dict
 
 import pandas as pd
 
+INT32_MAX = 2_147_483_647
 OHLCV = ["Open", "High", "Low", "Close", "Volume"]
 
 
@@ -46,11 +47,8 @@ def to_long(hist: Dict[str, pd.DataFrame]) -> pd.DataFrame:
         return pd.DataFrame(columns=["Date", *OHLCV, "Symbol"])
     out = pd.concat(parts, ignore_index=True).sort_values(["Symbol", "Date"])
     # downcast Volume int64 → int32 when it fits (halves the column); safe fallback
-    try:
-        if out["Volume"].abs().max() <= 2_147_483_647:
-            out["Volume"] = out["Volume"].astype("int32")
-    except Exception:
-        pass
+    if out["Volume"].abs().max() <= INT32_MAX:
+        out["Volume"] = out["Volume"].astype("int32")
     return out
 
 
@@ -73,9 +71,7 @@ def read_seed(path: Path, min_bars: int = 1) -> Dict[str, pd.DataFrame]:
 def recompress_seed(path) -> dict:
     """Re-read a seed and rewrite it with current dtypes (float32/int32) + zstd-9.
     Returns {before, after, saved_pct}. Safe/idempotent."""
-    from pathlib import Path as _P
-
-    p = _P(path)
+    p = Path(path)
     if not p.exists():
         return {"path": str(p), "error": "missing"}
     before = p.stat().st_size
