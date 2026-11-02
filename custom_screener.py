@@ -15,13 +15,16 @@
 
 from __future__ import annotations
 
+import logging
 import operator
 from typing import Callable, Dict, Iterable, List, Optional, Union
 
 import numpy as np
 import pandas as pd
 
-from strategies.base import StockData
+from strategies.base import StockData, high_52w, prior_avg_volume
+
+log = logging.getLogger(__name__)
 
 OPS = {
     ">": operator.gt,
@@ -85,6 +88,72 @@ def _ccc(f: dict):
     return d(inv, cogs) + d(rec, rev) - d(pay, cogs)
 
 
+RETURN_WINDOWS = ((21, "ret_21"), (63, "ret_63"), (126, "ret_126"), (252, "ret_252"))
+TRADING_DAYS_PER_YEAR = 252
+
+
+def _return_metrics(close: pd.Series) -> Dict[str, float]:
+    """Trailing % returns, annualised volatility and max drawdown."""
+    m: Dict[str, float] = {}
+    for n, key in RETURN_WINDOWS:
+        v = _ret(close, n)
+        if v is not None:
+            m[key] = round(v, 2)
+    if len(close) > 5:
+        dr = close.pct_change().dropna()
+        m["vol_ann"] = round(float(dr.std() * np.sqrt(TRADING_DAYS_PER_YEAR) * 100), 2)
+        roll_max = close.cummax()
+        m["max_drawdown"] = round(float(((close - roll_max) / roll_max).min() * 100), 2)
+    return m
+
+
+def _trend_metrics(close: pd.Series, ltp: float) -> Dict[str, float]:
+    """50/200-day SMAs, price-vs-SMA flags and RSI-14."""
+    m: Dict[str, float] = {}
+    for n in (50, 200):
+        if len(close) >= n:
+            sma_n = float(close.tail(n).mean())
+            m[f"sma{n}"] = round(sma_n, 2)
+            m[f"above_{n}dma"] = bool(ltp > sma_n)
+    r = _rsi(close)
+    if r is not None:
+        m["rsi14"] = round(r, 1)
+    return m
+
+
+def _range_metrics(df: pd.DataFrame, ltp: float) -> Dict[str, float]:
+    """Distance from the 52-week high (below) and low (above), in %."""
+    m: Dict[str, float] = {}
+    win = df.tail(TRADING_DAYS_PER_YEAR)
+    hi = high_52w(df)
+    lo = float(win["Low"].min()) if "Low" in win else float(win["Close"].min())
+    if hi > 0:
+        m["dist_52w_high"] = round((hi - ltp) / hi * 100, 2)
+    if lo > 0:
+        m["dist_52w_low"] = round((ltp - lo) / lo * 100, 2)
+    return m
+
+
+def _volume_metrics(df: pd.DataFrame) -> Dict[str, float]:
+    """20-day average volume and today's volume relative to it."""
+    m: Dict[str, float] = {}
+    v20 = prior_avg_volume(df, 20)
+    if v20 is not None:
+        m["avg_vol_20"] = round(v20, 0)
+        if v20 > 0:
+            m["vol_ratio"] = round(float(df["Volume"].iloc[-1]) / v20, 2)
+    return m
+
+
+def _atr_pct(df: pd.DataFrame, ltp: float) -> Dict[str, float]:
+    """14-day Average True Range as % of the last price."""
+    if not ({"High", "Low", "Close"}.issubset(df.columns) and len(df) >= 15) or not ltp:
+        return {}
+    h, l, c = df["High"], df["Low"], df["Close"]
+    tr = pd.concat([h - l, (h - c.shift()).abs(), (l - c.shift()).abs()], axis=1).max(axis=1)
+    return {"atr14_pct": round(float(tr.tail(14).mean()) / ltp * 100, 2)}
+
+
 def compute_metrics(stock: StockData) -> Dict[str, float]:
     """All technical metrics from OHLCV + the stock's fundamentals merged in."""
     m: Dict[str, float] = dict(stock.fundamentals)  # fundamentals first
@@ -97,44 +166,11 @@ def compute_metrics(stock: StockData) -> Dict[str, float]:
     close = df["Close"].astype(float)
     ltp = float(close.iloc[-1])
     m["ltp"] = round(ltp, 2)
-    for n, key in [(21, "ret_21"), (63, "ret_63"), (126, "ret_126"), (252, "ret_252")]:
-        v = _ret(close, n)
-        if v is not None:
-            m[key] = round(v, 2)
-    if len(close) > 5:
-        dr = close.pct_change().dropna()
-        m["vol_ann"] = round(float(dr.std() * np.sqrt(252) * 100), 2)
-        roll_max = close.cummax()
-        m["max_drawdown"] = round(float(((close - roll_max) / roll_max).min() * 100), 2)
-    if len(close) >= 50:
-        s50 = float(close.tail(50).mean())
-        m["sma50"] = round(s50, 2)
-        m["above_50dma"] = bool(ltp > s50)
-    if len(close) >= 200:
-        s200 = float(close.tail(200).mean())
-        m["sma200"] = round(s200, 2)
-        m["above_200dma"] = bool(ltp > s200)
-    r = _rsi(close)
-    if r is not None:
-        m["rsi14"] = round(r, 1)
-    win = df.tail(252)
-    hi = float(win["High"].max()) if "High" in win else float(win["Close"].max())
-    lo = float(win["Low"].min()) if "Low" in win else float(win["Close"].min())
-    if hi > 0:
-        m["dist_52w_high"] = round((hi - ltp) / hi * 100, 2)
-    if lo > 0:
-        m["dist_52w_low"] = round((ltp - lo) / lo * 100, 2)
-    if "Volume" in df.columns and len(df) >= 21:
-        v20 = float(df["Volume"].tail(21).iloc[:-1].mean())
-        m["avg_vol_20"] = round(v20, 0)
-        if v20 > 0:
-            m["vol_ratio"] = round(float(df["Volume"].iloc[-1]) / v20, 2)
-    if {"High", "Low", "Close"}.issubset(df.columns) and len(df) >= 15:
-        h, l, c = df["High"], df["Low"], df["Close"]
-        tr = pd.concat([h - l, (h - c.shift()).abs(), (l - c.shift()).abs()], axis=1).max(axis=1)
-        atr = float(tr.tail(14).mean())
-        if ltp:
-            m["atr14_pct"] = round(atr / ltp * 100, 2)
+    m.update(_return_metrics(close))
+    m.update(_trend_metrics(close, ltp))
+    m.update(_range_metrics(df, ltp))
+    m.update(_volume_metrics(df))
+    m.update(_atr_pct(df, ltp))
     return m
 
 
@@ -148,7 +184,8 @@ def evaluate(stock: StockData, criteria: Criteria) -> tuple[bool, Dict]:
     if callable(criteria):
         try:
             return bool(criteria(m)), m
-        except Exception:
+        except Exception:  # a user-supplied predicate failing means "does not pass"
+            log.debug("criteria callable failed for %s", stock.symbol, exc_info=True)
             return False, m
     for field, rule in criteria.items():
         val = m.get(field)

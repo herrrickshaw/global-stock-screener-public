@@ -2,7 +2,7 @@
 # Darvas Scan — price-volume breakout, within ~10% of 52-week high on heavy volume.
 from __future__ import annotations
 
-from .base import Result, StockData
+from .base import Result, StockData, high_52w, prior_avg_volume
 
 META = {
     "name": "Darvas Scan",
@@ -22,16 +22,15 @@ def screen(s: StockData) -> Result | None:
     if df is None or len(df) < 60:
         return None
     close = df["Close"]
-    win = df.tail(252)
-    hi_52w = float(win["High"].max()) if "High" in win else float(win["Close"].max())
+    hi_52w = high_52w(df)
     ltp = float(close.iloc[-1])
     if hi_52w <= 0:
         return None
     off_high = (hi_52w - ltp) / hi_52w * 100
     near_high = off_high <= NEAR_HIGH_PCT
     vol_ok, vmult = False, None
-    if "Volume" in df.columns and len(df) >= 21:
-        v20 = float(df["Volume"].tail(21).iloc[:-1].mean())
+    v20 = prior_avg_volume(df, 20)
+    if v20 is not None:
         vtoday = float(df["Volume"].iloc[-1])
         if v20 > 0:
             vmult = round(vtoday / v20, 2)

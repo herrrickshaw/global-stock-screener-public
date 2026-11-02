@@ -19,6 +19,9 @@ from typing import Optional
 import pandas as pd
 
 
+TRADING_DAYS_1Y = 252
+
+
 @dataclass
 class StockData:
     """Everything a strategy might inspect for one ticker."""
@@ -80,6 +83,19 @@ def sma(series: pd.Series, n: int) -> Optional[float]:
     if series is None or len(series) < n:
         return None
     return float(series.tail(n).mean())
+
+
+def high_52w(df: pd.DataFrame) -> float:
+    """Highest High (falls back to Close) over the last 252 bars of an OHLCV frame."""
+    win = df.tail(TRADING_DAYS_1Y)
+    return float(win["High"].max()) if "High" in win else float(win["Close"].max())
+
+
+def prior_avg_volume(df: pd.DataFrame, n: int = 20) -> Optional[float]:
+    """Mean Volume of the n bars BEFORE the latest bar (None if too short / no Volume)."""
+    if "Volume" not in df.columns or len(df) < n + 1:
+        return None
+    return float(df["Volume"].tail(n + 1).iloc[:-1].mean())
 
 
 def safe(v):
