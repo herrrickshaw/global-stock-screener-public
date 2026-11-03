@@ -70,6 +70,97 @@ def _g(row, key):
         return None
 
 
+def _piotroski(inc: list, bal: list, cf: list) -> int:
+    """Piotroski F-score (0-9) from normalised statements, newest first. May raise."""
+    i0 = inc[0]
+    i1 = inc[1] if len(inc) > 1 else {}
+    b0 = bal[0]
+    b1 = bal[1] if len(bal) > 1 else {}
+    c0 = cf[0] if cf else {}
+    ni0, a0 = _g(i0, "net_income"), _g(b0, "total_assets")
+    ni1, a1 = _g(i1, "net_income"), _g(b1, "total_assets")
+    roa0 = (ni0 / a0) if (ni0 is not None and a0) else None
+    roa1 = (ni1 / a1) if (ni1 is not None and a1) else None
+    ocf0 = _g(c0, "operating_cash_flow")
+
+    f1 = 1 if (roa0 and roa0 > 0) else 0
+    f2 = 1 if (ocf0 and ocf0 > 0) else 0
+    f3 = 1 if (roa0 is not None and roa1 is not None and roa0 > roa1) else 0
+    f4 = 1 if (ocf0 and a0 and roa0 is not None and (ocf0 / a0) > roa0) else 0
+
+    ltd0 = _g(b0, "long_term_debt") or 0
+    ltd1 = _g(b1, "long_term_debt") or 0
+    f5 = 1 if (a0 and a1 and (ltd0 / a0) < (ltd1 / a1)) else 0
+
+    ca0, cl0 = _g(b0, "current_assets"), _g(b0, "current_liabilities")
+    ca1, cl1 = _g(b1, "current_assets"), _g(b1, "current_liabilities")
+    f6 = 1 if (ca0 and cl0 and ca1 and cl1 and (ca0 / cl0) > (ca1 / cl1)) else 0
+
+    sh0, sh1 = _g(i0, "shares"), _g(i1, "shares")
+    f7 = (1 if sh0 <= sh1 else 0) if (sh0 and sh1) else 1
+
+    rev0, gp0 = _g(i0, "revenue"), _g(i0, "gross_profit")
+    rev1, gp1 = _g(i1, "revenue"), _g(i1, "gross_profit")
+    f8 = 1 if (gp0 and rev0 and gp1 and rev1 and (gp0 / rev0) > (gp1 / rev1)) else 0
+    f9 = 1 if (rev0 and a0 and rev1 and a1 and (rev0 / a0) > (rev1 / a1)) else 0
+
+    return f1 + f2 + f3 + f4 + f5 + f6 + f7 + f8 + f9
+
+
+def _coffee_can(inc: list, bal: list, cf: list) -> dict:
+    """Coffee Can (C1-C6) result fields from normalised statements, newest first. May raise."""
+    b0 = bal[0]
+    c0 = cf[0] if cf else {}
+    c = {}
+    revs = [_g(x, "revenue") for x in inc if _g(x, "revenue")]
+    cagr = (
+        ((revs[0] / revs[-1]) ** (1 / (len(revs) - 1)) - 1) * 100
+        if len(revs) >= 2 and revs[-1] > 0
+        else None
+    )
+    c["C1"] = 1 if (cagr and cagr > 10) else 0
+
+    roce_l = []
+    for i, b in zip(inc, bal):
+        ebit = _g(i, "ebit")
+        ta = _g(b, "total_assets")
+        cl = _g(b, "current_liabilities")
+        if ebit is not None and ta and cl is not None and (ta - cl) > 0:
+            roce_l.append(ebit / (ta - cl) * 100)
+    avg_roce = sum(roce_l) / len(roce_l) if roce_l else None
+    c["C2"] = 1 if (avg_roce and avg_roce > 15) else 0
+
+    de = None
+    td0 = _g(b0, "long_term_debt")
+    eq0 = (_g(b0, "total_assets") or 0) - (_g(b0, "current_liabilities") or 0)  # rough proxy
+    if td0 is not None and eq0:
+        de = td0 / eq0
+    c["C3"] = 1 if (de is not None and de < 1.0) else 0
+
+    gps = [_g(x, "gross_profit") for x in inc]
+    revs2 = [_g(x, "revenue") for x in inc]
+    margins = [g / r for g, r in zip(gps, revs2) if g is not None and r]
+    c["C4"] = 1 if (len(margins) >= 2 and margins[0] > margins[-1]) else 0
+
+    nis = [_g(x, "net_income") for x in inc if _g(x, "net_income") is not None]
+    c["C5"] = 1 if (nis and all(n > 0 for n in nis)) else 0
+
+    fcf0 = _g(c0, "free_cash_flow")
+    if fcf0 is None:
+        ocf = _g(c0, "operating_cash_flow")
+        cap = _g(c0, "capex")
+        fcf0 = (ocf - abs(cap)) if (ocf is not None and cap is not None) else None
+    c["C6"] = 1 if (fcf0 is not None and fcf0 > 0) else 0
+
+    return {
+        "cc_qualifies": "PASS" if sum(c.values()) == len(c) else "FAIL",
+        "cc_score": f"{sum(c.values())}/{len(c)}",
+        "cc_rev_cagr": round(cagr, 2) if cagr else None,
+        "cc_roce_avg": round(avg_roce, 2) if avg_roce else None,
+        "cc_debt_equity": round(de, 2) if de else None,
+    }
+
+
 def score_from_statements(inc, bal, cf, profile):
     """Compute Piotroski F-score (0–9) + Coffee-Can (0–6) from normalised
     statements. Mirrors full_european_market_scan.fundamental_scan exactly so
@@ -94,97 +185,13 @@ def score_from_statements(inc, bal, cf, profile):
         res["error"] = "no_financial_statements"
         return res
 
-    i0 = inc[0]
-    i1 = inc[1] if len(inc) > 1 else {}
-    b0 = bal[0]
-    b1 = bal[1] if len(bal) > 1 else {}
-    c0 = cf[0] if cf else {}
-
-    # ── Piotroski F-score (9 points) ──
     try:
-        ni0, a0 = _g(i0, "net_income"), _g(b0, "total_assets")
-        ni1, a1 = _g(i1, "net_income"), _g(b1, "total_assets")
-        roa0 = (ni0 / a0) if (ni0 is not None and a0) else None
-        roa1 = (ni1 / a1) if (ni1 is not None and a1) else None
-        ocf0 = _g(c0, "operating_cash_flow")
-
-        f1 = 1 if (roa0 and roa0 > 0) else 0
-        f2 = 1 if (ocf0 and ocf0 > 0) else 0
-        f3 = 1 if (roa0 is not None and roa1 is not None and roa0 > roa1) else 0
-        f4 = 1 if (ocf0 and a0 and roa0 is not None and (ocf0 / a0) > roa0) else 0
-
-        ltd0 = _g(b0, "long_term_debt") or 0
-        ltd1 = _g(b1, "long_term_debt") or 0
-        f5 = 1 if (a0 and a1 and (ltd0 / a0) < (ltd1 / a1)) else 0
-
-        ca0, cl0 = _g(b0, "current_assets"), _g(b0, "current_liabilities")
-        ca1, cl1 = _g(b1, "current_assets"), _g(b1, "current_liabilities")
-        f6 = 1 if (ca0 and cl0 and ca1 and cl1 and (ca0 / cl0) > (ca1 / cl1)) else 0
-
-        sh0, sh1 = _g(i0, "shares"), _g(i1, "shares")
-        f7 = (1 if sh0 <= sh1 else 0) if (sh0 and sh1) else 1
-
-        rev0, gp0 = _g(i0, "revenue"), _g(i0, "gross_profit")
-        rev1, gp1 = _g(i1, "revenue"), _g(i1, "gross_profit")
-        f8 = 1 if (gp0 and rev0 and gp1 and rev1 and (gp0 / rev0) > (gp1 / rev1)) else 0
-        f9 = 1 if (rev0 and a0 and rev1 and a1 and (rev0 / a0) > (rev1 / a1)) else 0
-
-        res["f_score"] = f1 + f2 + f3 + f4 + f5 + f6 + f7 + f8 + f9
+        res["f_score"] = _piotroski(inc, bal, cf)
     except Exception:
         pass
 
-    # ── Coffee Can (6 points) ──
     try:
-        c = {}
-        revs = [_g(x, "revenue") for x in inc if _g(x, "revenue")]
-        cagr = (
-            ((revs[0] / revs[-1]) ** (1 / (len(revs) - 1)) - 1) * 100
-            if len(revs) >= 2 and revs[-1] > 0
-            else None
-        )
-        c["C1"] = 1 if (cagr and cagr > 10) else 0
-
-        roce_l = []
-        for i, b in zip(inc, bal):
-            ebit = _g(i, "ebit")
-            ta = _g(b, "total_assets")
-            cl = _g(b, "current_liabilities")
-            if ebit is not None and ta and cl is not None and (ta - cl) > 0:
-                roce_l.append(ebit / (ta - cl) * 100)
-        avg_roce = sum(roce_l) / len(roce_l) if roce_l else None
-        c["C2"] = 1 if (avg_roce and avg_roce > 15) else 0
-
-        de = None
-        td0 = _g(b0, "long_term_debt")
-        eq0 = (_g(b0, "total_assets") or 0) - (_g(b0, "current_liabilities") or 0)  # rough proxy
-        if td0 is not None and eq0:
-            de = td0 / eq0
-        c["C3"] = 1 if (de is not None and de < 1.0) else 0
-
-        gps = [_g(x, "gross_profit") for x in inc]
-        revs2 = [_g(x, "revenue") for x in inc]
-        margins = [g / r for g, r in zip(gps, revs2) if g is not None and r]
-        c["C4"] = 1 if (len(margins) >= 2 and margins[0] > margins[-1]) else 0
-
-        nis = [_g(x, "net_income") for x in inc if _g(x, "net_income") is not None]
-        c["C5"] = 1 if (nis and all(n > 0 for n in nis)) else 0
-
-        fcf0 = _g(c0, "free_cash_flow")
-        if fcf0 is None:
-            ocf = _g(c0, "operating_cash_flow")
-            cap = _g(c0, "capex")
-            fcf0 = (ocf - abs(cap)) if (ocf is not None and cap is not None) else None
-        c["C6"] = 1 if (fcf0 is not None and fcf0 > 0) else 0
-
-        res.update(
-            {
-                "cc_qualifies": "PASS" if sum(c.values()) == len(c) else "FAIL",
-                "cc_score": f"{sum(c.values())}/{len(c)}",
-                "cc_rev_cagr": round(cagr, 2) if cagr else None,
-                "cc_roce_avg": round(avg_roce, 2) if avg_roce else None,
-                "cc_debt_equity": round(de, 2) if de else None,
-            }
-        )
+        res.update(_coffee_can(inc, bal, cf))
     except Exception:
         pass
 
