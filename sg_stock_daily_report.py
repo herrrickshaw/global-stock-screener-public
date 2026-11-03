@@ -500,6 +500,59 @@ def fetch_corporate_actions(ticker: yf.Ticker) -> dict:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+def _darvas_result(signal: str, note: str, box_top=None, box_bottom=None) -> dict:
+    """The no-classification result shape (INSUFFICIENT_DATA / NO_BOX)."""
+    return {"signal": signal, "box_top": box_top, "box_bottom": box_bottom, "note": note}
+
+
+def _find_col(df: pd.DataFrame, candidates: list):
+    """First column whose upper-cased name contains any candidate (in candidate order)."""
+    for c in candidates:
+        match = next((col for col in df.columns if c.upper() in col.upper()), None)
+        if match:
+            return match
+    return None
+
+
+def _find_box_top(highs: list, confirm: int):
+    """Most recent confirmed box top: (index, value) or (None, None).
+
+    A candidate high is confirmed when the next `confirm` highs are all lower. `highs`
+    must already exclude the current bar.
+    """
+    n = len(highs)
+    for i in range(n - confirm - 1, -1, -1):
+        candidate = highs[i]
+        if candidate == 0:
+            continue
+        window = highs[i + 1 : i + 1 + confirm]
+        if len(window) == confirm and all(h < candidate for h in window):
+            return i, candidate
+    return None, None
+
+
+def _find_box_bottom(segment: list, confirm: int):
+    """Box bottom within the lows since the box top: first confirmed low (the next `confirm`
+    lows all higher), else the minimum positive low, else None."""
+    for i in range(len(segment) - confirm):
+        candidate = segment[i]
+        if candidate == 0:
+            continue
+        window = segment[i + 1 : i + 1 + confirm]
+        if len(window) == confirm and all(low > candidate for low in window):
+            return candidate
+    valid = [low for low in segment if low > 0]
+    return min(valid) if valid else None
+
+
+def _classify_vs_box(current: float, box_top: float, box_bottom: float) -> str:
+    if current > box_top:
+        return "BREAKOUT_BUY"
+    if current < box_bottom:
+        return "BREAKDOWN_SELL"
+    return "IN_BOX"
+
+
 def compute_darvas_box(df: pd.DataFrame, confirm: int = DARVAS_CONFIRM) -> dict:
     """
     Detect a Darvas Box and classify the current price relative to it.
@@ -509,102 +562,35 @@ def compute_darvas_box(df: pd.DataFrame, confirm: int = DARVAS_CONFIRM) -> dict:
     pull the box bottom down and make a breakdown undetectable.
     """
     if df is None or df.empty:
-        return {
-            "signal": "INSUFFICIENT_DATA",
-            "box_top": None,
-            "box_bottom": None,
-            "note": "Empty OHLC DataFrame",
-        }
+        return _darvas_result("INSUFFICIENT_DATA", "Empty OHLC DataFrame")
 
-    def find_col(df, candidates):
-        for c in candidates:
-            match = next((col for col in df.columns if c.upper() in col.upper()), None)
-            if match:
-                return match
-        return None
-
-    h_col = find_col(df, ["High", "CH_TRADE_HIGH_PRICE", "DAYHIGH"])
-    l_col = find_col(df, ["Low", "CH_TRADE_LOW_PRICE", "DAYLOW"])
-    c_col = find_col(df, ["Close", "CH_CLOSING_PRICE", "LAST"])
-
+    h_col = _find_col(df, ["High", "CH_TRADE_HIGH_PRICE", "DAYHIGH"])
+    l_col = _find_col(df, ["Low", "CH_TRADE_LOW_PRICE", "DAYLOW"])
+    c_col = _find_col(df, ["Close", "CH_CLOSING_PRICE", "LAST"])
     if not all([h_col, l_col, c_col]):
-        return {
-            "signal": "INSUFFICIENT_DATA",
-            "box_top": None,
-            "box_bottom": None,
-            "note": "Could not identify OHLC columns",
-        }
+        return _darvas_result("INSUFFICIENT_DATA", "Could not identify OHLC columns")
 
     all_highs = pd.to_numeric(df[h_col], errors="coerce").fillna(0).tolist()
     all_lows = pd.to_numeric(df[l_col], errors="coerce").fillna(0).tolist()
     all_closes = pd.to_numeric(df[c_col], errors="coerce").fillna(0).tolist()
-
     if len(all_closes) < confirm + 5:
-        return {
-            "signal": "INSUFFICIENT_DATA",
-            "box_top": None,
-            "box_bottom": None,
-            "note": f"Need ≥ {confirm + 5} bars; got {len(all_closes)}",
-        }
+        return _darvas_result(
+            "INSUFFICIENT_DATA", f"Need ≥ {confirm + 5} bars; got {len(all_closes)}"
+        )
 
     current = all_closes[-1]
-    highs = all_highs[:-1]
+    highs = all_highs[:-1]  # current bar excluded from box formation
     lows = all_lows[:-1]
-    n = len(highs)
 
-    # Step 1: most recent confirmed box top
-    box_top_idx = None
-    box_top = None
-    for i in range(n - confirm - 1, -1, -1):
-        candidate = highs[i]
-        if candidate == 0:
-            continue
-        window = highs[i + 1 : i + 1 + confirm]
-        if len(window) == confirm and all(h < candidate for h in window):
-            box_top_idx = i
-            box_top = candidate
-            break
-
+    box_top_idx, box_top = _find_box_top(highs, confirm)
     if box_top is None:
-        return {
-            "signal": "NO_BOX",
-            "box_top": None,
-            "box_bottom": None,
-            "note": "No confirmed box top",
-        }
+        return _darvas_result("NO_BOX", "No confirmed box top")
 
-    # Step 2: confirmed box bottom
-    segment = lows[box_top_idx:]
-    box_bottom = None
-    for i in range(len(segment) - confirm):
-        candidate = segment[i]
-        if candidate == 0:
-            continue
-        window = segment[i + 1 : i + 1 + confirm]
-        if len(window) == confirm and all(l > candidate for l in window):
-            box_bottom = candidate
-            break
-
+    box_bottom = _find_box_bottom(lows[box_top_idx:], confirm)
     if box_bottom is None:
-        valid = [l for l in segment if l > 0]
-        box_bottom = min(valid) if valid else None
+        return _darvas_result("NO_BOX", "Could not confirm a box bottom", box_top=box_top)
 
-    if box_bottom is None:
-        return {
-            "signal": "NO_BOX",
-            "box_top": box_top,
-            "box_bottom": None,
-            "note": "Could not confirm a box bottom",
-        }
-
-    # Step 3: classify current price
-    if current > box_top:
-        signal = "BREAKOUT_BUY"
-    elif current < box_bottom:
-        signal = "BREAKDOWN_SELL"
-    else:
-        signal = "IN_BOX"
-
+    signal = _classify_vs_box(current, box_top, box_bottom)
     box_range = box_top - box_bottom
     pos_in_box = ((current - box_bottom) / box_range * 100) if box_range else 0
     upside_to_top = ((box_top - current) / current * 100) if current else 0
