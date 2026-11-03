@@ -220,7 +220,24 @@ def _statement_series(row) -> dict:
     cfo = row("Cash from Operating Activity", "Cash from Operating Activity+")
     shares = row("No. of Equity Shares", "No of Equity Shares")
     div = row("Dividend Amount", "Dividend Paid", "Dividend Payout")
-    return {"ni": ni, "rev": rev, "interest": interest, "pbt": pbt, "eps": eps, "debt": debt, "reserves": reserves, "capital": capital, "other_liab": other_liab, "net_block": net_block, "inv": inv, "recv": recv, "cash": cash, "cfo": cfo, "shares": shares, "div": div}
+    return {
+        "ni": ni,
+        "rev": rev,
+        "interest": interest,
+        "pbt": pbt,
+        "eps": eps,
+        "debt": debt,
+        "reserves": reserves,
+        "capital": capital,
+        "other_liab": other_liab,
+        "net_block": net_block,
+        "inv": inv,
+        "recv": recv,
+        "cash": cash,
+        "cfo": cfo,
+        "shares": shares,
+        "div": div,
+    }
 
 
 def _derived_series(sr: dict) -> dict:

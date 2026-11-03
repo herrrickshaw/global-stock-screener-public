@@ -61,7 +61,13 @@ def _setup(tmp_path, monkeypatch, *, with_ccc: bool, with_extras: bool):
         mod.mp,
         "load",
         lambda: pd.DataFrame(
-            {"Market": ["IN"], "Index": ["NIFTY"], "CAGR%": [12.5], "Return_1y%": [8.1], "Sharpe": [0.9]}
+            {
+                "Market": ["IN"],
+                "Index": ["NIFTY"],
+                "CAGR%": [12.5],
+                "Return_1y%": [8.1],
+                "Sharpe": [0.9],
+            }
         ),
     )
     if with_extras:
@@ -70,8 +76,14 @@ def _setup(tmp_path, monkeypatch, *, with_ccc: bool, with_extras: bool):
             "US": {"mood": {"mood": "neutral", "score": -0.02, "n_articles": 5}},
         }
         monkeypatch.setattr(mod, "_combined_report", lambda m: reports.get(m))
-        monkeypatch.setattr(mod, "_picks_rows", lambda d, m, limit=12: [f"<tr><td>{m}pick</td></tr>"] if d else [])
-        monkeypatch.setattr(mod, "_convergence_rows", lambda d: ["<tr><td>conv</td></tr>"] if d and d.get("picks") else [])
+        monkeypatch.setattr(
+            mod, "_picks_rows", lambda d, m, limit=12: [f"<tr><td>{m}pick</td></tr>"] if d else []
+        )
+        monkeypatch.setattr(
+            mod,
+            "_convergence_rows",
+            lambda d: ["<tr><td>conv</td></tr>"] if d and d.get("picks") else [],
+        )
         monkeypatch.setattr(mod, "_ai_screener_section", lambda m: None)
         monkeypatch.setattr(mod, "_gms_scan", lambda m: None)
         monkeypatch.setattr(mod, "_europe_scan", lambda: None)

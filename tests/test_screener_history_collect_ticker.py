@@ -24,42 +24,73 @@ D = pd.Timestamp
 def _xlsx_bytes() -> bytes:
     buf = io.BytesIO()
     with pd.ExcelWriter(buf, engine="openpyxl") as w:
-        pd.DataFrame([["x", 1], ["y", 2]]).to_excel(w, sheet_name="Data Sheet", header=False, index=False)
+        pd.DataFrame([["x", 1], ["y", 2]]).to_excel(
+            w, sheet_name="Data Sheet", header=False, index=False
+        )
     return buf.getvalue()
 
 
 ANNUAL = {
     "mfr": {
         D("2024-03-31"): dict(
-            revenue=1000.0, profit_before_tax=200.0, interest=40.0, raw_material_cost=500.0,
-            change_in_inventory=-20.0, power_and_fuel=30.0, other_mfr_exp=NAN,
-            equity_capital=100.0, reserves=400.0, borrowings=300.0,
+            revenue=1000.0,
+            profit_before_tax=200.0,
+            interest=40.0,
+            raw_material_cost=500.0,
+            change_in_inventory=-20.0,
+            power_and_fuel=30.0,
+            other_mfr_exp=NAN,
+            equity_capital=100.0,
+            reserves=400.0,
+            borrowings=300.0,
         ),
         D("2023-03-31"): dict(
-            revenue=900.0, profit_before_tax=150.0, interest=None, raw_material_cost=250.0,
-            equity_capital=100.0, reserves=300.0, borrowings=200.0,
+            revenue=900.0,
+            profit_before_tax=150.0,
+            interest=None,
+            raw_material_cost=250.0,
+            equity_capital=100.0,
+            reserves=300.0,
+            borrowings=200.0,
         ),
     },
     "services": {
         D("2024-03-31"): dict(
-            revenue=2000.0, profit_before_tax=500.0, interest=0.0, raw_material_cost=10.0,
-            equity_capital=50.0, reserves=900.0, borrowings=0.0,
+            revenue=2000.0,
+            profit_before_tax=500.0,
+            interest=0.0,
+            raw_material_cost=10.0,
+            equity_capital=50.0,
+            reserves=900.0,
+            borrowings=0.0,
         ),
     },
     "lender": {
         D("2024-03-31"): dict(
-            revenue=100.0, profit_before_tax=30.0, interest=50.0, raw_material_cost=None,
-            equity_capital=10.0, reserves=60.0, borrowings=500.0,
+            revenue=100.0,
+            profit_before_tax=30.0,
+            interest=50.0,
+            raw_material_cost=None,
+            equity_capital=10.0,
+            reserves=60.0,
+            borrowings=500.0,
         ),
     },
     "negative_net_worth": {
         D("2024-03-31"): dict(
-            revenue=50.0, profit_before_tax=5.0, interest=1.0, raw_material_cost=40.0,
-            equity_capital=10.0, reserves=-302.0, borrowings=420.0,
+            revenue=50.0,
+            profit_before_tax=5.0,
+            interest=1.0,
+            raw_material_cost=40.0,
+            equity_capital=10.0,
+            reserves=-302.0,
+            borrowings=420.0,
         ),
     },
     "zero_revenue": {
-        D("2024-03-31"): dict(revenue=0.0, profit_before_tax=5.0, interest=1.0, raw_material_cost=4.0),
+        D("2024-03-31"): dict(
+            revenue=0.0, profit_before_tax=5.0, interest=1.0, raw_material_cost=4.0
+        ),
     },
     "empty": {},
 }

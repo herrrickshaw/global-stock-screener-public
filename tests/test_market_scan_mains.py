@@ -108,7 +108,9 @@ def _run_japan(tmp_path, monkeypatch, capsys):
     ]
     frames = {t: _series(i) for i, t in enumerate(tickers)}
     monkeypatch.setattr(mod, "build_ticker_universe", lambda: uni)
-    monkeypatch.setattr(mod, "bulk_download_ohlc", lambda tk, period="3mo": {t: frames[t] for t in tk})
+    monkeypatch.setattr(
+        mod, "bulk_download_ohlc", lambda tk, period="3mo": {t: frames[t] for t in tk}
+    )
     monkeypatch.setattr(mod, "fundamental_scan", lambda t: _fake_scan_result(int(t[:4]) % 10))
     monkeypatch.setattr(sys, "argv", ["x", "--workers", "1"])
     mod.main()
@@ -158,7 +160,8 @@ RUNNERS = {"japan": _run_japan, "korea": _run_korea, "europe": _run_europe}
 def test_scan_main_matches_golden(market, tmp_path, monkeypatch, capsys):
     snap = RUNNERS[market](tmp_path, monkeypatch, capsys)
     if not GOLDEN.exists() or (
-        market not in json.loads(GOLDEN.read_text()) and __import__("os").environ.get("UPDATE_GOLDEN")
+        market not in json.loads(GOLDEN.read_text())
+        and __import__("os").environ.get("UPDATE_GOLDEN")
     ):
         data = json.loads(GOLDEN.read_text()) if GOLDEN.exists() else {}
         data[market] = snap

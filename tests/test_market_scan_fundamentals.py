@@ -174,7 +174,9 @@ def _call(market, mod, scenario):
 @pytest.mark.parametrize("market", ["europe", "japan", "korea"])
 @pytest.mark.parametrize("scenario", sorted(SCENARIOS))
 def test_fundamental_scan_matches_golden(market, scenario, tmp_path, monkeypatch):
-    mod = _load(f"full_{'european' if market == 'europe' else market}_market_scan", monkeypatch, tmp_path)
+    mod = _load(
+        f"full_{'european' if market == 'europe' else market}_market_scan", monkeypatch, tmp_path
+    )
     monkeypatch.setattr(mod.yf, "Ticker", mod.yf.Ticker)  # restore after test
     if market == "europe":
         monkeypatch.setattr(mod, "_emerging_fundamentals", lambda s: None)
@@ -192,7 +194,9 @@ def test_europe_emerging_fallback(tmp_path, monkeypatch):
     monkeypatch.setattr(mod.yf, "Ticker", mod.yf.Ticker)
     tk = FakeTicker("none", info={})
     mod.yf.Ticker = lambda *_a, **_k: tk
-    monkeypatch.setattr(mod, "_emerging_fundamentals", lambda s: {"f_score": 6, "cc_qualifies": "PASS"})
+    monkeypatch.setattr(
+        mod, "_emerging_fundamentals", lambda s: {"f_score": 6, "cc_qualifies": "PASS"}
+    )
     out = mod.fundamental_scan("XYZ.IS")
     key = "europe/emerging_fallback"
     data = json.loads(GOLDEN.read_text())

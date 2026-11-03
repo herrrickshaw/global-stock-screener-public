@@ -92,8 +92,16 @@ def test_fetchers_match_golden(monkeypatch):
         snap[f"analyzer/{kind}"] = res
         monkeypatch.setattr(qc.yf, "Ticker", lambda *_a, _tk=tk, **_k: _tk)
         collector = next(
-            v for v in vars(qc).values() if isinstance(v, type) and hasattr(v, "fetch_quarterly_data")
-        ).__new__(next(v for v in vars(qc).values() if isinstance(v, type) and hasattr(v, "fetch_quarterly_data")))
+            v
+            for v in vars(qc).values()
+            if isinstance(v, type) and hasattr(v, "fetch_quarterly_data")
+        ).__new__(
+            next(
+                v
+                for v in vars(qc).values()
+                if isinstance(v, type) and hasattr(v, "fetch_quarterly_data")
+            )
+        )
         snap[f"collector/{kind}"] = _clean(collector.fetch_quarterly_data("AAA"))
     monkeypatch.setattr(qa.yf, "Ticker", lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("x")))
     snap["analyzer/raises"] = qa.QuarterlyAnalyzer().fetch_company_data("AAA")

@@ -19,10 +19,18 @@ GOLDEN = Path(__file__).parent / "fixtures" / "golden_sg_darvas.json"
 
 
 def _frames() -> dict:
-    out = {"none": None, "empty": pd.DataFrame(), "short": pd.DataFrame({"High": [1] * 5, "Low": [1] * 5, "Close": [1] * 5})}
+    out = {
+        "none": None,
+        "empty": pd.DataFrame(),
+        "short": pd.DataFrame({"High": [1] * 5, "Low": [1] * 5, "Close": [1] * 5}),
+    }
     out["no_cols"] = pd.DataFrame({"A": range(30)})
     out["alt_cols"] = pd.DataFrame(
-        {"DAYHIGH": np.linspace(10, 12, 30), "DAYLOW": np.linspace(9, 11, 30), "LAST": np.linspace(9.5, 11.5, 30)}
+        {
+            "DAYHIGH": np.linspace(10, 12, 30),
+            "DAYLOW": np.linspace(9, 11, 30),
+            "LAST": np.linspace(9.5, 11.5, 30),
+        }
     )
     for seed in range(24):
         rng = np.random.default_rng(seed)

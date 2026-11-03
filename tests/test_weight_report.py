@@ -42,7 +42,9 @@ def _cases():
 
 
 def test_generate_report_matches_golden(capsys):
-    cls = next(v for v in vars(bwo).values() if isinstance(v, type) and hasattr(v, "generate_report"))
+    cls = next(
+        v for v in vars(bwo).values() if isinstance(v, type) and hasattr(v, "generate_report")
+    )
     obj = cls.__new__(cls)
     obj.data = list(range(10000))
     snap = {}

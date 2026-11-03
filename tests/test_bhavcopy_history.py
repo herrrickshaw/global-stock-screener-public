@@ -101,7 +101,9 @@ def _load(tmp_path, monkeypatch):
     sys.modules.pop("bhavcopy_history", None)
     mod = importlib.import_module("bhavcopy_history")
     monkeypatch.setattr(
-        mod, "_dt", types.SimpleNamespace(date=_FixedDate, timedelta=dt.timedelta, datetime=dt.datetime)
+        mod,
+        "_dt",
+        types.SimpleNamespace(date=_FixedDate, timedelta=dt.timedelta, datetime=dt.datetime),
     )
     monkeypatch.setattr(mod.requests, "Session", _Sess)
     return mod, cache

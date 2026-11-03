@@ -272,13 +272,15 @@ def _valuation(info: dict, mcap, res: dict) -> None:
     dy = (dy_raw if dy_raw >= 0.15 else dy_raw * 100) if dy_raw is not None else 0.0
     pegy = float(peg) + dy if peg is not None else None
     res["sector"] = info.get("sector")
-    res.update({
-        "market_cap_b": round(mcap / 1e9, 2) if mcap else None,
-        "pe_ratio": round(pe, 2) if pe and pe > 0 else None,
-        "pb_ratio": round(info.get("priceToBook"), 2) if info.get("priceToBook") else None,
-        "dividend_yield": round(dy, 2),
-        "pegy_ratio": round(pegy, 2) if pegy else None,
-    })
+    res.update(
+        {
+            "market_cap_b": round(mcap / 1e9, 2) if mcap else None,
+            "pe_ratio": round(pe, 2) if pe and pe > 0 else None,
+            "pb_ratio": round(info.get("priceToBook"), 2) if info.get("priceToBook") else None,
+            "dividend_yield": round(dy, 2),
+            "pegy_ratio": round(pegy, 2) if pegy else None,
+        }
+    )
 
 
 def fundamental_scan(symbol: str) -> dict:

@@ -496,8 +496,7 @@ def _fundamental_stage(breakout_info: list, darvas_rows: list, workers: int):
     fund_rows, triple_rows = [], []
     breakout_info = _cap_breakouts(breakout_info, darvas_rows)
     print(
-        f"\nStage 4 — Fundamental scans ({len(breakout_info)} candidates, "
-        f"{workers} workers) …"
+        f"\nStage 4 — Fundamental scans ({len(breakout_info)} candidates, " f"{workers} workers) …"
     )
     done = 0
     with ThreadPoolExecutor(max_workers=workers) as pool:
