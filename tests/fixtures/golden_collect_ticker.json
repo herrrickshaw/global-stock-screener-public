@@ -1,0 +1,118 @@
+{
+ "corrupt": [],
+ "empty": [],
+ "lender": [
+  {
+   "borrowings": 500.0,
+   "capital_employed": 570.0,
+   "equity_capital": 10.0,
+   "fy_end": "2024-03-31",
+   "industry": "Housing Finance",
+   "interest": 50.0,
+   "interest_share_of_revenue": 0.5,
+   "is_financial": true,
+   "profit_before_tax": 30.0,
+   "raw_material_cost": null,
+   "reserves": 60.0,
+   "revenue": 100.0,
+   "ticker": "LENDER"
+  }
+ ],
+ "mfr": [
+  {
+   "borrowings": 200.0,
+   "capital_employed": 600.0,
+   "equity_capital": 100.0,
+   "fy_end": "2023-03-31",
+   "industry": "Auto Components",
+   "interest": null,
+   "is_financial": false,
+   "profit_before_tax": 150.0,
+   "raw_material_cost": 250.0,
+   "reserves": 300.0,
+   "revenue": 900.0,
+   "rm_share": 0.2777777777777778,
+   "ticker": "MFR"
+  },
+  {
+   "borrowings": 300.0,
+   "capital_employed": 800.0,
+   "change_in_inventory": -20.0,
+   "cogs": 550.0,
+   "ebit": 240.0,
+   "equity_capital": 100.0,
+   "fy_end": "2024-03-31",
+   "gross_margin": 0.45,
+   "gross_profit": 450.0,
+   "industry": "Auto Components",
+   "interest": 40.0,
+   "interest_share_of_revenue": 0.04,
+   "is_financial": false,
+   "other_mfr_exp": "NaN",
+   "power_and_fuel": 30.0,
+   "profit_before_tax": 200.0,
+   "raw_material_cost": 500.0,
+   "reserves": 400.0,
+   "revenue": 1000.0,
+   "rm_share": 0.5,
+   "roce": 0.3,
+   "ticker": "MFR"
+  }
+ ],
+ "negative_net_worth": [
+  {
+   "borrowings": 420.0,
+   "capital_employed": null,
+   "cogs": 40.0,
+   "ebit": 6.0,
+   "equity_capital": 10.0,
+   "fy_end": "2024-03-31",
+   "gross_margin": 0.2,
+   "gross_profit": 10.0,
+   "industry": null,
+   "interest": 1.0,
+   "interest_share_of_revenue": 0.02,
+   "is_financial": false,
+   "profit_before_tax": 5.0,
+   "raw_material_cost": 40.0,
+   "reserves": -302.0,
+   "revenue": 50.0,
+   "rm_share": 0.8,
+   "ticker": "NEGATIVE_NET_WORTH"
+  }
+ ],
+ "other_error": [],
+ "services": [
+  {
+   "borrowings": 0.0,
+   "capital_employed": 950.0,
+   "ebit": 500.0,
+   "equity_capital": 50.0,
+   "fy_end": "2024-03-31",
+   "industry": null,
+   "interest": 0.0,
+   "interest_share_of_revenue": 0.0,
+   "is_financial": false,
+   "profit_before_tax": 500.0,
+   "raw_material_cost": 10.0,
+   "reserves": 900.0,
+   "revenue": 2000.0,
+   "rm_share": 0.005,
+   "roce": 0.5263157894736842,
+   "ticker": "SERVICES"
+  }
+ ],
+ "zero_revenue": [
+  {
+   "ebit": 6.0,
+   "fy_end": "2024-03-31",
+   "industry": null,
+   "interest": 1.0,
+   "is_financial": false,
+   "profit_before_tax": 5.0,
+   "raw_material_cost": 4.0,
+   "revenue": 0.0,
+   "ticker": "ZERO_REVENUE"
+  }
+ ]
+}
