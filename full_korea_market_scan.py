@@ -39,7 +39,15 @@ import pandas as pd
 import requests
 import yfinance as yf
 
-from scan_common import trend_signal, write_scan_workbook
+from scan_common import (
+    coffee_can_core,
+    first_df,
+    piotroski_f_score,
+    row,
+    series,
+    trend_signal,
+    write_scan_workbook,
+)
 
 try:
     from pykrx import stock as krx
@@ -275,34 +283,7 @@ def compute_darvas_box(df: pd.DataFrame, confirm: int = DARVAS_CONFIRM) -> dict:
 # ── Fundamental helpers ───────────────────────────────────────────────────────
 
 
-def _first_df(ticker, *attrs):
-    for attr in attrs:
-        df = getattr(ticker, attr, None)
-        if df is not None and isinstance(df, pd.DataFrame) and not df.empty:
-            return df
-    return None
-
-
-def _row(df, *names, col: int = 0):
-    if df is None or df.empty:
-        return None
-    for name in names:
-        if name in df.index:
-            try:
-                val = df.loc[name].iloc[col]
-                return float(val) if pd.notna(val) else None
-            except Exception:
-                pass
-    return None
-
-
-def _series(df, *names):
-    if df is None or df.empty:
-        return []
-    for name in names:
-        if name in df.index:
-            return [float(v) for v in df.loc[name].dropna() if pd.notna(v)]
-    return []
+_first_df, _row, _series = first_df, row, series
 
 
 # ── Fundamental scan (yfinance, .KS / .KQ) ───────────────────────────────────
@@ -332,41 +313,7 @@ def fundamental_scan(code: str, yf_suffix: str) -> dict:
 
     # ── Piotroski F-Score ─────────────────────────────────────────────────────
     try:
-        ni0 = _row(inc, "Net Income", col=0)
-        a0 = _row(bal, "Total Assets", col=0)
-        ni1 = _row(inc, "Net Income", col=1)
-        a1 = _row(bal, "Total Assets", col=1)
-        roa0 = (ni0 / a0) if (ni0 and a0) else None
-        roa1 = (ni1 / a1) if (ni1 and a1) else None
-        ocf0 = _row(cf, "Operating Cash Flow", "Total Cash From Operating Activities")
-
-        f1 = 1 if (roa0 and roa0 > 0) else 0
-        f2 = 1 if (ocf0 and ocf0 > 0) else 0
-        f3 = 1 if (roa0 and roa1 and roa0 > roa1) else 0
-        f4 = 1 if (ocf0 and a0 and roa0 and (ocf0 / a0) > roa0) else 0
-
-        ltd0 = _row(bal, "Long Term Debt", col=0) or 0
-        ltd1 = _row(bal, "Long Term Debt", col=1) or 0
-        f5 = 1 if (a0 and a1 and (ltd0 / a0) < (ltd1 / a1)) else 0
-
-        ca0 = _row(bal, "Current Assets", "Total Current Assets", col=0)
-        cl0 = _row(bal, "Current Liabilities", "Total Current Liabilities", col=0)
-        ca1 = _row(bal, "Current Assets", "Total Current Assets", col=1)
-        cl1 = _row(bal, "Current Liabilities", "Total Current Liabilities", col=1)
-        f6 = 1 if (ca0 and cl0 and ca1 and cl1 and (ca0 / cl0) > (ca1 / cl1)) else 0
-
-        sh0 = _row(bal, "Share Issued", col=0)
-        sh1 = _row(bal, "Share Issued", col=1)
-        f7 = (1 if sh0 <= sh1 else 0) if (sh0 and sh1) else 1
-
-        rev0 = _row(inc, "Total Revenue", col=0)
-        gp0 = _row(inc, "Gross Profit", col=0)
-        rev1 = _row(inc, "Total Revenue", col=1)
-        gp1 = _row(inc, "Gross Profit", col=1)
-        f8 = 1 if (gp0 and rev0 and gp1 and rev1 and (gp0 / rev0) > (gp1 / rev1)) else 0
-        f9 = 1 if (rev0 and a0 and rev1 and a1 and (rev0 / a0) > (rev1 / a1)) else 0
-
-        f_score = f1 + f2 + f3 + f4 + f5 + f6 + f7 + f8 + f9
+        f_score = piotroski_f_score(inc, bal, cf)
         result["f_score"] = f_score
         result["f_strong"] = f_score >= PIOTROSKI_STRONG
     except Exception:
@@ -384,64 +331,9 @@ def fundamental_scan(code: str, yf_suffix: str) -> dict:
     # C5: Consistently positive net income across all reported years
     # C6: Positive FCF in most recent year
     try:
-        c = {}
-        revs = _series(inc, "Total Revenue")
-        if len(revs) >= 2 and revs[-1] > 0:
-            cagr = ((revs[0] / revs[-1]) ** (1 / (len(revs) - 1)) - 1) * 100
-            c["C1"] = 1 if cagr > 10 else 0
-        else:
-            cagr = None
-            c["C1"] = 0
-
-        ebit_s = _series(inc, "EBIT", "Operating Income", "Ebit")
-        ta_s = _series(bal, "Total Assets")
-        cl_s = _series(bal, "Current Liabilities", "Total Current Liabilities")
-        roce_l = [
-            ebit_s[i] / (ta_s[i] - cl_s[i]) * 100
-            for i in range(min(len(ebit_s), len(ta_s), len(cl_s)))
-            if (ta_s[i] - cl_s[i]) > 0
-        ]
-        avg_roce = sum(roce_l) / len(roce_l) if roce_l else None
-        c["C2"] = 1 if (avg_roce and avg_roce > 15) else 0
-
-        ltd_s = _series(bal, "Long Term Debt")
-        eq_s = _series(
-            bal,
-            "Stockholders Equity",
-            "Total Stockholder Equity",
-            "Total Equity Gross Minority Interest",
-        )
-        de = (ltd_s[0] / abs(eq_s[0])) if (ltd_s and eq_s and eq_s[0] != 0) else None
-        c["C3"] = 1 if (de is not None and de < 1) else 0
-
-        try:
-            mcap = ticker.fast_info.market_cap or 0
-        except Exception:
-            mcap = 0
-        c["C4"] = 1 if mcap >= 1e11 else 0  # ≥ ₩100B
-
-        ni_s = _series(inc, "Net Income")
-        c["C5"] = 1 if (ni_s and all(n > 0 for n in ni_s)) else 0
-
-        fcf_s = _series(cf, "Free Cash Flow")
-        if fcf_s:
-            c["C6"] = 1 if fcf_s[0] > 0 else 0
-        else:
-            ocf_s = _series(cf, "Operating Cash Flow")
-            capex_s = _series(cf, "Capital Expenditure")
-            c["C6"] = 1 if (ocf_s and capex_s and (ocf_s[0] - abs(capex_s[0])) > 0) else 0
-
-        qualifies = sum(c.values()) == len(c)
-        result.update(
-            {
-                "cc_qualifies": "PASS" if qualifies else "FAIL",
-                "cc_score": f"{sum(c.values())}/{len(c)}",
-                "cc_rev_cagr": round(cagr, 2) if cagr else None,
-                "cc_roce_avg": round(avg_roce, 2) if avg_roce else None,
-                "cc_debt_equity": round(de, 2) if de is not None else None,
-                "market_cap_b_krw": round(mcap / 1e8, 1) if mcap else None,  # show in ₩100M units
-            }
-        )
+        updates, mcap = coffee_can_core(inc, bal, cf, ticker, 1e11)
+        result.update(updates)
+        result["market_cap_b_krw"] = round(mcap / 1e8, 1) if mcap else None
     except Exception:
         pass
 
