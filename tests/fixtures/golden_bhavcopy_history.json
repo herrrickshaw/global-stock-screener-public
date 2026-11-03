@@ -1,0 +1,192 @@
+{
+ "cold": {
+  "AAA": {
+   "close_sum": 766.0,
+   "first": "2026-01-02",
+   "last": "2026-01-14",
+   "n": 7,
+   "vol_sum": 7000.0
+  },
+  "BBB": {
+   "close_sum": 836.0,
+   "first": "2026-01-02",
+   "last": "2026-01-14",
+   "n": 7,
+   "vol_sum": 7007.0
+  },
+  "CCC": {
+   "close_sum": 906.0,
+   "first": "2026-01-02",
+   "last": "2026-01-14",
+   "n": 7,
+   "vol_sum": 7014.0
+  },
+  "DDD": {
+   "close_sum": 836.0,
+   "first": "2026-01-02",
+   "last": "2026-01-14",
+   "n": 7,
+   "vol_sum": 7007.0
+  },
+  "EEE": {
+   "close_sum": 906.0,
+   "first": "2026-01-02",
+   "last": "2026-01-14",
+   "n": 7,
+   "vol_sum": 7014.0
+  }
+ },
+ "cold_files": [
+  "assembled_long.parquet",
+  "bse/20260102.csv",
+  "bse/20260106.csv",
+  "bse/20260107.csv",
+  "bse/20260109.csv",
+  "bse/20260112.csv",
+  "bse/20260113.csv",
+  "bse/20260114.csv",
+  "cleaned_long.parquet",
+  "no_data_dates.json",
+  "nse/20260102.csv",
+  "nse/20260106.csv",
+  "nse/20260107.csv",
+  "nse/20260109.csv",
+  "nse/20260112.csv",
+  "nse/20260113.csv",
+  "nse/20260114.csv"
+ ],
+ "empty_stdout_marker": true,
+ "no_data": [
+  "2026-01-08"
+ ],
+ "rebuild_from_assembled": {
+  "AAA": {
+   "close_sum": 766.0,
+   "first": "2026-01-02",
+   "last": "2026-01-14",
+   "n": 7,
+   "vol_sum": 7000.0
+  },
+  "BBB": {
+   "close_sum": 836.0,
+   "first": "2026-01-02",
+   "last": "2026-01-14",
+   "n": 7,
+   "vol_sum": 7007.0
+  },
+  "CCC": {
+   "close_sum": 906.0,
+   "first": "2026-01-02",
+   "last": "2026-01-14",
+   "n": 7,
+   "vol_sum": 7014.0
+  },
+  "DDD": {
+   "close_sum": 836.0,
+   "first": "2026-01-02",
+   "last": "2026-01-14",
+   "n": 7,
+   "vol_sum": 7007.0
+  },
+  "EEE": {
+   "close_sum": 906.0,
+   "first": "2026-01-02",
+   "last": "2026-01-14",
+   "n": 7,
+   "vol_sum": 7014.0
+  }
+ },
+ "seeded_nse_only": {
+  "AAA": {
+   "close_sum": 543.0,
+   "first": "2026-01-02",
+   "last": "2026-01-12",
+   "n": 5,
+   "vol_sum": 5000.0
+  },
+  "BBB": {
+   "close_sum": 593.0,
+   "first": "2026-01-02",
+   "last": "2026-01-12",
+   "n": 5,
+   "vol_sum": 5005.0
+  },
+  "CCC": {
+   "close_sum": 643.0,
+   "first": "2026-01-02",
+   "last": "2026-01-12",
+   "n": 5,
+   "vol_sum": 5010.0
+  },
+  "ZZZ": {
+   "close_sum": 4.0,
+   "first": "2026-01-13",
+   "last": "2026-01-14",
+   "n": 2,
+   "vol_sum": 30.0
+  }
+ },
+ "stdout": [
+  "    BSE: +0 new trading days",
+  "    BSE: +0 new trading days",
+  "    BSE: +7 new trading days",
+  "    NSE: +0 new trading days",
+  "    NSE: +0 new trading days",
+  "    NSE: +5 new trading days",
+  "    NSE: +7 new trading days",
+  "  Pivoting 7 dates \u2192 per-symbol series \u2026",
+  "  Pivoting 7 dates \u2192 per-symbol series \u2026",
+  "  Pivoting 7 dates \u2192 per-symbol series \u2026",
+  "  assembled cache updated \u2192 assembled_long.parquet (17 rows, 7 dates)",
+  "  assembled cache updated \u2192 assembled_long.parquet (42 rows, 7 dates)",
+  "  assembled cache: 0 dates known, 0 dead dates skipped, 9 new date(s) to fetch",
+  "  assembled cache: 2 dates known, 1 dead dates skipped, 6 new date(s) to fetch",
+  "  assembled cache: 7 dates known, 1 dead dates skipped, 1 new date(s) to fetch",
+  "  assembled cache: 7 dates known, 1 dead dates skipped, 1 new date(s) to fetch",
+  "  cleaned cache written \u2192 cleaned_long.parquet",
+  "  cleaned cache written \u2192 cleaned_long.parquet",
+  "  cleaned cache written \u2192 cleaned_long.parquet",
+  "  fetch_history complete: 4 symbols with \u22651 bars",
+  "  fetch_history complete: 5 symbols with \u22653 bars",
+  "  fetch_history complete: 5 symbols with \u22653 bars",
+  "  seeded assembled cache from committed cleaned_long.parquet",
+  "  \u26a1 fast path (no new EOD yet): 5 symbols, skipped rebuild"
+ ],
+ "warm": {
+  "AAA": {
+   "close_sum": 766.0,
+   "first": "2026-01-02",
+   "last": "2026-01-14",
+   "n": 7,
+   "vol_sum": 7000.0
+  },
+  "BBB": {
+   "close_sum": 836.0,
+   "first": "2026-01-02",
+   "last": "2026-01-14",
+   "n": 7,
+   "vol_sum": 7007.0
+  },
+  "CCC": {
+   "close_sum": 906.0,
+   "first": "2026-01-02",
+   "last": "2026-01-14",
+   "n": 7,
+   "vol_sum": 7014.0
+  },
+  "DDD": {
+   "close_sum": 836.0,
+   "first": "2026-01-02",
+   "last": "2026-01-14",
+   "n": 7,
+   "vol_sum": 7007.0
+  },
+  "EEE": {
+   "close_sum": 906.0,
+   "first": "2026-01-02",
+   "last": "2026-01-14",
+   "n": 7,
+   "vol_sum": 7014.0
+  }
+ }
+}
