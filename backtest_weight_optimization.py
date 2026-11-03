@@ -233,6 +233,91 @@ class WeightBacktester:
 
         return metrics
 
+    @staticmethod
+    def _print_metrics_block(title: str, m: Dict, n_total: int) -> None:
+        """Print confusion-matrix, quality and return metrics for one weight set."""
+        print(f"\n{title}")
+        print(f"   Buy signals: {m['n_signals']:,} out of {n_total:,} companies")
+        print(f"   Actual outperformers: {m['n_outperform']:,}")
+        print(f"   ✅ True Positives:  {m['tp']:,} (correct buys)")
+        print(f"   ❌ False Positives: {m['fp']:,} (wrong buys)")
+        print(f"   ❌ False Negatives: {m['fn']:,} (missed wins)")
+        print(f"   ✅ True Negatives:  {m['tn']:,} (correct sells)")
+        print("\n   📊 QUALITY METRICS")
+        print(f"   Precision:  {m['precision']:.1%} (% of buys that outperform)")
+        print(f"   Recall:     {m['recall']:.1%} (% of winners we catch)")
+        print(f"   F1 Score:   {m['f1']:.4f}")
+        print(f"   Accuracy:   {m['accuracy']:.1%}")
+        print("\n   💰 RETURN METRICS")
+        print(f"   Avg buy return:  {m['avg_buy_return']:+.2f}%")
+        print(f"   Avg sell return: {m['avg_sell_return']:+.2f}%")
+        print(f"   Return spread:   {m['return_spread']:+.2f}pp")
+
+    # (label, metric key, format kind): "pct" fractions, "pp" percent points, "raw" 4dp
+    COMPARE_METRICS = [
+        ("Precision", "precision", "pct"),
+        ("Recall", "recall", "pct"),
+        ("F1 Score", "f1", "raw"),
+        ("Accuracy", "accuracy", "pct"),
+        ("Avg Buy Return", "avg_buy_return", "pp"),
+        ("Return Spread", "return_spread", "pp"),
+    ]
+
+    @staticmethod
+    def _format_change(fmt: str, baseline_val: float, optimized_val: float):
+        """(improvement, baseline_str, optimized_str, improvement_str) for one metric."""
+        if fmt == "pct":
+            improvement = (optimized_val - baseline_val) * 100
+            return (
+                improvement,
+                f"{baseline_val:.1%}",
+                f"{optimized_val:.1%}",
+                f"{improvement:+.1f}pp",
+            )
+        improvement = optimized_val - baseline_val
+        if fmt == "pp":
+            return (
+                improvement,
+                f"{baseline_val:+.2f}%",
+                f"{optimized_val:+.2f}%",
+                f"{improvement:+.2f}pp",
+            )
+        return improvement, f"{baseline_val:.4f}", f"{optimized_val:.4f}", f"{improvement:+.4f}"
+
+    def _print_comparison(self, baseline: Dict, optimized: Dict) -> None:
+        """Print the metric-by-metric table and the deploy/keep recommendation."""
+        print("\n" + "=" * 80)
+        print("📈 IMPROVEMENTS (OPTIMIZED vs BASELINE)")
+        print("=" * 80)
+
+        print("\n   Metric                  Baseline      Optimized     Improvement")
+        print("   " + "-" * 70)
+
+        improvements = {}
+        for metric_name, metric_key, fmt in self.COMPARE_METRICS:
+            improvement, baseline_str, optimized_str, improvement_str = self._format_change(
+                fmt, baseline[metric_key], optimized[metric_key]
+            )
+            marker = "✅" if improvement > 0 else "❌" if improvement < 0 else "="
+            print(
+                f"   {metric_name:20s}  {baseline_str:>12}  {optimized_str:>12}  {marker} {improvement_str:>12}"
+            )
+            improvements[metric_key] = improvement
+
+        print("\n💡 SUMMARY")
+        improvements_count = sum(1 for v in improvements.values() if v > 0)
+        print(f"   Improved metrics: {improvements_count}/{len(improvements)}")
+
+        if improvements["f1"] > 0.05:
+            print(f"   ✅ SIGNIFICANT IMPROVEMENT: F1 score increased by {improvements['f1']:.4f}")
+            print("   Recommendation: DEPLOY OPTIMIZED WEIGHTS")
+        elif improvements["f1"] > 0:
+            print(f"   ✅ MODEST IMPROVEMENT: F1 score increased by {improvements['f1']:.4f}")
+            print("   Recommendation: DEPLOY with caution, monitor closely")
+        else:
+            print(f"   ❌ NO IMPROVEMENT: F1 score decreased by {abs(improvements['f1']):.4f}")
+            print("   Recommendation: KEEP BASELINE WEIGHTS")
+
     def generate_report(self, results: Dict) -> None:
         """Generate comprehensive backtest report"""
 
@@ -241,108 +326,15 @@ class WeightBacktester:
         print("=" * 80)
 
         if "baseline" in results:
-            baseline = results["baseline"]
-            print("\n🔍 BASELINE WEIGHTS (Original Model)")
-            print(f"   Buy signals: {baseline['n_signals']:,} out of {len(self.data):,} companies")
-            print(f"   Actual outperformers: {baseline['n_outperform']:,}")
-            print(f"   ✅ True Positives:  {baseline['tp']:,} (correct buys)")
-            print(f"   ❌ False Positives: {baseline['fp']:,} (wrong buys)")
-            print(f"   ❌ False Negatives: {baseline['fn']:,} (missed wins)")
-            print(f"   ✅ True Negatives:  {baseline['tn']:,} (correct sells)")
-            print("\n   📊 QUALITY METRICS")
-            print(f"   Precision:  {baseline['precision']:.1%} (% of buys that outperform)")
-            print(f"   Recall:     {baseline['recall']:.1%} (% of winners we catch)")
-            print(f"   F1 Score:   {baseline['f1']:.4f}")
-            print(f"   Accuracy:   {baseline['accuracy']:.1%}")
-            print("\n   💰 RETURN METRICS")
-            print(f"   Avg buy return:  {baseline['avg_buy_return']:+.2f}%")
-            print(f"   Avg sell return: {baseline['avg_sell_return']:+.2f}%")
-            print(f"   Return spread:   {baseline['return_spread']:+.2f}pp")
-
+            self._print_metrics_block(
+                "🔍 BASELINE WEIGHTS (Original Model)", results["baseline"], len(self.data)
+            )
         if "optimized" in results:
-            optimized = results["optimized"]
-            print("\n🚀 OPTIMIZED WEIGHTS (F1-Tuned Model)")
-            print(f"   Buy signals: {optimized['n_signals']:,} out of {len(self.data):,} companies")
-            print(f"   Actual outperformers: {optimized['n_outperform']:,}")
-            print(f"   ✅ True Positives:  {optimized['tp']:,} (correct buys)")
-            print(f"   ❌ False Positives: {optimized['fp']:,} (wrong buys)")
-            print(f"   ❌ False Negatives: {optimized['fn']:,} (missed wins)")
-            print(f"   ✅ True Negatives:  {optimized['tn']:,} (correct sells)")
-            print("\n   📊 QUALITY METRICS")
-            print(f"   Precision:  {optimized['precision']:.1%} (% of buys that outperform)")
-            print(f"   Recall:     {optimized['recall']:.1%} (% of winners we catch)")
-            print(f"   F1 Score:   {optimized['f1']:.4f}")
-            print(f"   Accuracy:   {optimized['accuracy']:.1%}")
-            print("\n   💰 RETURN METRICS")
-            print(f"   Avg buy return:  {optimized['avg_buy_return']:+.2f}%")
-            print(f"   Avg sell return: {optimized['avg_sell_return']:+.2f}%")
-            print(f"   Return spread:   {optimized['return_spread']:+.2f}pp")
-
-        # Comparison
+            self._print_metrics_block(
+                "🚀 OPTIMIZED WEIGHTS (F1-Tuned Model)", results["optimized"], len(self.data)
+            )
         if "baseline" in results and "optimized" in results:
-            baseline = results["baseline"]
-            optimized = results["optimized"]
-
-            print("\n" + "=" * 80)
-            print("📈 IMPROVEMENTS (OPTIMIZED vs BASELINE)")
-            print("=" * 80)
-
-            print("\n   Metric                  Baseline      Optimized     Improvement")
-            print("   " + "-" * 70)
-
-            metrics_to_compare = [
-                ("Precision", "precision", "pct"),
-                ("Recall", "recall", "pct"),
-                ("F1 Score", "f1", "raw"),
-                ("Accuracy", "accuracy", "pct"),
-                ("Avg Buy Return", "avg_buy_return", "pp"),
-                ("Return Spread", "return_spread", "pp"),
-            ]
-
-            improvements = {}
-            for metric_name, metric_key, fmt in metrics_to_compare:
-                baseline_val = baseline[metric_key]
-                optimized_val = optimized[metric_key]
-
-                if fmt == "pct":
-                    improvement = (optimized_val - baseline_val) * 100
-                    baseline_str = f"{baseline_val:.1%}"
-                    optimized_str = f"{optimized_val:.1%}"
-                    improvement_str = f"{improvement:+.1f}pp"
-                elif fmt == "pp":
-                    improvement = optimized_val - baseline_val
-                    baseline_str = f"{baseline_val:+.2f}%"
-                    optimized_str = f"{optimized_val:+.2f}%"
-                    improvement_str = f"{improvement:+.2f}pp"
-                else:  # raw
-                    improvement = optimized_val - baseline_val
-                    baseline_str = f"{baseline_val:.4f}"
-                    optimized_str = f"{optimized_val:.4f}"
-                    improvement_str = f"{improvement:+.4f}"
-
-                marker = "✅" if improvement > 0 else "❌" if improvement < 0 else "="
-                print(
-                    f"   {metric_name:20s}  {baseline_str:>12}  {optimized_str:>12}  {marker} {improvement_str:>12}"
-                )
-
-                improvements[metric_key] = improvement
-
-            # Summary
-            print("\n💡 SUMMARY")
-            improvements_count = sum(1 for v in improvements.values() if v > 0)
-            print(f"   Improved metrics: {improvements_count}/{len(improvements)}")
-
-            if improvements["f1"] > 0.05:
-                print(
-                    f"   ✅ SIGNIFICANT IMPROVEMENT: F1 score increased by {improvements['f1']:.4f}"
-                )
-                print("   Recommendation: DEPLOY OPTIMIZED WEIGHTS")
-            elif improvements["f1"] > 0:
-                print(f"   ✅ MODEST IMPROVEMENT: F1 score increased by {improvements['f1']:.4f}")
-                print("   Recommendation: DEPLOY with caution, monitor closely")
-            else:
-                print(f"   ❌ NO IMPROVEMENT: F1 score decreased by {abs(improvements['f1']):.4f}")
-                print("   Recommendation: KEEP BASELINE WEIGHTS")
+            self._print_comparison(results["baseline"], results["optimized"])
 
         print("\n" + "=" * 80)
 
