@@ -165,19 +165,18 @@ def page_ratios(symbol: str) -> dict:
     return out
 
 
-def company_financials(symbol: str) -> dict:
-    """Parse the screener.in export + company-page ratios into a strategy-ready
-    fundamentals dict covering all 11 screeners (what each field can be derived
-    from; missing inputs simply make a given screener skip that stock)."""
-    raw = company_export_bytes(symbol)
-    if not raw:
-        return {}
+def _read_export_df(raw: bytes):
+    """Parse the export workbook's data sheet into a header-less DataFrame, or None."""
     try:
         xl = pd.ExcelFile(io.BytesIO(raw))
         sheet = next((s for s in xl.sheet_names if "data" in s.lower()), xl.sheet_names[0])
-        df = pd.read_excel(io.BytesIO(raw), sheet_name=sheet, header=None)
+        return pd.read_excel(io.BytesIO(raw), sheet_name=sheet, header=None)
     except Exception:
-        return {}
+        return None
+
+
+def _make_row_reader(df):
+    """row(*labels): numeric values of the first sheet row whose cell matches a label."""
 
     def row(*labels):
         for lab in labels:
@@ -192,12 +191,19 @@ def company_financials(symbol: str) -> dict:
                     return vals
         return []
 
-    def g(lst, i=0):
-        return lst[i] if len(lst) > i else None
+    return row
 
-    def pct(a, b):
-        return (a - b) / abs(b) * 100 if (a is not None and b not in (None, 0)) else None
 
+def _g(lst, i=0):
+    return lst[i] if len(lst) > i else None
+
+
+def _pct(a, b):
+    return (a - b) / abs(b) * 100 if (a is not None and b not in (None, 0)) else None
+
+
+def _statement_series(row) -> dict:
+    """The raw statement series (newest first) the strategies need, keyed by short name."""
     ni = row("Net profit", "Net Profit")
     rev = row("Sales", "Sales+", "Revenue", "Total Revenue")
     interest = row("Interest")
@@ -214,8 +220,14 @@ def company_financials(symbol: str) -> dict:
     cfo = row("Cash from Operating Activity", "Cash from Operating Activity+")
     shares = row("No. of Equity Shares", "No of Equity Shares")
     div = row("Dividend Amount", "Dividend Paid", "Dividend Payout")
+    return {"ni": ni, "rev": rev, "interest": interest, "pbt": pbt, "eps": eps, "debt": debt, "reserves": reserves, "capital": capital, "other_liab": other_liab, "net_block": net_block, "inv": inv, "recv": recv, "cash": cash, "cfo": cfo, "shares": shares, "div": div}
 
-    # equity, assets, derived ratios (statement-based)
+
+def _derived_series(sr: dict) -> dict:
+    """Equity, total assets, ROE history and EBIT derived from the statement series."""
+    ni, capital, reserves = sr["ni"], sr["capital"], sr["reserves"]
+    debt, other_liab, pbt, interest = sr["debt"], sr["other_liab"], sr["pbt"], sr["interest"]
+    g = _g
     eq = (
         [
             (capital[i] if i < len(capital) else 0) + (reserves[i] if i < len(reserves) else 0)
@@ -236,8 +248,16 @@ def company_financials(symbol: str) -> dict:
     )
     roe_hist = [round(ni[i] / eq[i] * 100, 1) for i in range(min(len(ni), len(eq))) if eq[i]]
     ebit = (g(pbt) or 0) + (g(interest) or 0) if (pbt or interest) else None
+    return {"eq": eq, "assets_tot": assets_tot, "roe_hist": roe_hist, "ebit": ebit}
 
-    r = page_ratios(symbol)
+
+def _fundamentals_dict(sr: dict, dv: dict, r: dict) -> dict:
+    """Assemble the strategy-ready fundamentals dict (None values dropped)."""
+    g, pct = _g, _pct
+    ni, rev, eps, cfo = sr["ni"], sr["rev"], sr["eps"], sr["cfo"]
+    debt, shares, net_block = sr["debt"], sr["shares"], sr["net_block"]
+    inv, recv, cash, div = sr["inv"], sr["recv"], sr["cash"], sr["div"]
+    eq, assets_tot, roe_hist, ebit = dv["eq"], dv["assets_tot"], dv["roe_hist"], dv["ebit"]
     out = {
         "source": "screener.in",
         # profitability
@@ -297,6 +317,21 @@ def company_financials(symbol: str) -> dict:
         "quarterly_net_income": ni or None,
     }
     return {k: v for k, v in out.items() if v is not None}
+
+
+def company_financials(symbol: str) -> dict:
+    """Parse the screener.in export + company-page ratios into a strategy-ready
+    fundamentals dict covering all 11 screeners (what each field can be derived
+    from; missing inputs simply make a given screener skip that stock)."""
+    raw = company_export_bytes(symbol)
+    if not raw:
+        return {}
+    df = _read_export_df(raw)
+    if df is None:
+        return {}
+    sr = _statement_series(_make_row_reader(df))
+    dv = _derived_series(sr)
+    return _fundamentals_dict(sr, dv, page_ratios(symbol))
 
 
 def fundamentals_batch(symbols, pause: float = 1.0, verbose: bool = True) -> dict:
