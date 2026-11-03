@@ -1,0 +1,313 @@
+{
+ "alt_cols": {
+  "box_bottom": null,
+  "box_top": null,
+  "note": "No confirmed box top",
+  "signal": "NO_BOX"
+ },
+ "confirm5": {
+  "box_bottom": 33.99,
+  "box_range": 5.92,
+  "box_top": 39.9,
+  "confirm_days": 5,
+  "current_price": 35.16,
+  "data_points": 75,
+  "position_in_box_pct": 19.8,
+  "signal": "IN_BOX",
+  "upside_to_top_pct": 13.49
+ },
+ "empty": {
+  "box_bottom": null,
+  "box_top": null,
+  "note": "Empty OHLC DataFrame",
+  "signal": "INSUFFICIENT_DATA"
+ },
+ "flat": {
+  "box_bottom": null,
+  "box_top": null,
+  "note": "No confirmed box top",
+  "signal": "NO_BOX"
+ },
+ "no_cols": {
+  "box_bottom": null,
+  "box_top": null,
+  "note": "Could not identify OHLC columns",
+  "signal": "INSUFFICIENT_DATA"
+ },
+ "none": {
+  "box_bottom": null,
+  "box_top": null,
+  "note": "Empty OHLC DataFrame",
+  "signal": "INSUFFICIENT_DATA"
+ },
+ "rw0": {
+  "box_bottom": 47.3,
+  "box_range": 4.2,
+  "box_top": 51.5,
+  "confirm_days": 3,
+  "current_price": 46.48,
+  "data_points": 15,
+  "position_in_box_pct": -19.8,
+  "signal": "BREAKDOWN_SELL",
+  "upside_to_top_pct": 10.81
+ },
+ "rw1": {
+  "box_bottom": 50.73,
+  "box_range": 3.07,
+  "box_top": 53.8,
+  "confirm_days": 3,
+  "current_price": 56.8,
+  "data_points": 18,
+  "position_in_box_pct": 197.7,
+  "signal": "BREAKOUT_BUY",
+  "upside_to_top_pct": -5.28
+ },
+ "rw10": {
+  "box_bottom": 39.95,
+  "box_range": 2.54,
+  "box_top": 42.49,
+  "confirm_days": 3,
+  "current_price": 35.71,
+  "data_points": 45,
+  "position_in_box_pct": -166.9,
+  "signal": "BREAKDOWN_SELL",
+  "upside_to_top_pct": 18.97
+ },
+ "rw11": {
+  "box_bottom": 43.76,
+  "box_range": 4.24,
+  "box_top": 48.0,
+  "confirm_days": 3,
+  "current_price": 44.03,
+  "data_points": 48,
+  "position_in_box_pct": 6.4,
+  "signal": "IN_BOX",
+  "upside_to_top_pct": 9.01
+ },
+ "rw12": {
+  "box_bottom": 48.38,
+  "box_range": 3.97,
+  "box_top": 52.35,
+  "confirm_days": 3,
+  "current_price": 49.34,
+  "data_points": 51,
+  "position_in_box_pct": 24.3,
+  "signal": "IN_BOX",
+  "upside_to_top_pct": 6.09
+ },
+ "rw13": {
+  "box_bottom": 57.13,
+  "box_range": 3.86,
+  "box_top": 60.98,
+  "confirm_days": 3,
+  "current_price": 65.19,
+  "data_points": 54,
+  "position_in_box_pct": 209.1,
+  "signal": "BREAKOUT_BUY",
+  "upside_to_top_pct": -6.45
+ },
+ "rw14": {
+  "box_bottom": 53.74,
+  "box_range": 1.87,
+  "box_top": 55.61,
+  "confirm_days": 3,
+  "current_price": 41.26,
+  "data_points": 57,
+  "position_in_box_pct": -668.4,
+  "signal": "BREAKDOWN_SELL",
+  "upside_to_top_pct": 34.76
+ },
+ "rw15": {
+  "box_bottom": 49.73,
+  "box_range": 2.75,
+  "box_top": 52.48,
+  "confirm_days": 3,
+  "current_price": 52.4,
+  "data_points": 60,
+  "position_in_box_pct": 96.9,
+  "signal": "IN_BOX",
+  "upside_to_top_pct": 0.16
+ },
+ "rw16": {
+  "box_bottom": 54.92,
+  "box_range": 1.99,
+  "box_top": 56.91,
+  "confirm_days": 3,
+  "current_price": 57.06,
+  "data_points": 63,
+  "position_in_box_pct": 107.6,
+  "signal": "BREAKOUT_BUY",
+  "upside_to_top_pct": -0.26
+ },
+ "rw17": {
+  "box_bottom": 33.16,
+  "box_range": 1.38,
+  "box_top": 34.54,
+  "confirm_days": 3,
+  "current_price": 54.75,
+  "data_points": 66,
+  "position_in_box_pct": 1561.2,
+  "signal": "BREAKOUT_BUY",
+  "upside_to_top_pct": -36.91
+ },
+ "rw18": {
+  "box_bottom": 51.86,
+  "box_range": 2.83,
+  "box_top": 54.69,
+  "confirm_days": 3,
+  "current_price": 44.75,
+  "data_points": 69,
+  "position_in_box_pct": -251.3,
+  "signal": "BREAKDOWN_SELL",
+  "upside_to_top_pct": 22.23
+ },
+ "rw19": {
+  "box_bottom": 44.32,
+  "box_range": 3.88,
+  "box_top": 48.2,
+  "confirm_days": 3,
+  "current_price": 47.08,
+  "data_points": 72,
+  "position_in_box_pct": 71.1,
+  "signal": "IN_BOX",
+  "upside_to_top_pct": 2.38
+ },
+ "rw2": {
+  "box_bottom": 48.74,
+  "box_range": 2.27,
+  "box_top": 51.01,
+  "confirm_days": 3,
+  "current_price": 43.41,
+  "data_points": 21,
+  "position_in_box_pct": -235.1,
+  "signal": "BREAKDOWN_SELL",
+  "upside_to_top_pct": 17.52
+ },
+ "rw20": {
+  "box_bottom": 33.99,
+  "box_range": 2.82,
+  "box_top": 36.81,
+  "confirm_days": 3,
+  "current_price": 35.16,
+  "data_points": 75,
+  "position_in_box_pct": 41.5,
+  "signal": "IN_BOX",
+  "upside_to_top_pct": 4.69
+ },
+ "rw21": {
+  "box_bottom": 50.1,
+  "box_range": 1.72,
+  "box_top": 51.82,
+  "confirm_days": 3,
+  "current_price": 60.77,
+  "data_points": 78,
+  "position_in_box_pct": 621.8,
+  "signal": "BREAKOUT_BUY",
+  "upside_to_top_pct": -14.73
+ },
+ "rw22": {
+  "box_bottom": 59.14,
+  "box_range": 1.91,
+  "box_top": 61.05,
+  "confirm_days": 3,
+  "current_price": 41.62,
+  "data_points": 81,
+  "position_in_box_pct": -914.8,
+  "signal": "BREAKDOWN_SELL",
+  "upside_to_top_pct": 46.68
+ },
+ "rw23": {
+  "box_bottom": 36.58,
+  "box_range": 3.42,
+  "box_top": 40.0,
+  "confirm_days": 3,
+  "current_price": 36.48,
+  "data_points": 84,
+  "position_in_box_pct": -2.9,
+  "signal": "BREAKDOWN_SELL",
+  "upside_to_top_pct": 9.65
+ },
+ "rw3": {
+  "box_bottom": 45.74,
+  "box_range": 2.82,
+  "box_top": 48.56,
+  "confirm_days": 3,
+  "current_price": 48.96,
+  "data_points": 24,
+  "position_in_box_pct": 114.1,
+  "signal": "BREAKOUT_BUY",
+  "upside_to_top_pct": -0.81
+ },
+ "rw4": {
+  "box_bottom": 47.5,
+  "box_range": 2.19,
+  "box_top": 49.69,
+  "confirm_days": 3,
+  "current_price": 47.97,
+  "data_points": 27,
+  "position_in_box_pct": 21.7,
+  "signal": "IN_BOX",
+  "upside_to_top_pct": 3.58
+ },
+ "rw5": {
+  "box_bottom": 43.57,
+  "box_range": 3.92,
+  "box_top": 47.5,
+  "confirm_days": 3,
+  "current_price": 54.11,
+  "data_points": 30,
+  "position_in_box_pct": 268.7,
+  "signal": "BREAKOUT_BUY",
+  "upside_to_top_pct": -12.23
+ },
+ "rw6": {
+  "box_bottom": 53.79,
+  "box_range": 3.03,
+  "box_top": 56.82,
+  "confirm_days": 3,
+  "current_price": 46.49,
+  "data_points": 33,
+  "position_in_box_pct": -240.9,
+  "signal": "BREAKDOWN_SELL",
+  "upside_to_top_pct": 22.24
+ },
+ "rw7": {
+  "box_bottom": 33.15,
+  "box_range": 3.39,
+  "box_top": 36.54,
+  "confirm_days": 3,
+  "current_price": 34.04,
+  "data_points": 36,
+  "position_in_box_pct": 26.1,
+  "signal": "IN_BOX",
+  "upside_to_top_pct": 7.36
+ },
+ "rw8": {
+  "box_bottom": 43.29,
+  "box_range": 3.83,
+  "box_top": 47.12,
+  "confirm_days": 3,
+  "current_price": 44.61,
+  "data_points": 39,
+  "position_in_box_pct": 34.5,
+  "signal": "IN_BOX",
+  "upside_to_top_pct": 5.62
+ },
+ "rw9": {
+  "box_bottom": 48.16,
+  "box_range": 2.48,
+  "box_top": 50.64,
+  "confirm_days": 3,
+  "current_price": 57.69,
+  "data_points": 42,
+  "position_in_box_pct": 383.9,
+  "signal": "BREAKOUT_BUY",
+  "upside_to_top_pct": -12.22
+ },
+ "short": {
+  "box_bottom": null,
+  "box_top": null,
+  "note": "Need \u2265 8 bars; got 5",
+  "signal": "INSUFFICIENT_DATA"
+ }
+}
