@@ -6,7 +6,7 @@ Analyzes trends before diving into 1,825 days of daily price data.
 """
 
 import warnings
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import pandas as pd
 import yfinance as yf
@@ -97,101 +97,69 @@ class QuarterlyDataCollector:
         ]
         return tickers[:n_companies]
 
+    @staticmethod
+    def _val(df, label, qtr):
+        """`df.loc[label, qtr]` when the row exists, else None."""
+        return df.loc[label, qtr] if label in df.index else None
+
+    def _quarter_metrics(self, ticker: str, qtr, qtr_is, qtr_cf, qtr_bs) -> dict:
+        """One quarter's income / cash-flow / balance-sheet fields (each block best-effort)."""
+        metrics = {
+            "ticker": ticker,
+            "quarter": qtr.strftime("%Y-Q") + str((qtr.month - 1) // 3 + 1),
+            "date": qtr,
+        }
+        try:
+            metrics["revenue"] = self._val(qtr_is, "Total Revenue", qtr)
+            metrics["operating_income"] = self._val(qtr_is, "Operating Income", qtr)
+            metrics["net_income"] = self._val(qtr_is, "Net Income", qtr)
+        except Exception:
+            metrics["revenue"] = metrics["operating_income"] = metrics["net_income"] = None
+
+        try:
+            metrics["ocf"] = self._val(qtr_cf, "Operating Cash Flow", qtr)
+            metrics["capex"] = (
+                abs(qtr_cf.loc["Capital Expenditure", qtr])
+                if "Capital Expenditure" in qtr_cf.index
+                else None
+            )
+        except Exception:
+            metrics["ocf"] = metrics["capex"] = None
+
+        try:
+            metrics["total_assets"] = self._val(qtr_bs, "Total Assets", qtr)
+            metrics["total_debt"] = self._val(qtr_bs, "Total Debt", qtr)
+            metrics["total_equity"] = self._val(qtr_bs, "Total Stockholder Equity", qtr)
+        except Exception:
+            metrics["total_assets"] = metrics["total_debt"] = metrics["total_equity"] = None
+        return metrics
+
+    @staticmethod
+    def _last_20_quarters(stock):
+        """(cash flow, income, balance) statements trimmed to 20 quarters, or None if any
+        of them is missing/empty."""
+        out = []
+        for attr in ("quarterly_cashflow", "quarterly_income_stmt", "quarterly_balance_sheet"):
+            stmt = getattr(stock, attr)
+            if stmt is None or len(stmt.columns) == 0:
+                return None
+            out.append(stmt.iloc[:, :20])  # Last 20 quarters (5 years)
+        return tuple(out)
+
     def fetch_quarterly_data(self, ticker: str) -> pd.DataFrame:
         """Fetch 5 years of quarterly financial data"""
         try:
             stock = yf.Ticker(ticker)
-            end_date = datetime.now()
-            _start_date = end_date - timedelta(days=5 * 365)
-
-            # Try to get quarterly financials
             quarterly_info = []
 
-            # Get quarterly cash flow statement
             try:
-                qtr_cf = stock.quarterly_cashflow
-                if qtr_cf is not None and len(qtr_cf.columns) > 0:
-                    qtr_cf = qtr_cf.iloc[:, :20]  # Last 20 quarters (5 years)
-
-                    # Get quarterly income statement
-                    qtr_is = stock.quarterly_income_stmt
-                    if qtr_is is not None and len(qtr_is.columns) > 0:
-                        qtr_is = qtr_is.iloc[:, :20]
-
-                        # Get quarterly balance sheet
-                        qtr_bs = stock.quarterly_balance_sheet
-                        if qtr_bs is not None and len(qtr_bs.columns) > 0:
-                            qtr_bs = qtr_bs.iloc[:, :20]
-
-                            # Extract metrics
-                            quarters = qtr_cf.columns.tolist()
-                            for qtr in quarters[:20]:  # Last 20 quarters
-                                metrics = {
-                                    "ticker": ticker,
-                                    "quarter": qtr.strftime("%Y-Q") + str((qtr.month - 1) // 3 + 1),
-                                    "date": qtr,
-                                }
-
-                                # Income statement metrics
-                                try:
-                                    metrics["revenue"] = (
-                                        qtr_is.loc["Total Revenue", qtr]
-                                        if "Total Revenue" in qtr_is.index
-                                        else None
-                                    )
-                                    metrics["operating_income"] = (
-                                        qtr_is.loc["Operating Income", qtr]
-                                        if "Operating Income" in qtr_is.index
-                                        else None
-                                    )
-                                    metrics["net_income"] = (
-                                        qtr_is.loc["Net Income", qtr]
-                                        if "Net Income" in qtr_is.index
-                                        else None
-                                    )
-                                except Exception:
-                                    metrics["revenue"] = metrics["operating_income"] = metrics[
-                                        "net_income"
-                                    ] = None
-
-                                # Cash flow metrics
-                                try:
-                                    metrics["ocf"] = (
-                                        qtr_cf.loc["Operating Cash Flow", qtr]
-                                        if "Operating Cash Flow" in qtr_cf.index
-                                        else None
-                                    )
-                                    metrics["capex"] = (
-                                        abs(qtr_cf.loc["Capital Expenditure", qtr])
-                                        if "Capital Expenditure" in qtr_cf.index
-                                        else None
-                                    )
-                                except Exception:
-                                    metrics["ocf"] = metrics["capex"] = None
-
-                                # Balance sheet metrics
-                                try:
-                                    metrics["total_assets"] = (
-                                        qtr_bs.loc["Total Assets", qtr]
-                                        if "Total Assets" in qtr_bs.index
-                                        else None
-                                    )
-                                    metrics["total_debt"] = (
-                                        qtr_bs.loc["Total Debt", qtr]
-                                        if "Total Debt" in qtr_bs.index
-                                        else None
-                                    )
-                                    metrics["total_equity"] = (
-                                        qtr_bs.loc["Total Stockholder Equity", qtr]
-                                        if "Total Stockholder Equity" in qtr_bs.index
-                                        else None
-                                    )
-                                except Exception:
-                                    metrics["total_assets"] = metrics["total_debt"] = metrics[
-                                        "total_equity"
-                                    ] = None
-
-                                quarterly_info.append(metrics)
+                statements = self._last_20_quarters(stock)
+                if statements is not None:
+                    qtr_cf, qtr_is, qtr_bs = statements
+                    for qtr in qtr_cf.columns.tolist()[:20]:  # Last 20 quarters
+                        quarterly_info.append(
+                            self._quarter_metrics(ticker, qtr, qtr_is, qtr_cf, qtr_bs)
+                        )
             except Exception:
                 pass
 
