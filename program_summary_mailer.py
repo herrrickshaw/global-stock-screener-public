@@ -93,10 +93,8 @@ def _chips(items, color):
     return cells
 
 
-def build():
-    today = date.today().isoformat()
-
-    # regime section
+def _regime_html() -> str:
+    """Finding 1: market chips grouped by the price-screen regime that works there."""
     regime_html = ""
     for label, mkts in REGIME.items():
         col = REV if "Mean-reversion" in label else TREND
@@ -104,9 +102,12 @@ def build():
             f'<p style="font-size:12px;margin:8px 0 2px;font-weight:600;color:{col}">{label}</p>'
             f"<div>{_chips(mkts, col)}</div>"
         )
+    return regime_html
 
-    # US fundamental ranking
-    fund_rows = "".join(
+
+def _fund_rows_html() -> str:
+    """US fundamental-screen ranking table rows."""
+    return "".join(
         f'<tr><td style="padding:3px 8px;border-bottom:1px solid #eee;font-size:12px">'
         f"<code>{n}</code></td>"
         f'<td style="padding:3px 8px;border-bottom:1px solid #eee;font-size:12px;text-align:right">'
@@ -115,7 +116,9 @@ def build():
         for n, e, d in US_FUND
     )
 
-    # combo table (sorted by delta desc — already ordered)
+
+def _combo_rows_html() -> str:
+    """Per-market price x quality combo table rows (already sorted by delta desc)."""
     maxd = max(abs(d) for *_, d in COMBO)
     combo_rows = ""
     for m, scr, alone, d in COMBO:
@@ -133,8 +136,11 @@ def build():
             f'border-radius:3px;opacity:.85;vertical-align:middle"></span> '
             f'<b style="color:{col};font-family:monospace;font-size:11px">{d:+.1f}</b></td></tr>'
         )
+    return combo_rows
 
-    html = f"""<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:760px;color:#1a1a1a">
+
+def _render_html(today: str, regime_html: str, fund_rows: str, combo_rows: str) -> str:
+    return f"""<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:760px;color:#1a1a1a">
 <h1 style="font-size:22px;margin:0 0 2px">🌐 Cross-Market Screener Backtest — Program Summary</h1>
 <p style="color:#666;font-size:13px;margin:0 0 14px">Point-in-time backtest of price + fundamental
 stock screens across <b>19 markets + the US</b>, on a purpose-built dated-fundamentals & 10-year-price
@@ -217,7 +223,9 @@ magnitudes. Screener results are mechanical filters, not buy/sell signals. Past 
 guarantee future returns. Consult a SEBI-registered / licensed adviser before acting.</p>
 </div>"""
 
-    text = (
+
+def _render_text(today: str) -> str:
+    return (
         f"Cross-Market Screener Backtest — Program Summary ({today})\n\n"
         "One rule, three parts: (1) price screens are regime-specific (buy-weakness US/East-Asia, "
         "buy-strength elsewhere); (2) Piotroski quality pays ex-US, inverts in US; (3) the winner is the "
@@ -229,6 +237,12 @@ guarantee future returns. Consult a SEBI-registered / licensed adviser before ac
         "backtests, curl_cffi collectors + Colab notebook, SSOT, interactive artifact + Word/PDF summary.\n\n"
         "Educational/research only. Point-in-time, survivorship-limited, gross of cost. NOT investment advice."
     )
+
+
+def build():
+    today = date.today().isoformat()
+    html = _render_html(today, _regime_html(), _fund_rows_html(), _combo_rows_html())
+    text = _render_text(today)
     subject = f"🌐 Cross-Market Screener Backtest — full program summary — {today}"
     return subject, text, html
 
