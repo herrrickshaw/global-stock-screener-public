@@ -1247,7 +1247,7 @@
  "to_long": {
   "dtypes": {
    "Close": "float32",
-   "Date": "datetime64[us]",
+   "Date": "datetime64",
    "High": "float32",
    "Low": "float32",
    "Open": "float32",

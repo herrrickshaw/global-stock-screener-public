@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import warnings
 
 import numpy as np
@@ -11,6 +12,12 @@ import frames
 import liquidity
 import strategies
 from strategies.base import StockData
+
+
+def _portable_dtype(dtype) -> str:
+    """dtype name that does not depend on the installed pandas (datetime unit, str vs object)."""
+    name = re.sub(r"datetime64\[\w+\]", "datetime64", str(dtype))
+    return "str" if name == "object" else name
 
 
 def mk(seed, n=300, trend=0.001):
@@ -113,7 +120,7 @@ def build_snapshot() -> dict:
     hist = {s.symbol: s.ohlcv for s in stocks[:3]}
     lg = frames.to_long(hist)
     res["to_long"] = {
-        "dtypes": {k: str(v) for k, v in lg.dtypes.items()},
+        "dtypes": {k: _portable_dtype(v) for k, v in lg.dtypes.items()},
         "head": json.loads(lg.head(5).to_json(orient="split", date_format="iso")),
     }
     back = frames.long_to_dict(lg)
