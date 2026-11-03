@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import io
+import json
 import warnings
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -97,22 +98,9 @@ def _bse_day(day: _dt.date, sess: requests.Session) -> Optional[pd.DataFrame]:
         return None
 
 
-# ── public API ─────────────────────────────────────────────────────────────────
-def fetch_history(
-    n_days: int = 400,
-    workers: int = 8,
-    exchanges=("NSE", "BSE"),
-    min_bars: int = 60,
-    verbose: bool = True,
-) -> Dict[str, pd.DataFrame]:
-    """Assemble {symbol: cleaned OHLCV DataFrame} from NSE+BSE bhavcopy.
-
-    n_days = calendar days to look back (~400 ≈ 1 trading year after weekends/
-    holidays). NSE symbols keyed bare (RELIANCE); BSE-only keyed with a .BO-style
-    suffix is NOT applied here — keys are bare tickers, NSE taking precedence on
-    collision (same convention as stock_utils._strip_suffix).
-    """
-    today = _dt.date.today()
+# ── fetch_history building blocks ─────────────────────────────────────────────
+def _trading_dates(n_days: int, today: _dt.date) -> set:
+    """Timestamps of trading days in the last `n_days` calendar days (weekday fallback)."""
     cal = [today - _dt.timedelta(days=i) for i in range(n_days)]
     # keep only actual trading days (skip weekends AND NSE/BSE holidays)
     try:
@@ -121,36 +109,36 @@ def fetch_history(
         days = _trading_days(cal)
     except Exception:
         days = [d for d in cal if d.weekday() < 5]  # fallback: weekdays only
-    want_dates = {pd.Timestamp(d) for d in days}
+    return {pd.Timestamp(d) for d in days}
 
-    # ── negative cache: dates already confirmed to have NO bhavcopy ─────────────
-    # (holidays / not-yet-published). Skipping these avoids re-hitting the network
-    # for the same dead dates on every run.
-    import json
 
-    no_data = set()
+def _load_no_data() -> set:
+    """Negative cache: dates already confirmed to have NO bhavcopy (holidays / unpublished),
+    so the same dead dates are not re-fetched on every run."""
     if NODATA_FILE.exists():
         try:
-            no_data = {pd.Timestamp(s) for s in json.loads(NODATA_FILE.read_text())}
+            return {pd.Timestamp(s) for s in json.loads(NODATA_FILE.read_text())}
         except Exception:
-            no_data = set()
+            return set()
+    return set()
 
-    # ── FAST PATH: cleaned-result cache ────────────────────────────────────────
-    # If we already produced cleaned per-symbol data and there are no genuinely
-    # new trading dates to add, skip the whole pivot+clean (the ~30s cost) and
-    # serve the cleaned long parquet directly.
-    def _from_cleaned(min_bars):
-        from frames import long_to_dict
 
-        cl = pd.read_parquet(CLEANED)
-        cl["Date"] = pd.to_datetime(cl["Date"])
-        return long_to_dict(cl[cl["Date"].isin(want_dates)], min_bars)
+def _from_cleaned(want_dates: set, min_bars: int) -> Dict[str, pd.DataFrame]:
+    """Serve per-symbol data straight from the cleaned long parquet (skips pivot + clean)."""
+    from frames import long_to_dict
 
-    # ── load the assembled long-format cache (the speed layer) ─────────────────
-    # ASSEMBLED holds every (Date, Symbol, OHLCV, _exch) row already collected, so
-    # re-runs skip re-reading every daily CSV. We only fetch dates NOT already in
-    # it, append, and re-save. Cuts a warm run from re-pivoting 500+ files to a
-    # single parquet read + the 1-2 new trading days.
+    cl = pd.read_parquet(CLEANED)
+    cl["Date"] = pd.to_datetime(cl["Date"])
+    return long_to_dict(cl[cl["Date"].isin(want_dates)], min_bars)
+
+
+def _load_assembled(verbose: bool) -> pd.DataFrame:
+    """Load the assembled long-format cache (Date, Symbol, OHLCV, _exch): the speed layer.
+
+    Re-runs then only fetch dates NOT already in it. On a fresh clone only the committed
+    cleaned cache exists; seed the assembled frame from it (NSE precedence already
+    resolved) so incremental fetches work without re-downloading the whole year.
+    """
     cached = pd.DataFrame()
     if ASSEMBLED.exists():
         try:
@@ -159,9 +147,6 @@ def fetch_history(
         except Exception:
             cached = pd.DataFrame()
     elif CLEANED.exists():
-        # fresh clone: only the committed cleaned cache is present. Seed the
-        # assembled frame from it (NSE precedence already resolved) so incremental
-        # date fetches work without re-downloading the whole year.
         try:
             cached = pd.read_parquet(CLEANED)
             cached["Date"] = pd.to_datetime(cached["Date"])
@@ -172,72 +157,66 @@ def fetch_history(
                 print("  seeded assembled cache from committed cleaned_long.parquet")
         except Exception:
             cached = pd.DataFrame()
-    have_dates = set(pd.to_datetime(cached["Date"].unique())) if not cached.empty else set()
-    missing = sorted(want_dates - have_dates - no_data)  # skip known-dead dates
+    return cached
+
+
+def _fetch_nse_days(missing: list, verbose: bool) -> list:
+    """Download NSE bhavcopy for each missing date; returns [("NSE", date, df), ...]."""
+    from nse import NSE
+
+    frames = []
+    nse_client = NSE(download_folder=str(NSE_DIR))
+    ok = 0
+    for ts in missing:
+        d = ts.date()
+        df = _nse_day(d, nse_client)
+        if df is not None and len(df):
+            frames.append(("NSE", d, df))
+            ok += 1
+    try:
+        nse_client.exit()
+    except Exception:
+        pass
     if verbose:
-        print(
-            f"  assembled cache: {len(have_dates)} dates known, "
-            f"{len(no_data)} dead dates skipped, {len(missing)} new date(s) to fetch"
-        )
+        print(f"    NSE: +{ok} new trading days")
+    return frames
 
-    # FAST PATH: nothing new to fetch and a cleaned cache exists → serve it
-    if not missing and CLEANED.exists():
-        try:
-            out = _from_cleaned(min_bars)
-            if verbose:
-                print(f"  ⚡ fast path (cleaned cache): {len(out)} symbols, no fetch/clean")
-            return out
-        except Exception as e:
-            if verbose:
-                print(f"  (cleaned cache unusable, rebuilding: {e})")
 
-    frames = []  # (exchange, day, df) for the missing days only
-
-    if missing and "NSE" in exchanges:
-        from nse import NSE
-
-        nse_client = NSE(download_folder=str(NSE_DIR))
-        ok = 0
-        for ts in missing:
-            d = ts.date()
-            df = _nse_day(d, nse_client)
+def _fetch_bse_days(missing: list, workers: int, verbose: bool) -> list:
+    """Download BSE bhavcopy for each missing date in parallel; returns [("BSE", date, df)]."""
+    frames = []
+    sess = requests.Session()
+    sess.headers.update({"User-Agent": "Mozilla/5.0", "Referer": "https://www.bseindia.com/"})
+    ok = 0
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futs = {pool.submit(_bse_day, ts.date(), sess): ts for ts in missing}
+        for fut in as_completed(futs):
+            df = fut.result()
+            ts = futs[fut]
             if df is not None and len(df):
-                frames.append(("NSE", d, df))
+                frames.append(("BSE", ts.date(), df))
                 ok += 1
-        try:
-            nse_client.exit()
-        except Exception:
-            pass
-        if verbose:
-            print(f"    NSE: +{ok} new trading days")
+    if verbose:
+        print(f"    BSE: +{ok} new trading days")
+    return frames
 
-    if missing and "BSE" in exchanges:
-        sess = requests.Session()
-        sess.headers.update({"User-Agent": "Mozilla/5.0", "Referer": "https://www.bseindia.com/"})
-        ok = 0
-        with ThreadPoolExecutor(max_workers=workers) as pool:
-            futs = {pool.submit(_bse_day, ts.date(), sess): ts for ts in missing}
-            for fut in as_completed(futs):
-                df = fut.result()
-                ts = futs[fut]
-                if df is not None and len(df):
-                    frames.append(("BSE", ts.date(), df))
-                    ok += 1
-        if verbose:
-            print(f"    BSE: +{ok} new trading days")
 
-    # normalise the newly-fetched daily files to long format
+def _frames_to_long(frames: list) -> list:
+    """Normalise newly-fetched daily files to the long (Date, Symbol, OHLCV, _exch) format."""
     new_rows = []
-    got_dates = {pd.Timestamp(d) for _, d, _ in frames}
     for exch, d, df in frames:
         keep = df[["TckrSymb"] + list(OHLC_MAP)].copy().rename(columns=OHLC_MAP)
         keep["Symbol"] = keep.pop("TckrSymb").astype(str)
         keep["Date"] = pd.Timestamp(d)
         keep["_exch"] = exch
         new_rows.append(keep)
+    return new_rows
 
-    # record dates we asked for but got nothing back as dead (holiday/unpublished),
-    # except today (still publishing) — so we never re-fetch them.
+
+def _record_dead_dates(missing: list, frames: list, no_data: set, today: _dt.date) -> None:
+    """Persist dates we asked for but got nothing back (holiday/unpublished), except today
+    (still publishing), so they are never re-fetched."""
+    got_dates = {pd.Timestamp(d) for _, d, _ in frames}
     dead = {ts for ts in missing if ts not in got_dates and ts.date() != today}
     if dead:
         no_data |= dead
@@ -246,22 +225,12 @@ def fetch_history(
         except Exception:
             pass
 
-    # POST-FETCH FAST PATH: the only "missing" date was today (not yet published)
-    # and nothing new was actually downloaded → serve the cleaned cache, skip the
-    # ~30s pivot+clean. This keeps intraday re-runs cheap until today's EOD lands.
-    if not new_rows and CLEANED.exists():
-        try:
-            out = _from_cleaned(min_bars)
-            if verbose:
-                print(f"  ⚡ fast path (no new EOD yet): {len(out)} symbols, skipped rebuild")
-            return out
-        except Exception:
-            pass
 
-    # merge cache + new, persist the updated assembled parquet
+def _merge_and_persist(cached: pd.DataFrame, new_rows: list, verbose: bool) -> pd.DataFrame:
+    """Merge cache + new rows (last wins per Date/_exch/Symbol); save assembled parquet."""
     parts = [p for p in (cached, *new_rows) if p is not None and not p.empty]
     if not parts:
-        return {}
+        return pd.DataFrame()
     allrows = pd.concat(parts, ignore_index=True)
     allrows = allrows.drop_duplicates(subset=["Date", "_exch", "Symbol"], keep="last")
     if new_rows:
@@ -275,11 +244,11 @@ def fetch_history(
         except Exception as e:
             if verbose:
                 print(f"  (could not persist assembled cache: {e})")
+    return allrows
 
-    # restrict to the requested window before pivoting
-    allrows = allrows[allrows["Date"].isin(want_dates)]
 
-    # ── pivot + clean to per-symbol OHLCV (built once at min_bars=1, then cached) ─
+def _pivot_and_clean(allrows: pd.DataFrame, verbose: bool) -> Dict[str, pd.DataFrame]:
+    """Pivot long rows to per-symbol OHLCV and clean (built once at min_bars=1, then cached)."""
     if verbose:
         print(f"  Pivoting {allrows['Date'].nunique()} dates → per-symbol series …")
     allrows = allrows.rename(columns={"Symbol": "TckrSymb"})
@@ -293,8 +262,11 @@ def fetch_history(
                 g = clean_ohlcv(g, ticker=str(sym), min_bars=1)
             if g is not None and len(g):
                 out_all[str(sym)] = g
+    return out_all
 
-    # persist the cleaned long frame so the next run hits the fast path
+
+def _persist_cleaned(out_all: Dict[str, pd.DataFrame], verbose: bool) -> None:
+    """Write the cleaned long frame so the next run hits the fast path."""
     try:
         parts = []
         for sym, g in out_all.items():
@@ -312,7 +284,9 @@ def fetch_history(
         if verbose:
             print(f"  (could not persist cleaned cache: {e})")
 
-    # sync the LMDB NoSQL store (fast keyed retrieval layer) with the fresh data
+
+def _sync_lmdb(out_all: Dict[str, pd.DataFrame], verbose: bool) -> None:
+    """Sync the LMDB NoSQL store (fast keyed retrieval layer) with the fresh data."""
     try:
         from bhavcopy_store import build as _build_store
 
@@ -320,6 +294,75 @@ def fetch_history(
     except Exception as e:
         if verbose:
             print(f"  (LMDB store not synced: {e})")
+
+
+# ── public API ─────────────────────────────────────────────────────────────────
+def fetch_history(
+    n_days: int = 400,
+    workers: int = 8,
+    exchanges=("NSE", "BSE"),
+    min_bars: int = 60,
+    verbose: bool = True,
+) -> Dict[str, pd.DataFrame]:
+    """Assemble {symbol: cleaned OHLCV DataFrame} from NSE+BSE bhavcopy.
+
+    n_days = calendar days to look back (~400 ≈ 1 trading year after weekends/
+    holidays). NSE symbols keyed bare (RELIANCE); BSE-only keyed with a .BO-style
+    suffix is NOT applied here — keys are bare tickers, NSE taking precedence on
+    collision (same convention as stock_utils._strip_suffix).
+    """
+    today = _dt.date.today()
+    want_dates = _trading_dates(n_days, today)
+    no_data = _load_no_data()
+    cached = _load_assembled(verbose)
+    have_dates = set(pd.to_datetime(cached["Date"].unique())) if not cached.empty else set()
+    missing = sorted(want_dates - have_dates - no_data)  # skip known-dead dates
+    if verbose:
+        print(
+            f"  assembled cache: {len(have_dates)} dates known, "
+            f"{len(no_data)} dead dates skipped, {len(missing)} new date(s) to fetch"
+        )
+
+    # FAST PATH: nothing new to fetch and a cleaned cache exists → serve it
+    if not missing and CLEANED.exists():
+        try:
+            out = _from_cleaned(want_dates, min_bars)
+            if verbose:
+                print(f"  ⚡ fast path (cleaned cache): {len(out)} symbols, no fetch/clean")
+            return out
+        except Exception as e:
+            if verbose:
+                print(f"  (cleaned cache unusable, rebuilding: {e})")
+
+    frames = []  # (exchange, day, df) for the missing days only
+    if missing and "NSE" in exchanges:
+        frames += _fetch_nse_days(missing, verbose)
+    if missing and "BSE" in exchanges:
+        frames += _fetch_bse_days(missing, workers, verbose)
+
+    new_rows = _frames_to_long(frames)
+    _record_dead_dates(missing, frames, no_data, today)
+
+    # POST-FETCH FAST PATH: the only "missing" date was today (not yet published)
+    # and nothing new was actually downloaded → serve the cleaned cache, skip the
+    # ~30s pivot+clean. This keeps intraday re-runs cheap until today's EOD lands.
+    if not new_rows and CLEANED.exists():
+        try:
+            out = _from_cleaned(want_dates, min_bars)
+            if verbose:
+                print(f"  ⚡ fast path (no new EOD yet): {len(out)} symbols, skipped rebuild")
+            return out
+        except Exception:
+            pass
+
+    allrows = _merge_and_persist(cached, new_rows, verbose)
+    if allrows.empty:
+        return {}
+    allrows = allrows[allrows["Date"].isin(want_dates)]  # restrict to the requested window
+
+    out_all = _pivot_and_clean(allrows, verbose)
+    _persist_cleaned(out_all, verbose)
+    _sync_lmdb(out_all, verbose)
 
     out = {s: g for s, g in out_all.items() if len(g) >= min_bars}
     if verbose:
