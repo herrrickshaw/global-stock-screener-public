@@ -500,6 +500,59 @@ def fetch_corporate_actions(ticker: yf.Ticker) -> dict:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+def _darvas_result(signal: str, note: str, box_top=None, box_bottom=None) -> dict:
+    """The no-classification result shape (INSUFFICIENT_DATA / NO_BOX)."""
+    return {"signal": signal, "box_top": box_top, "box_bottom": box_bottom, "note": note}
+
+
+def _find_col(df: pd.DataFrame, candidates: list):
+    """First column whose upper-cased name contains any candidate (in candidate order)."""
+    for c in candidates:
+        match = next((col for col in df.columns if c.upper() in col.upper()), None)
+        if match:
+            return match
+    return None
+
+
+def _find_box_top(highs: list, confirm: int):
+    """Most recent confirmed box top: (index, value) or (None, None).
+
+    A candidate high is confirmed when the next `confirm` highs are all lower. `highs`
+    must already exclude the current bar.
+    """
+    n = len(highs)
+    for i in range(n - confirm - 1, -1, -1):
+        candidate = highs[i]
+        if candidate == 0:
+            continue
+        window = highs[i + 1 : i + 1 + confirm]
+        if len(window) == confirm and all(h < candidate for h in window):
+            return i, candidate
+    return None, None
+
+
+def _find_box_bottom(segment: list, confirm: int):
+    """Box bottom within the lows since the box top: first confirmed low (the next `confirm`
+    lows all higher), else the minimum positive low, else None."""
+    for i in range(len(segment) - confirm):
+        candidate = segment[i]
+        if candidate == 0:
+            continue
+        window = segment[i + 1 : i + 1 + confirm]
+        if len(window) == confirm and all(low > candidate for low in window):
+            return candidate
+    valid = [low for low in segment if low > 0]
+    return min(valid) if valid else None
+
+
+def _classify_vs_box(current: float, box_top: float, box_bottom: float) -> str:
+    if current > box_top:
+        return "BREAKOUT_BUY"
+    if current < box_bottom:
+        return "BREAKDOWN_SELL"
+    return "IN_BOX"
+
+
 def compute_darvas_box(df: pd.DataFrame, confirm: int = DARVAS_CONFIRM) -> dict:
     """
     Detect a Darvas Box and classify the current price relative to it.
@@ -509,102 +562,35 @@ def compute_darvas_box(df: pd.DataFrame, confirm: int = DARVAS_CONFIRM) -> dict:
     pull the box bottom down and make a breakdown undetectable.
     """
     if df is None or df.empty:
-        return {
-            "signal": "INSUFFICIENT_DATA",
-            "box_top": None,
-            "box_bottom": None,
-            "note": "Empty OHLC DataFrame",
-        }
+        return _darvas_result("INSUFFICIENT_DATA", "Empty OHLC DataFrame")
 
-    def find_col(df, candidates):
-        for c in candidates:
-            match = next((col for col in df.columns if c.upper() in col.upper()), None)
-            if match:
-                return match
-        return None
-
-    h_col = find_col(df, ["High", "CH_TRADE_HIGH_PRICE", "DAYHIGH"])
-    l_col = find_col(df, ["Low", "CH_TRADE_LOW_PRICE", "DAYLOW"])
-    c_col = find_col(df, ["Close", "CH_CLOSING_PRICE", "LAST"])
-
+    h_col = _find_col(df, ["High", "CH_TRADE_HIGH_PRICE", "DAYHIGH"])
+    l_col = _find_col(df, ["Low", "CH_TRADE_LOW_PRICE", "DAYLOW"])
+    c_col = _find_col(df, ["Close", "CH_CLOSING_PRICE", "LAST"])
     if not all([h_col, l_col, c_col]):
-        return {
-            "signal": "INSUFFICIENT_DATA",
-            "box_top": None,
-            "box_bottom": None,
-            "note": "Could not identify OHLC columns",
-        }
+        return _darvas_result("INSUFFICIENT_DATA", "Could not identify OHLC columns")
 
     all_highs = pd.to_numeric(df[h_col], errors="coerce").fillna(0).tolist()
     all_lows = pd.to_numeric(df[l_col], errors="coerce").fillna(0).tolist()
     all_closes = pd.to_numeric(df[c_col], errors="coerce").fillna(0).tolist()
-
     if len(all_closes) < confirm + 5:
-        return {
-            "signal": "INSUFFICIENT_DATA",
-            "box_top": None,
-            "box_bottom": None,
-            "note": f"Need ≥ {confirm + 5} bars; got {len(all_closes)}",
-        }
+        return _darvas_result(
+            "INSUFFICIENT_DATA", f"Need ≥ {confirm + 5} bars; got {len(all_closes)}"
+        )
 
     current = all_closes[-1]
-    highs = all_highs[:-1]
+    highs = all_highs[:-1]  # current bar excluded from box formation
     lows = all_lows[:-1]
-    n = len(highs)
 
-    # Step 1: most recent confirmed box top
-    box_top_idx = None
-    box_top = None
-    for i in range(n - confirm - 1, -1, -1):
-        candidate = highs[i]
-        if candidate == 0:
-            continue
-        window = highs[i + 1 : i + 1 + confirm]
-        if len(window) == confirm and all(h < candidate for h in window):
-            box_top_idx = i
-            box_top = candidate
-            break
-
+    box_top_idx, box_top = _find_box_top(highs, confirm)
     if box_top is None:
-        return {
-            "signal": "NO_BOX",
-            "box_top": None,
-            "box_bottom": None,
-            "note": "No confirmed box top",
-        }
+        return _darvas_result("NO_BOX", "No confirmed box top")
 
-    # Step 2: confirmed box bottom
-    segment = lows[box_top_idx:]
-    box_bottom = None
-    for i in range(len(segment) - confirm):
-        candidate = segment[i]
-        if candidate == 0:
-            continue
-        window = segment[i + 1 : i + 1 + confirm]
-        if len(window) == confirm and all(l > candidate for l in window):
-            box_bottom = candidate
-            break
-
+    box_bottom = _find_box_bottom(lows[box_top_idx:], confirm)
     if box_bottom is None:
-        valid = [l for l in segment if l > 0]
-        box_bottom = min(valid) if valid else None
+        return _darvas_result("NO_BOX", "Could not confirm a box bottom", box_top=box_top)
 
-    if box_bottom is None:
-        return {
-            "signal": "NO_BOX",
-            "box_top": box_top,
-            "box_bottom": None,
-            "note": "Could not confirm a box bottom",
-        }
-
-    # Step 3: classify current price
-    if current > box_top:
-        signal = "BREAKOUT_BUY"
-    elif current < box_bottom:
-        signal = "BREAKDOWN_SELL"
-    else:
-        signal = "IN_BOX"
-
+    signal = _classify_vs_box(current, box_top, box_bottom)
     box_range = box_top - box_bottom
     pos_in_box = ((current - box_bottom) / box_range * 100) if box_range else 0
     upside_to_top = ((box_top - current) / current * 100) if current else 0
@@ -998,93 +984,89 @@ def run_batch(symbols: list = None, output_format: str = "excel", run_scans: boo
     return results
 
 
-def _write_excel_report(results: list, include_scans: bool = False):
-    """Write comprehensive Excel report with summary sheet + per-stock details."""
-    wb = Workbook()
-    wb.remove(wb.active)  # Remove default sheet
+SUMMARY_HEADERS = [
+    "Symbol",
+    "Company",
+    "Sector",
+    "CMP (S$)",
+    "Change %",
+    "P/E",
+    "P/B",
+    "Div Yield %",
+    "52W High",
+    "52W Low",
+    "Volume",
+]
+SUMMARY_SCAN_HEADERS = [
+    "Darvas Signal",
+    "Darvas Top",
+    "Darvas Bottom",
+    "Piotroski Score",
+    "PEGY Ratio",
+    "Breakout Signal",
+]
 
-    # ── Create summary sheet ──────────────────────────────────────────────────
-    ws_summary = wb.create_sheet("Summary", 0)
 
-    Font(bold=True, size=11)
+def _change_pct(q: dict):
+    """% change of lastPrice over previousClose, or None when either is missing/zero."""
+    ltp, prev = q.get("lastPrice"), q.get("previousClose")
+    return ((ltp - prev) / prev * 100) if (ltp and prev) else None
+
+
+def _div_yield_pct(q: dict):
+    """Dividend yield as a percentage (yfinance gives a fraction), or None."""
+    return (q.get("dividendYield", 0) * 100) if q.get("dividendYield") else None
+
+
+def _summary_row(data: dict, include_scans: bool) -> list:
+    """One Summary-sheet row for a result dict."""
+    q = data.get("quote", {})
+    row_data = [
+        data.get("symbol", "").replace(".SI", ""),
+        q.get("name", ""),
+        q.get("sector", ""),
+        q.get("lastPrice"),
+        _change_pct(q),
+        q.get("trailingPE"),
+        q.get("priceToBook"),
+        _div_yield_pct(q),
+        q.get("52wHigh"),
+        q.get("52wLow"),
+        q.get("volume"),
+    ]
+    if include_scans:
+        scans = data.get("scans", {})
+        darv = scans.get("darvas", {})
+        piofr = scans.get("piotroski", {})
+        pegy = scans.get("pegy", {})
+        row_data.extend(
+            [
+                darv.get("signal", ""),
+                darv.get("box_top"),
+                darv.get("box_bottom"),
+                piofr.get("f_score"),
+                pegy.get("pegy_adjusted"),
+                pegy.get("breakout", {}).get("signal", ""),
+            ]
+        )
+    return row_data
+
+
+def _fill_summary_sheet(ws_summary, results: list, include_scans: bool) -> None:
+    """Header row (styled), one row per result, auto-fitted column widths."""
     header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
     header_font = Font(bold=True, color="FFFFFF", size=11)
     center_align = Alignment(horizontal="center", vertical="center")
 
-    # Header row
-    headers = [
-        "Symbol",
-        "Company",
-        "Sector",
-        "CMP (S$)",
-        "Change %",
-        "P/E",
-        "P/B",
-        "Div Yield %",
-        "52W High",
-        "52W Low",
-        "Volume",
-    ]
-    if include_scans:
-        headers.extend(
-            [
-                "Darvas Signal",
-                "Darvas Top",
-                "Darvas Bottom",
-                "Piotroski Score",
-                "PEGY Ratio",
-                "Breakout Signal",
-            ]
-        )
-
-    ws_summary.append(headers)
+    ws_summary.append(SUMMARY_HEADERS + (SUMMARY_SCAN_HEADERS if include_scans else []))
     for cell in ws_summary[1]:
         cell.font = header_font
         cell.fill = header_fill
         cell.alignment = center_align
 
-    # Data rows
     for data in results:
-        sym = data.get("symbol", "").replace(".SI", "")
-        q = data.get("quote", {})
-        ltp = q.get("lastPrice")
-        prev = q.get("previousClose")
-        chg_pct = ((ltp - prev) / prev * 100) if (ltp and prev) else None
+        ws_summary.append(_summary_row(data, include_scans))
 
-        row_data = [
-            sym,
-            q.get("name", ""),
-            q.get("sector", ""),
-            ltp,
-            chg_pct,
-            q.get("trailingPE"),
-            q.get("priceToBook"),
-            (q.get("dividendYield", 0) * 100) if q.get("dividendYield") else None,
-            q.get("52wHigh"),
-            q.get("52wLow"),
-            q.get("volume"),
-        ]
-
-        if include_scans:
-            scans = data.get("scans", {})
-            darv = scans.get("darvas", {})
-            piofr = scans.get("piotroski", {})
-            pegy = scans.get("pegy", {})
-
-            row_data.extend(
-                [
-                    darv.get("signal", ""),
-                    darv.get("box_top"),
-                    darv.get("box_bottom"),
-                    piofr.get("f_score"),
-                    pegy.get("pegy_adjusted"),
-                    pegy.get("breakout", {}).get("signal", ""),
-                ]
-            )
-
-        ws_summary.append(row_data)
-
-    # Adjust column widths
     for col in ws_summary.columns:
         max_len = 0
         for cell in col:
@@ -1095,121 +1077,120 @@ def _write_excel_report(results: list, include_scans: bool = False):
                 pass
         ws_summary.column_dimensions[col[0].column_letter].width = max_len + 2
 
-    # ── Create per-stock detail sheets ────────────────────────────────────────
+
+def _quote_fields(q: dict) -> list:
+    """(label, value) pairs for the detail sheet's quote block."""
+    return [
+        ("CMP (S$)", q.get("lastPrice")),
+        ("Change %", _change_pct(q)),
+        ("52W High", q.get("52wHigh")),
+        ("52W Low", q.get("52wLow")),
+        ("200-Day MA", q.get("200dAvg")),
+        ("P/E Ratio", q.get("trailingPE")),
+        ("P/B Ratio", q.get("priceToBook")),
+        ("Div Yield %", _div_yield_pct(q)),
+        ("Market Cap", q.get("marketCap")),
+        ("Volume", q.get("volume")),
+    ]
+
+
+def _write_pairs(ws, row_num: int, pairs: list) -> int:
+    """Write (label, value) pairs into columns A/B; returns the next free row."""
+    for label, value in pairs:
+        ws[f"A{row_num}"] = label
+        ws[f"B{row_num}"] = value
+        row_num += 1
+    return row_num
+
+
+def _banner(ws, row_num: int, title: str, rgb: str) -> None:
+    """Merged A:D white-on-colour section banner."""
+    ws[f"A{row_num}"] = title
+    ws[f"A{row_num}"].font = Font(bold=True, size=12, color="FFFFFF")
+    ws[f"A{row_num}"].fill = PatternFill(start_color=rgb, end_color=rgb, fill_type="solid")
+    ws.merge_cells(f"A{row_num}:D{row_num}")
+
+
+def _subhead(ws, row_num: int, title: str) -> int:
+    ws[f"A{row_num}"] = title
+    ws[f"A{row_num}"].font = Font(bold=True, size=11)
+    return row_num + 1
+
+
+def _write_scans_block(ws, row_num: int, scans: dict) -> None:
+    """Darvas / Piotroski / PEGY blocks of a detail sheet."""
+    _banner(ws, row_num, "TECHNICAL & FUNDAMENTAL SCANS", "4472C4")
+    row_num += 2
+
+    darv = scans.get("darvas", {})
+    row_num = _subhead(ws, row_num, "Darvas Box")
+    row_num = _write_pairs(
+        ws,
+        row_num,
+        [
+            ("Signal", darv.get("signal")),
+            ("Box Top", darv.get("box_top")),
+            ("Box Bottom", darv.get("box_bottom")),
+            ("Position in Box %", darv.get("position_in_box_pct")),
+            ("Upside to Top %", darv.get("upside_to_top_pct")),
+        ],
+    )
+    row_num += 1
+
+    piofr = scans.get("piotroski", {})
+    row_num = _subhead(ws, row_num, "Piotroski F-Score")
+    row_num = _write_pairs(
+        ws,
+        row_num,
+        [("Score (0-9)", piofr.get("f_score")), ("Interpretation", piofr.get("interpretation"))],
+    )
+    row_num += 1
+
+    pegy = scans.get("pegy", {})
+    row_num = _subhead(ws, row_num, "PEGY Ratio & Breakout")
+    _write_pairs(
+        ws,
+        row_num,
+        [
+            ("PEG Ratio", pegy.get("peg_ratio")),
+            ("PEGY Adjusted", pegy.get("pegy_adjusted")),
+            ("Dividend Yield %", pegy.get("dividend_yield_%")),
+            ("Breakout Signal", pegy.get("breakout", {}).get("signal")),
+            ("Distance from 200MA %", pegy.get("breakout", {}).get("distance_from_200ma_%")),
+        ],
+    )
+
+
+def _write_detail_sheet(wb, data: dict, include_scans: bool) -> None:
+    """Per-stock sheet: title, quote & valuation block, optional scans block."""
+    sym = data.get("symbol", "").replace(".SI", "")
+    q = data.get("quote", {})
+    ws = wb.create_sheet(sym)
+
+    ws["A1"] = f"{sym} — {q.get('name', '')}"
+    ws["A1"].font = Font(bold=True, size=14)
+    ws.merge_cells("A1:D1")
+
+    _banner(ws, 3, "QUOTE & VALUATION", "70AD47")
+    row_num = _write_pairs(ws, 4, _quote_fields(q))
+    row_num += 1
+
+    if include_scans:
+        _write_scans_block(ws, row_num, data.get("scans", {}))
+
+    ws.column_dimensions["A"].width = 25
+    ws.column_dimensions["B"].width = 20
+
+
+def _write_excel_report(results: list, include_scans: bool = False):
+    """Write comprehensive Excel report with summary sheet + per-stock details."""
+    wb = Workbook()
+    wb.remove(wb.active)  # Remove default sheet
+
+    _fill_summary_sheet(wb.create_sheet("Summary", 0), results, include_scans)
     for data in results:
-        sym = data.get("symbol", "").replace(".SI", "")
-        q = data.get("quote", {})
-        scans = data.get("scans", {})
+        _write_detail_sheet(wb, data, include_scans)
 
-        ws = wb.create_sheet(sym)
-
-        # Title
-        ws["A1"] = f"{sym} — {q.get('name', '')}"
-        ws["A1"].font = Font(bold=True, size=14)
-        ws.merge_cells("A1:D1")
-
-        row_num = 3
-
-        # Quote section
-        ws[f"A{row_num}"] = "QUOTE & VALUATION"
-        ws[f"A{row_num}"].font = Font(bold=True, size=12, color="FFFFFF")
-        ws[f"A{row_num}"].fill = PatternFill(
-            start_color="70AD47", end_color="70AD47", fill_type="solid"
-        )
-        ws.merge_cells(f"A{row_num}:D{row_num}")
-        row_num += 1
-
-        quote_fields = [
-            ("CMP (S$)", q.get("lastPrice")),
-            (
-                "Change %",
-                (
-                    ((q.get("lastPrice") - q.get("previousClose")) / q.get("previousClose") * 100)
-                    if (q.get("lastPrice") and q.get("previousClose"))
-                    else None
-                ),
-            ),
-            ("52W High", q.get("52wHigh")),
-            ("52W Low", q.get("52wLow")),
-            ("200-Day MA", q.get("200dAvg")),
-            ("P/E Ratio", q.get("trailingPE")),
-            ("P/B Ratio", q.get("priceToBook")),
-            ("Div Yield %", (q.get("dividendYield", 0) * 100) if q.get("dividendYield") else None),
-            ("Market Cap", q.get("marketCap")),
-            ("Volume", q.get("volume")),
-        ]
-
-        for label, value in quote_fields:
-            ws[f"A{row_num}"] = label
-            ws[f"B{row_num}"] = value
-            row_num += 1
-
-        row_num += 1
-
-        # Scans section
-        if include_scans:
-            ws[f"A{row_num}"] = "TECHNICAL & FUNDAMENTAL SCANS"
-            ws[f"A{row_num}"].font = Font(bold=True, size=12, color="FFFFFF")
-            ws[f"A{row_num}"].fill = PatternFill(
-                start_color="4472C4", end_color="4472C4", fill_type="solid"
-            )
-            ws.merge_cells(f"A{row_num}:D{row_num}")
-            row_num += 2
-
-            # Darvas
-            darv = scans.get("darvas", {})
-            ws[f"A{row_num}"] = "Darvas Box"
-            ws[f"A{row_num}"].font = Font(bold=True, size=11)
-            row_num += 1
-            darvas_fields = [
-                ("Signal", darv.get("signal")),
-                ("Box Top", darv.get("box_top")),
-                ("Box Bottom", darv.get("box_bottom")),
-                ("Position in Box %", darv.get("position_in_box_pct")),
-                ("Upside to Top %", darv.get("upside_to_top_pct")),
-            ]
-            for label, value in darvas_fields:
-                ws[f"A{row_num}"] = label
-                ws[f"B{row_num}"] = value
-                row_num += 1
-
-            row_num += 1
-
-            # Piotroski
-            piofr = scans.get("piotroski", {})
-            ws[f"A{row_num}"] = "Piotroski F-Score"
-            ws[f"A{row_num}"].font = Font(bold=True, size=11)
-            row_num += 1
-            ws[f"A{row_num}"] = "Score (0-9)"
-            ws[f"B{row_num}"] = piofr.get("f_score")
-            row_num += 1
-            ws[f"A{row_num}"] = "Interpretation"
-            ws[f"B{row_num}"] = piofr.get("interpretation")
-            row_num += 1
-            row_num += 1
-
-            # PEGY
-            pegy = scans.get("pegy", {})
-            ws[f"A{row_num}"] = "PEGY Ratio & Breakout"
-            ws[f"A{row_num}"].font = Font(bold=True, size=11)
-            row_num += 1
-            pegy_fields = [
-                ("PEG Ratio", pegy.get("peg_ratio")),
-                ("PEGY Adjusted", pegy.get("pegy_adjusted")),
-                ("Dividend Yield %", pegy.get("dividend_yield_%")),
-                ("Breakout Signal", pegy.get("breakout", {}).get("signal")),
-                ("Distance from 200MA %", pegy.get("breakout", {}).get("distance_from_200ma_%")),
-            ]
-            for label, value in pegy_fields:
-                ws[f"A{row_num}"] = label
-                ws[f"B{row_num}"] = value
-                row_num += 1
-
-        # Adjust columns
-        ws.column_dimensions["A"].width = 25
-        ws.column_dimensions["B"].width = 20
-
-    # Save workbook
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     out = DOWNLOAD_DIR / f"sg_stock_report_{timestamp}.xlsx"
     wb.save(out)

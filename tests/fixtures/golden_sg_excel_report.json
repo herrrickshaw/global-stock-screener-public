@@ -1,0 +1,1488 @@
+{
+ "scans=False": {
+  "order": [
+   "Summary",
+   "D05",
+   "ZZZ"
+  ],
+  "sheets": {
+   "D05": {
+    "cells": {
+     "A1": [
+      "D05 \u2014 DBS",
+      true,
+      14.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A10": [
+      "P/B Ratio",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A11": [
+      "Div Yield %",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A12": [
+      "Market Cap",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A13": [
+      "Volume",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A3": [
+      "QUOTE & VALUATION",
+      true,
+      12.0,
+      "00FFFFFF",
+      "0070AD47",
+      null
+     ],
+     "A4": [
+      "CMP (S$)",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A5": [
+      "Change %",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A6": [
+      "52W High",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A7": [
+      "52W Low",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A8": [
+      "200-Day MA",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A9": [
+      "P/E Ratio",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B10": [
+      1.4,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B11": [
+      5,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B12": [
+      110000000000,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B13": [
+      5000000,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B4": [
+      40,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B5": [
+      2.564102564102564,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B6": [
+      42,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B7": [
+      30,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B8": [
+      36,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B9": [
+      9.5,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ]
+    },
+    "merged": [
+     "A1:D1",
+     "A3:D3"
+    ],
+    "widths": {
+     "A": 25.0,
+     "B": 20.0
+    }
+   },
+   "Summary": {
+    "cells": {
+     "A1": [
+      "Symbol",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "A2": [
+      "D05",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A3": [
+      "ZZZ",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B1": [
+      "Company",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "B2": [
+      "DBS",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B3": [
+      "Sparse",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "C1": [
+      "Sector",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "C2": [
+      "Financials",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "D1": [
+      "CMP (S$)",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "D2": [
+      40,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "E1": [
+      "Change %",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "E2": [
+      2.564102564102564,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "F1": [
+      "P/E",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "F2": [
+      9.5,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "G1": [
+      "P/B",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "G2": [
+      1.4,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "H1": [
+      "Div Yield %",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "H2": [
+      5,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "I1": [
+      "52W High",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "I2": [
+      42,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "J1": [
+      "52W Low",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "J2": [
+      30,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "K1": [
+      "Volume",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "K2": [
+      5000000,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ]
+    },
+    "merged": [],
+    "widths": {
+     "A": 8.0,
+     "B": 9.0,
+     "C": 12.0,
+     "D": 10.0,
+     "E": 19.0,
+     "F": 6.0,
+     "G": 6.0,
+     "H": 13.0,
+     "I": 10.0,
+     "J": 9.0,
+     "K": 9.0
+    }
+   },
+   "ZZZ": {
+    "cells": {
+     "A1": [
+      "ZZZ \u2014 Sparse",
+      true,
+      14.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A10": [
+      "P/B Ratio",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A11": [
+      "Div Yield %",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A12": [
+      "Market Cap",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A13": [
+      "Volume",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A3": [
+      "QUOTE & VALUATION",
+      true,
+      12.0,
+      "00FFFFFF",
+      "0070AD47",
+      null
+     ],
+     "A4": [
+      "CMP (S$)",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A5": [
+      "Change %",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A6": [
+      "52W High",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A7": [
+      "52W Low",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A8": [
+      "200-Day MA",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A9": [
+      "P/E Ratio",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ]
+    },
+    "merged": [
+     "A1:D1",
+     "A3:D3"
+    ],
+    "widths": {
+     "A": 25.0,
+     "B": 20.0
+    }
+   }
+  }
+ },
+ "scans=True": {
+  "order": [
+   "Summary",
+   "D05",
+   "ZZZ"
+  ],
+  "sheets": {
+   "D05": {
+    "cells": {
+     "A1": [
+      "D05 \u2014 DBS",
+      true,
+      14.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A10": [
+      "P/B Ratio",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A11": [
+      "Div Yield %",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A12": [
+      "Market Cap",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A13": [
+      "Volume",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A15": [
+      "TECHNICAL & FUNDAMENTAL SCANS",
+      true,
+      12.0,
+      "00FFFFFF",
+      "004472C4",
+      null
+     ],
+     "A17": [
+      "Darvas Box",
+      true,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A18": [
+      "Signal",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A19": [
+      "Box Top",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A20": [
+      "Box Bottom",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A21": [
+      "Position in Box %",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A22": [
+      "Upside to Top %",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A24": [
+      "Piotroski F-Score",
+      true,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A25": [
+      "Score (0-9)",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A26": [
+      "Interpretation",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A28": [
+      "PEGY Ratio & Breakout",
+      true,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A29": [
+      "PEG Ratio",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A3": [
+      "QUOTE & VALUATION",
+      true,
+      12.0,
+      "00FFFFFF",
+      "0070AD47",
+      null
+     ],
+     "A30": [
+      "PEGY Adjusted",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A31": [
+      "Dividend Yield %",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A32": [
+      "Breakout Signal",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A33": [
+      "Distance from 200MA %",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A4": [
+      "CMP (S$)",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A5": [
+      "Change %",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A6": [
+      "52W High",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A7": [
+      "52W Low",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A8": [
+      "200-Day MA",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A9": [
+      "P/E Ratio",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B10": [
+      1.4,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B11": [
+      5,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B12": [
+      110000000000,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B13": [
+      5000000,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B18": [
+      "BREAKOUT_BUY",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B19": [
+      39.5,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B20": [
+      37,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B21": [
+      100,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B22": [
+      -1.2,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B25": [
+      7,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B26": [
+      "Strong",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B29": [
+      1.1,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B30": [
+      0.8,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B31": [
+      5,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B32": [
+      "ABOVE_200MA",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B33": [
+      11.1,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B4": [
+      40,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B5": [
+      2.564102564102564,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B6": [
+      42,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B7": [
+      30,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B8": [
+      36,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B9": [
+      9.5,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ]
+    },
+    "merged": [
+     "A15:D15",
+     "A1:D1",
+     "A3:D3"
+    ],
+    "widths": {
+     "A": 25.0,
+     "B": 20.0
+    }
+   },
+   "Summary": {
+    "cells": {
+     "A1": [
+      "Symbol",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "A2": [
+      "D05",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A3": [
+      "ZZZ",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B1": [
+      "Company",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "B2": [
+      "DBS",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "B3": [
+      "Sparse",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "C1": [
+      "Sector",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "C2": [
+      "Financials",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "D1": [
+      "CMP (S$)",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "D2": [
+      40,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "E1": [
+      "Change %",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "E2": [
+      2.564102564102564,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "F1": [
+      "P/E",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "F2": [
+      9.5,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "G1": [
+      "P/B",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "G2": [
+      1.4,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "H1": [
+      "Div Yield %",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "H2": [
+      5,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "I1": [
+      "52W High",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "I2": [
+      42,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "J1": [
+      "52W Low",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "J2": [
+      30,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "K1": [
+      "Volume",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "K2": [
+      5000000,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "L1": [
+      "Darvas Signal",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "L2": [
+      "BREAKOUT_BUY",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "M1": [
+      "Darvas Top",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "M2": [
+      39.5,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "N1": [
+      "Darvas Bottom",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "N2": [
+      37,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "O1": [
+      "Piotroski Score",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "O2": [
+      7,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "P1": [
+      "PEGY Ratio",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "P2": [
+      0.8,
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "Q1": [
+      "Breakout Signal",
+      true,
+      11.0,
+      "00FFFFFF",
+      "004472C4",
+      "center"
+     ],
+     "Q2": [
+      "ABOVE_200MA",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ]
+    },
+    "merged": [],
+    "widths": {
+     "A": 8.0,
+     "B": 9.0,
+     "C": 12.0,
+     "D": 10.0,
+     "E": 19.0,
+     "F": 6.0,
+     "G": 6.0,
+     "H": 13.0,
+     "I": 10.0,
+     "J": 9.0,
+     "K": 9.0,
+     "L": 15.0,
+     "M": 12.0,
+     "N": 15.0,
+     "O": 17.0,
+     "P": 12.0,
+     "Q": 17.0
+    }
+   },
+   "ZZZ": {
+    "cells": {
+     "A1": [
+      "ZZZ \u2014 Sparse",
+      true,
+      14.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A10": [
+      "P/B Ratio",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A11": [
+      "Div Yield %",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A12": [
+      "Market Cap",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A13": [
+      "Volume",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A15": [
+      "TECHNICAL & FUNDAMENTAL SCANS",
+      true,
+      12.0,
+      "00FFFFFF",
+      "004472C4",
+      null
+     ],
+     "A17": [
+      "Darvas Box",
+      true,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A18": [
+      "Signal",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A19": [
+      "Box Top",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A20": [
+      "Box Bottom",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A21": [
+      "Position in Box %",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A22": [
+      "Upside to Top %",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A24": [
+      "Piotroski F-Score",
+      true,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A25": [
+      "Score (0-9)",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A26": [
+      "Interpretation",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A28": [
+      "PEGY Ratio & Breakout",
+      true,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A29": [
+      "PEG Ratio",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A3": [
+      "QUOTE & VALUATION",
+      true,
+      12.0,
+      "00FFFFFF",
+      "0070AD47",
+      null
+     ],
+     "A30": [
+      "PEGY Adjusted",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A31": [
+      "Dividend Yield %",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A32": [
+      "Breakout Signal",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A33": [
+      "Distance from 200MA %",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A4": [
+      "CMP (S$)",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A5": [
+      "Change %",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A6": [
+      "52W High",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A7": [
+      "52W Low",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A8": [
+      "200-Day MA",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ],
+     "A9": [
+      "P/E Ratio",
+      false,
+      11.0,
+      null,
+      "00000000",
+      null
+     ]
+    },
+    "merged": [
+     "A15:D15",
+     "A1:D1",
+     "A3:D3"
+    ],
+    "widths": {
+     "A": 25.0,
+     "B": 20.0
+    }
+   }
+  }
+ }
+}

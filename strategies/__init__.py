@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-# strategies/ — the 10 screening strategies, each a self-contained module with a
+# strategies/ — the 11 screening strategies, each a self-contained module with a
 # common interface (META + screen(StockData) -> Result). See base.py.
 #
 #   from strategies import STRATEGIES, run_all, get
 #   res = STRATEGIES["garp"].screen(stockdata)
 
 from __future__ import annotations
+
+import logging
 
 from . import (
     bluest_blue_chips,
@@ -21,6 +23,8 @@ from . import (
     piotroski,
 )
 from .base import Result, StockData
+
+log = logging.getLogger(__name__)
 
 # ordered as the user listed them (top-10) + cash conversion cycle
 _MODULES = [
@@ -42,6 +46,7 @@ META = {slug: m.META for slug, m in STRATEGIES.items()}
 
 
 def get(slug: str):
+    """Return the strategy module registered under `slug` (KeyError if unknown)."""
     return STRATEGIES[slug]
 
 
@@ -54,7 +59,8 @@ def run_all(stock: StockData, only_needs: str | None = None) -> dict[str, Result
             continue
         try:
             r = m.screen(stock)
-        except Exception:
+        except Exception:  # one bad strategy/stock must not abort the whole run
+            log.debug("strategy %s failed on %s", slug, stock.symbol, exc_info=True)
             r = None
         if r is not None:
             out[slug] = r

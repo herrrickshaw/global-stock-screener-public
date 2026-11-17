@@ -1,0 +1,154 @@
+{
+ "lr/1/600": {
+  "confidence": 0.701,
+  "direction": "BEARISH",
+  "features_used": 12,
+  "model": "lr",
+  "predicted_ret%": -4.169,
+  "symbol": "S1",
+  "train_rmse": 0.0,
+  "train_rows": 187
+ },
+ "lr/2/450": {
+  "confidence": 0.0,
+  "direction": "INSUFFICIENT_DATA",
+  "model": "lr",
+  "predicted_ret%": 0.0,
+  "symbol": "S2",
+  "train_rmse": null,
+  "train_rows": 0
+ },
+ "lr/3/380": {
+  "confidence": 0.0,
+  "direction": "INSUFFICIENT_DATA",
+  "model": "lr",
+  "predicted_ret%": 0.0,
+  "symbol": "S3",
+  "train_rmse": null,
+  "train_rows": 0
+ },
+ "lr/4/120": {
+  "confidence": 0.0,
+  "direction": "INSUFFICIENT_DATA",
+  "model": "lr",
+  "predicted_ret%": 0.0,
+  "symbol": "S4",
+  "train_rmse": null,
+  "train_rows": 0
+ },
+ "lr/5/700": {
+  "confidence": 0.641,
+  "direction": "BULLISH",
+  "features_used": 12,
+  "model": "lr",
+  "predicted_ret%": 3.822,
+  "symbol": "S5",
+  "train_rmse": 0.0,
+  "train_rows": 187
+ },
+ "lr/6/520": {
+  "confidence": 0.017,
+  "direction": "NEUTRAL",
+  "features_used": 12,
+  "model": "lr",
+  "predicted_ret%": -0.094,
+  "symbol": "S6",
+  "train_rmse": 0.0,
+  "train_rows": 187
+ },
+ "lr/bad": {
+  "confidence": 0.0,
+  "direction": "NEUTRAL",
+  "model": "lr",
+  "predicted_ret%": 0.0,
+  "symbol": "BAD",
+  "train_rmse": null,
+  "train_rows": 0
+ },
+ "lr/bad_err": true,
+ "lr/none": {
+  "confidence": 0.0,
+  "direction": "INSUFFICIENT_DATA",
+  "model": "lr",
+  "predicted_ret%": 0.0,
+  "symbol": "NONE",
+  "train_rmse": null,
+  "train_rows": 0
+ },
+ "ridge/1/600": {
+  "confidence": 0.692,
+  "direction": "BEARISH",
+  "features_used": 12,
+  "model": "ridge",
+  "predicted_ret%": -4.093,
+  "symbol": "S1",
+  "train_rmse": 0.0512,
+  "train_rows": 187
+ },
+ "ridge/2/450": {
+  "confidence": 0.0,
+  "direction": "INSUFFICIENT_DATA",
+  "model": "ridge",
+  "predicted_ret%": 0.0,
+  "symbol": "S2",
+  "train_rmse": null,
+  "train_rows": 0
+ },
+ "ridge/3/380": {
+  "confidence": 0.0,
+  "direction": "INSUFFICIENT_DATA",
+  "model": "ridge",
+  "predicted_ret%": 0.0,
+  "symbol": "S3",
+  "train_rmse": null,
+  "train_rows": 0
+ },
+ "ridge/4/120": {
+  "confidence": 0.0,
+  "direction": "INSUFFICIENT_DATA",
+  "model": "ridge",
+  "predicted_ret%": 0.0,
+  "symbol": "S4",
+  "train_rmse": null,
+  "train_rows": 0
+ },
+ "ridge/5/700": {
+  "confidence": 0.626,
+  "direction": "BULLISH",
+  "features_used": 12,
+  "model": "ridge",
+  "predicted_ret%": 3.713,
+  "symbol": "S5",
+  "train_rmse": 0.0529,
+  "train_rows": 187
+ },
+ "ridge/6/520": {
+  "confidence": 0.038,
+  "direction": "NEUTRAL",
+  "features_used": 12,
+  "model": "ridge",
+  "predicted_ret%": -0.206,
+  "symbol": "S6",
+  "train_rmse": 0.0442,
+  "train_rows": 187
+ },
+ "ridge/bad": {
+  "confidence": 0.0,
+  "direction": "NEUTRAL",
+  "model": "ridge",
+  "predicted_ret%": 0.0,
+  "symbol": "BAD",
+  "train_rmse": null,
+  "train_rows": 0
+ },
+ "ridge/bad_err": true,
+ "ridge/none": {
+  "confidence": 0.0,
+  "direction": "INSUFFICIENT_DATA",
+  "model": "ridge",
+  "predicted_ret%": 0.0,
+  "symbol": "NONE",
+  "train_rmse": null,
+  "train_rows": 0
+ }
+}

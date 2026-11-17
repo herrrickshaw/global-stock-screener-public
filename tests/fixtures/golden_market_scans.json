@@ -1,0 +1,439 @@
+{
+ "europe": {
+  "sheets": {
+   "All_Stocks": {
+    "columns": [
+     "Symbol",
+     "Name",
+     "Sector",
+     "LTP",
+     "Change%",
+     "200_Day_MA",
+     "Distance_to_200MA%",
+     "Trend_Signal",
+     "Darvas_Signal",
+     "Box_Top",
+     "Box_Bottom",
+     "Upside_to_Top%",
+     "Position_in_Box%",
+     "Market_Cap_B",
+     "P_E_Ratio",
+     "P_B_Ratio",
+     "Dividend_Yield%"
+    ],
+    "rows": [
+     "{\"200_Day_MA\": 100.14, \"Box_Bottom\": 99.48, \"Box_Top\": 100.83, \"Change%\": 29.94, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Distance_to_200MA%\": 29.82, \"Dividend_Yield%\": 2, \"LTP\": 130.0, \"Market_Cap_B\": 9.5, \"Name\": \"Anheuser-Busch InBev\", \"P_B_Ratio\": 1.2, \"P_E_Ratio\": 12.0, \"Position_in_Box%\": 2258.1, \"Sector\": \"Consumer Defensive\", \"Symbol\": \"ABI.BR\", \"Trend_Signal\": \"Above 200MA (Uptrend)\", \"Upside_to_Top%\": -22.44}",
+     "{\"200_Day_MA\": 100.15, \"Box_Bottom\": 99.04, \"Box_Top\": 100.77, \"Change%\": 29.69, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Distance_to_200MA%\": 29.81, \"Dividend_Yield%\": 2, \"LTP\": 130.0, \"Market_Cap_B\": 6.5, \"Name\": \"Air Liquide\", \"P_B_Ratio\": 1.2, \"P_E_Ratio\": 12.0, \"Position_in_Box%\": 1785.3, \"Sector\": \"Basic Materials\", \"Symbol\": \"AI.PA\", \"Trend_Signal\": \"Above 200MA (Uptrend)\", \"Upside_to_Top%\": -22.48}",
+     "{\"200_Day_MA\": 100.16, \"Box_Bottom\": 99.11, \"Box_Top\": 100.48, \"Change%\": 30.07, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Distance_to_200MA%\": 29.79, \"Dividend_Yield%\": 2, \"LTP\": 130.0, \"Market_Cap_B\": 3.5, \"Name\": \"Adidas\", \"P_B_Ratio\": 1.2, \"P_E_Ratio\": 12.0, \"Position_in_Box%\": 2266.3, \"Sector\": \"Consumer Cyclical\", \"Symbol\": \"ADS.DE\", \"Trend_Signal\": \"Above 200MA (Uptrend)\", \"Upside_to_Top%\": -22.71}",
+     "{\"200_Day_MA\": 109.36, \"Box_Bottom\": 118.74, \"Box_Top\": 121.54, \"Change%\": 0.08, \"Darvas_Signal\": \"IN_BOX\", \"Distance_to_200MA%\": 9.46, \"Dividend_Yield%\": 0, \"LTP\": 119.7, \"Market_Cap_B\": null, \"Name\": \"ASML Holding\", \"P_B_Ratio\": null, \"P_E_Ratio\": null, \"Position_in_Box%\": 34.3, \"Sector\": \"Technology\", \"Symbol\": \"ASML.AS\", \"Trend_Signal\": \"Above 200MA (Uptrend)\", \"Upside_to_Top%\": 1.54}",
+     "{\"200_Day_MA\": 93.93, \"Box_Bottom\": 83.63, \"Box_Top\": 85.22, \"Change%\": 0.44, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Distance_to_200MA%\": -7.9, \"Dividend_Yield%\": 2, \"LTP\": 86.51, \"Market_Cap_B\": 5.5, \"Name\": \"Ahold Delhaize\", \"P_B_Ratio\": 1.2, \"P_E_Ratio\": 12.0, \"Position_in_Box%\": 181.0, \"Sector\": \"Consumer Defensive\", \"Symbol\": \"AD.AS\", \"Trend_Signal\": \"Below 200MA (Downtrend)\", \"Upside_to_Top%\": -1.49}",
+     "{\"200_Day_MA\": 99.37, \"Box_Bottom\": 100.97, \"Box_Top\": 102.47, \"Change%\": -1.21, \"Darvas_Signal\": \"IN_BOX\", \"Distance_to_200MA%\": 1.91, \"Dividend_Yield%\": 0, \"LTP\": 101.27, \"Market_Cap_B\": null, \"Name\": \"Allianz\", \"P_B_Ratio\": null, \"P_E_Ratio\": null, \"Position_in_Box%\": 20.4, \"Sector\": \"Financial Services\", \"Symbol\": \"ALV.DE\", \"Trend_Signal\": \"Near 200MA (Consolidation)\", \"Upside_to_Top%\": 1.18}",
+     "{\"200_Day_MA\": 99.85, \"Box_Bottom\": 98.74, \"Box_Top\": 100.73, \"Change%\": -30.07, \"Darvas_Signal\": \"BREAKDOWN_SELL\", \"Distance_to_200MA%\": -29.89, \"Dividend_Yield%\": 0, \"LTP\": 70.0, \"Market_Cap_B\": null, \"Name\": \"Airbus\", \"P_B_Ratio\": null, \"P_E_Ratio\": null, \"Position_in_Box%\": -1445.1, \"Sector\": \"Industrials\", \"Symbol\": \"AIR.PA\", \"Trend_Signal\": \"Below 200MA (Downtrend)\", \"Upside_to_Top%\": 43.9}",
+     "{\"200_Day_MA\": 99.86, \"Box_Bottom\": 98.91, \"Box_Top\": 100.42, \"Change%\": -29.72, \"Darvas_Signal\": \"BREAKDOWN_SELL\", \"Distance_to_200MA%\": -29.9, \"Dividend_Yield%\": 0, \"LTP\": 70.0, \"Market_Cap_B\": null, \"Name\": \"Adyen\", \"P_B_Ratio\": null, \"P_E_Ratio\": null, \"Position_in_Box%\": -1914.7, \"Sector\": \"Financial Services\", \"Symbol\": \"ADYEN.AS\", \"Trend_Signal\": \"Below 200MA (Downtrend)\", \"Upside_to_Top%\": 43.45}",
+     "{\"200_Day_MA\": 99.89, \"Box_Bottom\": 99.1, \"Box_Top\": 100.76, \"Change%\": -29.71, \"Darvas_Signal\": \"BREAKDOWN_SELL\", \"Distance_to_200MA%\": -29.92, \"Dividend_Yield%\": 0, \"LTP\": 70.0, \"Market_Cap_B\": null, \"Name\": \"Argenx\", \"P_B_Ratio\": null, \"P_E_Ratio\": null, \"Position_in_Box%\": -1752.0, \"Sector\": \"Healthcare\", \"Symbol\": \"ARGX.BR\", \"Trend_Signal\": \"Below 200MA (Downtrend)\", \"Upside_to_Top%\": 43.94}"
+    ]
+   },
+   "Darvas_Signals": {
+    "columns": [
+     "Symbol",
+     "Name",
+     "Sector",
+     "LTP",
+     "Change%",
+     "200_Day_MA",
+     "Distance_to_200MA%",
+     "Trend_Signal",
+     "Darvas_Signal",
+     "Box_Top",
+     "Box_Bottom",
+     "Upside_to_Top%",
+     "Position_in_Box%",
+     "Market_Cap_B",
+     "P_E_Ratio",
+     "P_B_Ratio",
+     "Dividend_Yield%"
+    ],
+    "rows": [
+     "{\"200_Day_MA\": 100.14, \"Box_Bottom\": 99.48, \"Box_Top\": 100.83, \"Change%\": 29.94, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Distance_to_200MA%\": 29.82, \"Dividend_Yield%\": 2, \"LTP\": 130.0, \"Market_Cap_B\": 9.5, \"Name\": \"Anheuser-Busch InBev\", \"P_B_Ratio\": 1.2, \"P_E_Ratio\": 12.0, \"Position_in_Box%\": 2258.1, \"Sector\": \"Consumer Defensive\", \"Symbol\": \"ABI.BR\", \"Trend_Signal\": \"Above 200MA (Uptrend)\", \"Upside_to_Top%\": -22.44}",
+     "{\"200_Day_MA\": 100.15, \"Box_Bottom\": 99.04, \"Box_Top\": 100.77, \"Change%\": 29.69, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Distance_to_200MA%\": 29.81, \"Dividend_Yield%\": 2, \"LTP\": 130.0, \"Market_Cap_B\": 6.5, \"Name\": \"Air Liquide\", \"P_B_Ratio\": 1.2, \"P_E_Ratio\": 12.0, \"Position_in_Box%\": 1785.3, \"Sector\": \"Basic Materials\", \"Symbol\": \"AI.PA\", \"Trend_Signal\": \"Above 200MA (Uptrend)\", \"Upside_to_Top%\": -22.48}",
+     "{\"200_Day_MA\": 100.16, \"Box_Bottom\": 99.11, \"Box_Top\": 100.48, \"Change%\": 30.07, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Distance_to_200MA%\": 29.79, \"Dividend_Yield%\": 2, \"LTP\": 130.0, \"Market_Cap_B\": 3.5, \"Name\": \"Adidas\", \"P_B_Ratio\": 1.2, \"P_E_Ratio\": 12.0, \"Position_in_Box%\": 2266.3, \"Sector\": \"Consumer Cyclical\", \"Symbol\": \"ADS.DE\", \"Trend_Signal\": \"Above 200MA (Uptrend)\", \"Upside_to_Top%\": -22.71}",
+     "{\"200_Day_MA\": 93.93, \"Box_Bottom\": 83.63, \"Box_Top\": 85.22, \"Change%\": 0.44, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Distance_to_200MA%\": -7.9, \"Dividend_Yield%\": 2, \"LTP\": 86.51, \"Market_Cap_B\": 5.5, \"Name\": \"Ahold Delhaize\", \"P_B_Ratio\": 1.2, \"P_E_Ratio\": 12.0, \"Position_in_Box%\": 181.0, \"Sector\": \"Consumer Defensive\", \"Symbol\": \"AD.AS\", \"Trend_Signal\": \"Below 200MA (Downtrend)\", \"Upside_to_Top%\": -1.49}",
+     "{\"200_Day_MA\": 99.85, \"Box_Bottom\": 98.74, \"Box_Top\": 100.73, \"Change%\": -30.07, \"Darvas_Signal\": \"BREAKDOWN_SELL\", \"Distance_to_200MA%\": -29.89, \"Dividend_Yield%\": 0, \"LTP\": 70.0, \"Market_Cap_B\": null, \"Name\": \"Airbus\", \"P_B_Ratio\": null, \"P_E_Ratio\": null, \"Position_in_Box%\": -1445.1, \"Sector\": \"Industrials\", \"Symbol\": \"AIR.PA\", \"Trend_Signal\": \"Below 200MA (Downtrend)\", \"Upside_to_Top%\": 43.9}",
+     "{\"200_Day_MA\": 99.86, \"Box_Bottom\": 98.91, \"Box_Top\": 100.42, \"Change%\": -29.72, \"Darvas_Signal\": \"BREAKDOWN_SELL\", \"Distance_to_200MA%\": -29.9, \"Dividend_Yield%\": 0, \"LTP\": 70.0, \"Market_Cap_B\": null, \"Name\": \"Adyen\", \"P_B_Ratio\": null, \"P_E_Ratio\": null, \"Position_in_Box%\": -1914.7, \"Sector\": \"Financial Services\", \"Symbol\": \"ADYEN.AS\", \"Trend_Signal\": \"Below 200MA (Downtrend)\", \"Upside_to_Top%\": 43.45}",
+     "{\"200_Day_MA\": 99.89, \"Box_Bottom\": 99.1, \"Box_Top\": 100.76, \"Change%\": -29.71, \"Darvas_Signal\": \"BREAKDOWN_SELL\", \"Distance_to_200MA%\": -29.92, \"Dividend_Yield%\": 0, \"LTP\": 70.0, \"Market_Cap_B\": null, \"Name\": \"Argenx\", \"P_B_Ratio\": null, \"P_E_Ratio\": null, \"Position_in_Box%\": -1752.0, \"Sector\": \"Healthcare\", \"Symbol\": \"ARGX.BR\", \"Trend_Signal\": \"Below 200MA (Downtrend)\", \"Upside_to_Top%\": 43.94}"
+    ]
+   },
+   "Fundamentals": {
+    "columns": [
+     "Symbol",
+     "Name",
+     "Sector",
+     "LTP",
+     "Change%",
+     "Darvas_Signal",
+     "200_Day_MA",
+     "Distance_to_200MA%",
+     "P_E_Ratio",
+     "P_B_Ratio",
+     "Dividend_Yield%",
+     "PEGY_Ratio",
+     "Piotroski_Score",
+     "Piotroski_Class",
+     "CoffeeCan_Score",
+     "CoffeeCan_Class",
+     "CAGR_Revenue%",
+     "ROCE_Average%",
+     "Debt_Equity",
+     "Error"
+    ],
+    "rows": [
+     "{\"200_Day_MA\": 100.14, \"CAGR_Revenue%\": 16, \"Change%\": 29.94, \"CoffeeCan_Class\": \"PASS\", \"CoffeeCan_Score\": 1, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Debt_Equity\": 0.5, \"Distance_to_200MA%\": 29.82, \"Dividend_Yield%\": 2, \"Error\": null, \"LTP\": 130.0, \"Name\": \"Anheuser-Busch InBev\", \"PEGY_Ratio\": 1.1, \"P_B_Ratio\": 1.2, \"P_E_Ratio\": 12, \"Piotroski_Class\": \"x\", \"Piotroski_Score\": 9, \"ROCE_Average%\": 21, \"Sector\": \"Tech\", \"Symbol\": \"ABI.BR\"}",
+     "{\"200_Day_MA\": 100.15, \"CAGR_Revenue%\": 13, \"Change%\": 29.69, \"CoffeeCan_Class\": \"FAIL\", \"CoffeeCan_Score\": 3, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Debt_Equity\": 0.5, \"Distance_to_200MA%\": 29.81, \"Dividend_Yield%\": 2, \"Error\": null, \"LTP\": 130.0, \"Name\": \"Air Liquide\", \"PEGY_Ratio\": 1.1, \"P_B_Ratio\": 1.2, \"P_E_Ratio\": 12, \"Piotroski_Class\": \"x\", \"Piotroski_Score\": 9, \"ROCE_Average%\": 18, \"Sector\": \"Tech\", \"Symbol\": \"AI.PA\"}",
+     "{\"200_Day_MA\": 100.16, \"CAGR_Revenue%\": 10, \"Change%\": 30.07, \"CoffeeCan_Class\": \"PASS\", \"CoffeeCan_Score\": 0, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Debt_Equity\": 0.5, \"Distance_to_200MA%\": 29.79, \"Dividend_Yield%\": 2, \"Error\": null, \"LTP\": 130.0, \"Name\": \"Adidas\", \"PEGY_Ratio\": 1.1, \"P_B_Ratio\": 1.2, \"P_E_Ratio\": 12, \"Piotroski_Class\": \"x\", \"Piotroski_Score\": 9, \"ROCE_Average%\": 15, \"Sector\": \"Tech\", \"Symbol\": \"ADS.DE\"}",
+     "{\"200_Day_MA\": 93.93, \"CAGR_Revenue%\": 12, \"Change%\": 0.44, \"CoffeeCan_Class\": \"PASS\", \"CoffeeCan_Score\": 2, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Debt_Equity\": 0.5, \"Distance_to_200MA%\": -7.9, \"Dividend_Yield%\": 2, \"Error\": null, \"LTP\": 86.51, \"Name\": \"Ahold Delhaize\", \"PEGY_Ratio\": 1.1, \"P_B_Ratio\": 1.2, \"P_E_Ratio\": 12, \"Piotroski_Class\": \"x\", \"Piotroski_Score\": 5, \"ROCE_Average%\": 17, \"Sector\": \"Tech\", \"Symbol\": \"AD.AS\"}"
+    ]
+   },
+   "Triple_Hits": {
+    "columns": [
+     "Symbol",
+     "Name",
+     "Sector",
+     "LTP",
+     "Change%",
+     "Darvas_Signal",
+     "200_Day_MA",
+     "Distance_to_200MA%",
+     "P_E_Ratio",
+     "P_B_Ratio",
+     "Dividend_Yield%",
+     "PEGY_Ratio",
+     "Piotroski_Score",
+     "Piotroski_Class",
+     "CoffeeCan_Score",
+     "CoffeeCan_Class",
+     "CAGR_Revenue%",
+     "ROCE_Average%",
+     "Debt_Equity",
+     "Error"
+    ],
+    "rows": [
+     "{\"200_Day_MA\": 100.14, \"CAGR_Revenue%\": 16, \"Change%\": 29.94, \"CoffeeCan_Class\": \"PASS\", \"CoffeeCan_Score\": 1, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Debt_Equity\": 0.5, \"Distance_to_200MA%\": 29.82, \"Dividend_Yield%\": 2, \"Error\": null, \"LTP\": 130, \"Name\": \"Anheuser-Busch InBev\", \"PEGY_Ratio\": 1.1, \"P_B_Ratio\": 1.2, \"P_E_Ratio\": 12, \"Piotroski_Class\": \"x\", \"Piotroski_Score\": 9, \"ROCE_Average%\": 21, \"Sector\": \"Tech\", \"Symbol\": \"ABI.BR\"}",
+     "{\"200_Day_MA\": 100.16, \"CAGR_Revenue%\": 10, \"Change%\": 30.07, \"CoffeeCan_Class\": \"PASS\", \"CoffeeCan_Score\": 0, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Debt_Equity\": 0.5, \"Distance_to_200MA%\": 29.79, \"Dividend_Yield%\": 2, \"Error\": null, \"LTP\": 130, \"Name\": \"Adidas\", \"PEGY_Ratio\": 1.1, \"P_B_Ratio\": 1.2, \"P_E_Ratio\": 12, \"Piotroski_Class\": \"x\", \"Piotroski_Score\": 9, \"ROCE_Average%\": 15, \"Sector\": \"Tech\", \"Symbol\": \"ADS.DE\"}"
+    ]
+   }
+  },
+  "stdout": [
+   "    4/4 processed (Triple Hits so far: 2)",
+   "    batch 1/3 \u2014 4 tickers with data so far",
+   "    batch 2/3 \u2014 8 tickers with data so far",
+   "    batch 3/3 \u2014 9 tickers with data so far",
+   "    \u2022 ABI.BR     Anheuser-Busch InBev           F-Score: 9/9  CC: 1  LTP: \u20ac130.0",
+   "    \u2022 ADS.DE     Adidas                         F-Score: 9/9  CC: 0  LTP: \u20ac130.0",
+   "  Darvas Breakouts Found:       4",
+   "  EUROPEAN MARKET SCANNER \u2014 european  (9 tickers)",
+   "  Emerging-market fundamentals (.IS/.PR/.BD): no provider key set (FMP_API_KEY / TWELVEDATA_KEY) \u2014 momentum-only",
+   "  Fundamentals Scanned:         4",
+   "  Processed 9 stocks. Found 4 Darvas breakouts.",
+   "  SCAN COMPLETE \u2014 <ts>",
+   "  Started: <ts>",
+   "  Total European Stocks Scanned: 9",
+   "  Triple Hit Stocks:",
+   "  \u2605 TRIPLE HITS FOUND:          2",
+   "  \ud83d\udcca Excel report saved \u2192 <path>",
+   "############################################################",
+   "############################################################",
+   "============================================================",
+   "============================================================",
+   "Stage 1 & 2 \u2014 Downloading 1y history for 9 stocks in batches of 4 \u2026",
+   "Stage 3 \u2014 Computing Darvas Box & 200-day MA Trend locally \u2026",
+   "Stage 4 \u2014 Fetching financials & scans for 4 breakouts (1 workers) \u2026",
+   "Stage 5 \u2014 Saving Excel workbook \u2026"
+  ]
+ },
+ "japan": {
+  "sheets": {
+   "All_Stocks": {
+    "columns": [
+     "YF_Ticker",
+     "Code",
+     "Name",
+     "Sector",
+     "LTP_JPY",
+     "Change%",
+     "200_Day_MA",
+     "Distance_to_200MA%",
+     "Trend_Signal",
+     "Darvas_Signal",
+     "Box_Top",
+     "Box_Bottom",
+     "Upside_to_Top%",
+     "Position_in_Box%",
+     "Data_Points"
+    ],
+    "rows": [
+     "{\"200_Day_MA\": 100, \"Box_Bottom\": 99, \"Box_Top\": 100, \"Change%\": -30.0, \"Code\": 1001, \"Darvas_Signal\": \"BREAKDOWN_SELL\", \"Data_Points\": 260, \"Distance_to_200MA%\": -30.0, \"LTP_JPY\": 70, \"Name\": \"Co1\", \"Position_in_Box%\": -1914.7, \"Sector\": \"S\", \"Trend_Signal\": \"Below 200MA (Downtrend)\", \"Upside_to_Top%\": 43.45, \"YF_Ticker\": \"1001.T\"}",
+     "{\"200_Day_MA\": 100, \"Box_Bottom\": 99, \"Box_Top\": 100, \"Change%\": 30.0, \"Code\": 1000, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Data_Points\": 260, \"Distance_to_200MA%\": 30.0, \"LTP_JPY\": 130, \"Name\": \"Co0\", \"Position_in_Box%\": 2266.3, \"Sector\": \"S\", \"Trend_Signal\": \"Above 200MA (Uptrend)\", \"Upside_to_Top%\": -22.71, \"YF_Ticker\": \"1000.T\"}",
+     "{\"200_Day_MA\": 100, \"Box_Bottom\": 99, \"Box_Top\": 101, \"Change%\": -30.0, \"Code\": 1004, \"Darvas_Signal\": \"BREAKDOWN_SELL\", \"Data_Points\": 260, \"Distance_to_200MA%\": -30.0, \"LTP_JPY\": 70, \"Name\": \"Co4\", \"Position_in_Box%\": -1445.1, \"Sector\": \"S\", \"Trend_Signal\": \"Below 200MA (Downtrend)\", \"Upside_to_Top%\": 43.9, \"YF_Ticker\": \"1004.T\"}",
+     "{\"200_Day_MA\": 100, \"Box_Bottom\": 99, \"Box_Top\": 101, \"Change%\": -30.0, \"Code\": 1007, \"Darvas_Signal\": \"BREAKDOWN_SELL\", \"Data_Points\": 260, \"Distance_to_200MA%\": -30.0, \"LTP_JPY\": 70, \"Name\": \"Co7\", \"Position_in_Box%\": -1752.0, \"Sector\": \"S\", \"Trend_Signal\": \"Below 200MA (Downtrend)\", \"Upside_to_Top%\": 43.94, \"YF_Ticker\": \"1007.T\"}",
+     "{\"200_Day_MA\": 100, \"Box_Bottom\": 99, \"Box_Top\": 101, \"Change%\": 30.0, \"Code\": 1003, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Data_Points\": 260, \"Distance_to_200MA%\": 30.0, \"LTP_JPY\": 130, \"Name\": \"Co3\", \"Position_in_Box%\": 1785.3, \"Sector\": \"S\", \"Trend_Signal\": \"Above 200MA (Uptrend)\", \"Upside_to_Top%\": -22.48, \"YF_Ticker\": \"1003.T\"}",
+     "{\"200_Day_MA\": 100, \"Box_Bottom\": 99, \"Box_Top\": 101, \"Change%\": 30.0, \"Code\": 1006, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Data_Points\": 260, \"Distance_to_200MA%\": 30.0, \"LTP_JPY\": 130, \"Name\": \"Co6\", \"Position_in_Box%\": 2258.1, \"Sector\": \"S\", \"Trend_Signal\": \"Above 200MA (Uptrend)\", \"Upside_to_Top%\": -22.44, \"YF_Ticker\": \"1006.T\"}",
+     "{\"200_Day_MA\": 109, \"Box_Bottom\": 119, \"Box_Top\": 122, \"Change%\": 0.0, \"Code\": 1008, \"Darvas_Signal\": \"IN_BOX\", \"Data_Points\": 260, \"Distance_to_200MA%\": 10.09, \"LTP_JPY\": 120, \"Name\": \"Co8\", \"Position_in_Box%\": 34.3, \"Sector\": \"S\", \"Trend_Signal\": \"Above 200MA (Uptrend)\", \"Upside_to_Top%\": 1.54, \"YF_Ticker\": \"1008.T\"}",
+     "{\"200_Day_MA\": 94, \"Box_Bottom\": 84, \"Box_Top\": 85, \"Change%\": 1.16, \"Code\": 1002, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Data_Points\": 260, \"Distance_to_200MA%\": -7.45, \"LTP_JPY\": 87, \"Name\": \"Co2\", \"Position_in_Box%\": 181.0, \"Sector\": \"S\", \"Trend_Signal\": \"Below 200MA (Downtrend)\", \"Upside_to_Top%\": -1.49, \"YF_Ticker\": \"1002.T\"}",
+     "{\"200_Day_MA\": 99, \"Box_Bottom\": 101, \"Box_Top\": 102, \"Change%\": -1.94, \"Code\": 1005, \"Darvas_Signal\": \"IN_BOX\", \"Data_Points\": 260, \"Distance_to_200MA%\": 2.02, \"LTP_JPY\": 101, \"Name\": \"Co5\", \"Position_in_Box%\": 20.4, \"Sector\": \"S\", \"Trend_Signal\": \"Near 200MA (Consolidation)\", \"Upside_to_Top%\": 1.18, \"YF_Ticker\": \"1005.T\"}"
+    ]
+   },
+   "Darvas_Signals": {
+    "columns": [
+     "YF_Ticker",
+     "Code",
+     "Name",
+     "Sector",
+     "LTP_JPY",
+     "Change%",
+     "200_Day_MA",
+     "Distance_to_200MA%",
+     "Trend_Signal",
+     "Darvas_Signal",
+     "Box_Top",
+     "Box_Bottom",
+     "Upside_to_Top%",
+     "Position_in_Box%",
+     "Data_Points"
+    ],
+    "rows": [
+     "{\"200_Day_MA\": 100, \"Box_Bottom\": 99, \"Box_Top\": 100, \"Change%\": -30.0, \"Code\": 1001, \"Darvas_Signal\": \"BREAKDOWN_SELL\", \"Data_Points\": 260, \"Distance_to_200MA%\": -30.0, \"LTP_JPY\": 70, \"Name\": \"Co1\", \"Position_in_Box%\": -1914.7, \"Sector\": \"S\", \"Trend_Signal\": \"Below 200MA (Downtrend)\", \"Upside_to_Top%\": 43.45, \"YF_Ticker\": \"1001.T\"}",
+     "{\"200_Day_MA\": 100, \"Box_Bottom\": 99, \"Box_Top\": 100, \"Change%\": 30.0, \"Code\": 1000, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Data_Points\": 260, \"Distance_to_200MA%\": 30.0, \"LTP_JPY\": 130, \"Name\": \"Co0\", \"Position_in_Box%\": 2266.3, \"Sector\": \"S\", \"Trend_Signal\": \"Above 200MA (Uptrend)\", \"Upside_to_Top%\": -22.71, \"YF_Ticker\": \"1000.T\"}",
+     "{\"200_Day_MA\": 100, \"Box_Bottom\": 99, \"Box_Top\": 101, \"Change%\": -30.0, \"Code\": 1004, \"Darvas_Signal\": \"BREAKDOWN_SELL\", \"Data_Points\": 260, \"Distance_to_200MA%\": -30.0, \"LTP_JPY\": 70, \"Name\": \"Co4\", \"Position_in_Box%\": -1445.1, \"Sector\": \"S\", \"Trend_Signal\": \"Below 200MA (Downtrend)\", \"Upside_to_Top%\": 43.9, \"YF_Ticker\": \"1004.T\"}",
+     "{\"200_Day_MA\": 100, \"Box_Bottom\": 99, \"Box_Top\": 101, \"Change%\": -30.0, \"Code\": 1007, \"Darvas_Signal\": \"BREAKDOWN_SELL\", \"Data_Points\": 260, \"Distance_to_200MA%\": -30.0, \"LTP_JPY\": 70, \"Name\": \"Co7\", \"Position_in_Box%\": -1752.0, \"Sector\": \"S\", \"Trend_Signal\": \"Below 200MA (Downtrend)\", \"Upside_to_Top%\": 43.94, \"YF_Ticker\": \"1007.T\"}",
+     "{\"200_Day_MA\": 100, \"Box_Bottom\": 99, \"Box_Top\": 101, \"Change%\": 30.0, \"Code\": 1003, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Data_Points\": 260, \"Distance_to_200MA%\": 30.0, \"LTP_JPY\": 130, \"Name\": \"Co3\", \"Position_in_Box%\": 1785.3, \"Sector\": \"S\", \"Trend_Signal\": \"Above 200MA (Uptrend)\", \"Upside_to_Top%\": -22.48, \"YF_Ticker\": \"1003.T\"}",
+     "{\"200_Day_MA\": 100, \"Box_Bottom\": 99, \"Box_Top\": 101, \"Change%\": 30.0, \"Code\": 1006, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Data_Points\": 260, \"Distance_to_200MA%\": 30.0, \"LTP_JPY\": 130, \"Name\": \"Co6\", \"Position_in_Box%\": 2258.1, \"Sector\": \"S\", \"Trend_Signal\": \"Above 200MA (Uptrend)\", \"Upside_to_Top%\": -22.44, \"YF_Ticker\": \"1006.T\"}",
+     "{\"200_Day_MA\": 94, \"Box_Bottom\": 84, \"Box_Top\": 85, \"Change%\": 1.16, \"Code\": 1002, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Data_Points\": 260, \"Distance_to_200MA%\": -7.45, \"LTP_JPY\": 87, \"Name\": \"Co2\", \"Position_in_Box%\": 181.0, \"Sector\": \"S\", \"Trend_Signal\": \"Below 200MA (Downtrend)\", \"Upside_to_Top%\": -1.49, \"YF_Ticker\": \"1002.T\"}"
+    ]
+   },
+   "Fundamentals": {
+    "columns": [
+     "YF_Ticker",
+     "Code",
+     "Name",
+     "Sector",
+     "LTP_JPY",
+     "Change%",
+     "Darvas_Signal",
+     "Upside_to_Top%",
+     "200_Day_MA",
+     "Piotroski_Score",
+     "Piotroski_Strong",
+     "CoffeeCan",
+     "CC_Score",
+     "Rev_CAGR%",
+     "ROCE_Avg%",
+     "Debt_Equity",
+     "MCap_B_JPY",
+     "Error"
+    ],
+    "rows": [
+     "{\"200_Day_MA\": 100, \"CC_Score\": 0, \"Change%\": 30.0, \"Code\": 1000, \"CoffeeCan\": \"PASS\", \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Debt_Equity\": 0.5, \"Error\": null, \"LTP_JPY\": 130, \"MCap_B_JPY\": 1.5, \"Name\": \"Co0\", \"Piotroski_Score\": 9, \"Piotroski_Strong\": \"YES\", \"ROCE_Avg%\": 15, \"Rev_CAGR%\": 10, \"Sector\": \"S\", \"Upside_to_Top%\": -22.71, \"YF_Ticker\": \"1000.T\"}",
+     "{\"200_Day_MA\": 100, \"CC_Score\": 1, \"Change%\": 30.0, \"Code\": 1006, \"CoffeeCan\": \"PASS\", \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Debt_Equity\": 0.5, \"Error\": null, \"LTP_JPY\": 130, \"MCap_B_JPY\": 7.5, \"Name\": \"Co6\", \"Piotroski_Score\": 9, \"Piotroski_Strong\": \"YES\", \"ROCE_Avg%\": 21, \"Rev_CAGR%\": 16, \"Sector\": \"S\", \"Upside_to_Top%\": -22.44, \"YF_Ticker\": \"1006.T\"}",
+     "{\"200_Day_MA\": 100, \"CC_Score\": 3, \"Change%\": 30.0, \"Code\": 1003, \"CoffeeCan\": \"FAIL\", \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Debt_Equity\": 0.5, \"Error\": null, \"LTP_JPY\": 130, \"MCap_B_JPY\": 4.5, \"Name\": \"Co3\", \"Piotroski_Score\": 9, \"Piotroski_Strong\": \"YES\", \"ROCE_Avg%\": 18, \"Rev_CAGR%\": 13, \"Sector\": \"S\", \"Upside_to_Top%\": -22.48, \"YF_Ticker\": \"1003.T\"}",
+     "{\"200_Day_MA\": 94, \"CC_Score\": 2, \"Change%\": 1.16, \"Code\": 1002, \"CoffeeCan\": \"PASS\", \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Debt_Equity\": 0.5, \"Error\": null, \"LTP_JPY\": 87, \"MCap_B_JPY\": 3.5, \"Name\": \"Co2\", \"Piotroski_Score\": 5, \"Piotroski_Strong\": \"NO\", \"ROCE_Avg%\": 17, \"Rev_CAGR%\": 12, \"Sector\": \"S\", \"Upside_to_Top%\": -1.49, \"YF_Ticker\": \"1002.T\"}"
+    ]
+   },
+   "Triple_Hits": {
+    "columns": [
+     "YF_Ticker",
+     "Code",
+     "Name",
+     "Sector",
+     "LTP_JPY",
+     "Change%",
+     "Darvas_Signal",
+     "Upside_to_Top%",
+     "200_Day_MA",
+     "Piotroski_Score",
+     "Piotroski_Strong",
+     "CoffeeCan",
+     "CC_Score",
+     "Rev_CAGR%",
+     "ROCE_Avg%",
+     "Debt_Equity",
+     "MCap_B_JPY",
+     "Error"
+    ],
+    "rows": [
+     "{\"200_Day_MA\": 100, \"CC_Score\": 0, \"Change%\": 30, \"Code\": 1000, \"CoffeeCan\": \"PASS\", \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Debt_Equity\": 0.5, \"Error\": null, \"LTP_JPY\": 130, \"MCap_B_JPY\": 1.5, \"Name\": \"Co0\", \"Piotroski_Score\": 9, \"Piotroski_Strong\": \"YES\", \"ROCE_Avg%\": 15, \"Rev_CAGR%\": 10, \"Sector\": \"S\", \"Upside_to_Top%\": -22.71, \"YF_Ticker\": \"1000.T\"}",
+     "{\"200_Day_MA\": 100, \"CC_Score\": 1, \"Change%\": 30, \"Code\": 1006, \"CoffeeCan\": \"PASS\", \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Debt_Equity\": 0.5, \"Error\": null, \"LTP_JPY\": 130, \"MCap_B_JPY\": 7.5, \"Name\": \"Co6\", \"Piotroski_Score\": 9, \"Piotroski_Strong\": \"YES\", \"ROCE_Avg%\": 21, \"Rev_CAGR%\": 16, \"Sector\": \"S\", \"Upside_to_Top%\": -22.44, \"YF_Ticker\": \"1006.T\"}"
+    ]
+   }
+  },
+  "stdout": [
+   "    4/4 done  (triple hits: 2)",
+   "    [1000] Co0                             F=9/9  CC=0  \u00a5130",
+   "    [1006] Co6                             F=9/9  CC=1  \u00a5130",
+   "  Breakdown SELL: 3",
+   "  Breakout BUY:   4",
+   "  Darvas Breakouts:      4",
+   "  FULL JAPAN (TSE) MARKET SCAN",
+   "  Fundamentals scanned:  4",
+   "  In Box:         2",
+   "  SCAN COMPLETE \u2014 <ts>",
+   "  Started: <ts>",
+   "  TSE stocks scanned:    9",
+   "  Triple-hit stocks:",
+   "  \u2192 9 tickers with usable OHLC data",
+   "  \u2605 TRIPLE HITS:         2",
+   "  \ud83d\udcca Excel saved \u2192 <path>",
+   "############################################################",
+   "############################################################",
+   "============================================================",
+   "============================================================",
+   "Stage 1 \u2014 Building TSE equity universe \u2026",
+   "Stage 2 \u2014 Bulk OHLC download (9 tickers) \u2026",
+   "Stage 3 \u2014 Darvas Box & 200-day MA screen \u2026",
+   "Stage 4 \u2014 Fundamental scans (4 candidates, 1 workers) \u2026",
+   "Stage 5 \u2014 Saving Excel workbook \u2026"
+  ]
+ },
+ "korea": {
+  "sheets": {
+   "All_Stocks": {
+    "columns": [
+     "Code",
+     "Name",
+     "Market",
+     "YF_Ticker",
+     "LTP_KRW",
+     "Change%",
+     "200_Day_MA",
+     "Distance_to_200MA%",
+     "Trend_Signal",
+     "Darvas_Signal",
+     "Box_Top",
+     "Box_Bottom",
+     "Upside_to_Top%",
+     "Position_in_Box%",
+     "Data_Points"
+    ],
+    "rows": [
+     "{\"200_Day_MA\": 100, \"Box_Bottom\": 99, \"Box_Top\": 100, \"Change%\": -30.0, \"Code\": 5001, \"Darvas_Signal\": \"BREAKDOWN_SELL\", \"Data_Points\": 260, \"Distance_to_200MA%\": -30.0, \"LTP_KRW\": 70, \"Market\": \"KOSPI\", \"Name\": \"Co1\", \"Position_in_Box%\": -1914.7, \"Trend_Signal\": \"Below 200MA (Downtrend)\", \"Upside_to_Top%\": 43.45, \"YF_Ticker\": \"005001.KS\"}",
+     "{\"200_Day_MA\": 100, \"Box_Bottom\": 99, \"Box_Top\": 100, \"Change%\": 30.0, \"Code\": 5000, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Data_Points\": 260, \"Distance_to_200MA%\": 30.0, \"LTP_KRW\": 130, \"Market\": \"KOSDAQ\", \"Name\": \"Co0\", \"Position_in_Box%\": 2266.3, \"Trend_Signal\": \"Above 200MA (Uptrend)\", \"Upside_to_Top%\": -22.71, \"YF_Ticker\": \"005000.KQ\"}",
+     "{\"200_Day_MA\": 100, \"Box_Bottom\": 99, \"Box_Top\": 101, \"Change%\": -30.0, \"Code\": 5004, \"Darvas_Signal\": \"BREAKDOWN_SELL\", \"Data_Points\": 260, \"Distance_to_200MA%\": -30.0, \"LTP_KRW\": 70, \"Market\": \"KOSDAQ\", \"Name\": \"Co4\", \"Position_in_Box%\": -1445.1, \"Trend_Signal\": \"Below 200MA (Downtrend)\", \"Upside_to_Top%\": 43.9, \"YF_Ticker\": \"005004.KQ\"}",
+     "{\"200_Day_MA\": 100, \"Box_Bottom\": 99, \"Box_Top\": 101, \"Change%\": -30.0, \"Code\": 5007, \"Darvas_Signal\": \"BREAKDOWN_SELL\", \"Data_Points\": 260, \"Distance_to_200MA%\": -30.0, \"LTP_KRW\": 70, \"Market\": \"KOSPI\", \"Name\": \"Co7\", \"Position_in_Box%\": -1752.0, \"Trend_Signal\": \"Below 200MA (Downtrend)\", \"Upside_to_Top%\": 43.94, \"YF_Ticker\": \"005007.KS\"}",
+     "{\"200_Day_MA\": 100, \"Box_Bottom\": 99, \"Box_Top\": 101, \"Change%\": 30.0, \"Code\": 5003, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Data_Points\": 260, \"Distance_to_200MA%\": 30.0, \"LTP_KRW\": 130, \"Market\": \"KOSPI\", \"Name\": \"Co3\", \"Position_in_Box%\": 1785.3, \"Trend_Signal\": \"Above 200MA (Uptrend)\", \"Upside_to_Top%\": -22.48, \"YF_Ticker\": \"005003.KS\"}",
+     "{\"200_Day_MA\": 100, \"Box_Bottom\": 99, \"Box_Top\": 101, \"Change%\": 30.0, \"Code\": 5006, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Data_Points\": 260, \"Distance_to_200MA%\": 30.0, \"LTP_KRW\": 130, \"Market\": \"KOSDAQ\", \"Name\": \"Co6\", \"Position_in_Box%\": 2258.1, \"Trend_Signal\": \"Above 200MA (Uptrend)\", \"Upside_to_Top%\": -22.44, \"YF_Ticker\": \"005006.KQ\"}",
+     "{\"200_Day_MA\": 109, \"Box_Bottom\": 119, \"Box_Top\": 122, \"Change%\": 0.0, \"Code\": 5008, \"Darvas_Signal\": \"IN_BOX\", \"Data_Points\": 260, \"Distance_to_200MA%\": 10.09, \"LTP_KRW\": 120, \"Market\": \"KOSDAQ\", \"Name\": \"Co8\", \"Position_in_Box%\": 34.3, \"Trend_Signal\": \"Above 200MA (Uptrend)\", \"Upside_to_Top%\": 1.54, \"YF_Ticker\": \"005008.KQ\"}",
+     "{\"200_Day_MA\": 94, \"Box_Bottom\": 84, \"Box_Top\": 85, \"Change%\": 1.16, \"Code\": 5002, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Data_Points\": 260, \"Distance_to_200MA%\": -7.45, \"LTP_KRW\": 87, \"Market\": \"KOSDAQ\", \"Name\": \"Co2\", \"Position_in_Box%\": 181.0, \"Trend_Signal\": \"Below 200MA (Downtrend)\", \"Upside_to_Top%\": -1.49, \"YF_Ticker\": \"005002.KQ\"}",
+     "{\"200_Day_MA\": 99, \"Box_Bottom\": 101, \"Box_Top\": 102, \"Change%\": -1.94, \"Code\": 5005, \"Darvas_Signal\": \"IN_BOX\", \"Data_Points\": 260, \"Distance_to_200MA%\": 2.02, \"LTP_KRW\": 101, \"Market\": \"KOSPI\", \"Name\": \"Co5\", \"Position_in_Box%\": 20.4, \"Trend_Signal\": \"Near 200MA (Consolidation)\", \"Upside_to_Top%\": 1.18, \"YF_Ticker\": \"005005.KS\"}"
+    ]
+   },
+   "Darvas_Signals": {
+    "columns": [
+     "Code",
+     "Name",
+     "Market",
+     "YF_Ticker",
+     "LTP_KRW",
+     "Change%",
+     "200_Day_MA",
+     "Distance_to_200MA%",
+     "Trend_Signal",
+     "Darvas_Signal",
+     "Box_Top",
+     "Box_Bottom",
+     "Upside_to_Top%",
+     "Position_in_Box%",
+     "Data_Points"
+    ],
+    "rows": [
+     "{\"200_Day_MA\": 100, \"Box_Bottom\": 99, \"Box_Top\": 100, \"Change%\": -30.0, \"Code\": 5001, \"Darvas_Signal\": \"BREAKDOWN_SELL\", \"Data_Points\": 260, \"Distance_to_200MA%\": -30.0, \"LTP_KRW\": 70, \"Market\": \"KOSPI\", \"Name\": \"Co1\", \"Position_in_Box%\": -1914.7, \"Trend_Signal\": \"Below 200MA (Downtrend)\", \"Upside_to_Top%\": 43.45, \"YF_Ticker\": \"005001.KS\"}",
+     "{\"200_Day_MA\": 100, \"Box_Bottom\": 99, \"Box_Top\": 100, \"Change%\": 30.0, \"Code\": 5000, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Data_Points\": 260, \"Distance_to_200MA%\": 30.0, \"LTP_KRW\": 130, \"Market\": \"KOSDAQ\", \"Name\": \"Co0\", \"Position_in_Box%\": 2266.3, \"Trend_Signal\": \"Above 200MA (Uptrend)\", \"Upside_to_Top%\": -22.71, \"YF_Ticker\": \"005000.KQ\"}",
+     "{\"200_Day_MA\": 100, \"Box_Bottom\": 99, \"Box_Top\": 101, \"Change%\": -30.0, \"Code\": 5004, \"Darvas_Signal\": \"BREAKDOWN_SELL\", \"Data_Points\": 260, \"Distance_to_200MA%\": -30.0, \"LTP_KRW\": 70, \"Market\": \"KOSDAQ\", \"Name\": \"Co4\", \"Position_in_Box%\": -1445.1, \"Trend_Signal\": \"Below 200MA (Downtrend)\", \"Upside_to_Top%\": 43.9, \"YF_Ticker\": \"005004.KQ\"}",
+     "{\"200_Day_MA\": 100, \"Box_Bottom\": 99, \"Box_Top\": 101, \"Change%\": -30.0, \"Code\": 5007, \"Darvas_Signal\": \"BREAKDOWN_SELL\", \"Data_Points\": 260, \"Distance_to_200MA%\": -30.0, \"LTP_KRW\": 70, \"Market\": \"KOSPI\", \"Name\": \"Co7\", \"Position_in_Box%\": -1752.0, \"Trend_Signal\": \"Below 200MA (Downtrend)\", \"Upside_to_Top%\": 43.94, \"YF_Ticker\": \"005007.KS\"}",
+     "{\"200_Day_MA\": 100, \"Box_Bottom\": 99, \"Box_Top\": 101, \"Change%\": 30.0, \"Code\": 5003, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Data_Points\": 260, \"Distance_to_200MA%\": 30.0, \"LTP_KRW\": 130, \"Market\": \"KOSPI\", \"Name\": \"Co3\", \"Position_in_Box%\": 1785.3, \"Trend_Signal\": \"Above 200MA (Uptrend)\", \"Upside_to_Top%\": -22.48, \"YF_Ticker\": \"005003.KS\"}",
+     "{\"200_Day_MA\": 100, \"Box_Bottom\": 99, \"Box_Top\": 101, \"Change%\": 30.0, \"Code\": 5006, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Data_Points\": 260, \"Distance_to_200MA%\": 30.0, \"LTP_KRW\": 130, \"Market\": \"KOSDAQ\", \"Name\": \"Co6\", \"Position_in_Box%\": 2258.1, \"Trend_Signal\": \"Above 200MA (Uptrend)\", \"Upside_to_Top%\": -22.44, \"YF_Ticker\": \"005006.KQ\"}",
+     "{\"200_Day_MA\": 94, \"Box_Bottom\": 84, \"Box_Top\": 85, \"Change%\": 1.16, \"Code\": 5002, \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Data_Points\": 260, \"Distance_to_200MA%\": -7.45, \"LTP_KRW\": 87, \"Market\": \"KOSDAQ\", \"Name\": \"Co2\", \"Position_in_Box%\": 181.0, \"Trend_Signal\": \"Below 200MA (Downtrend)\", \"Upside_to_Top%\": -1.49, \"YF_Ticker\": \"005002.KQ\"}"
+    ]
+   },
+   "Fundamentals": {
+    "columns": [
+     "Code",
+     "Name",
+     "Market",
+     "YF_Ticker",
+     "LTP_KRW",
+     "Change%",
+     "Darvas_Signal",
+     "Upside_to_Top%",
+     "200_Day_MA",
+     "Piotroski_Score",
+     "Piotroski_Strong",
+     "CoffeeCan",
+     "CC_Score",
+     "Rev_CAGR%",
+     "ROCE_Avg%",
+     "Debt_Equity",
+     "MCap_100M_KRW",
+     "Error"
+    ],
+    "rows": [
+     "{\"200_Day_MA\": 100, \"CC_Score\": 0, \"Change%\": 30.0, \"Code\": 5000, \"CoffeeCan\": \"PASS\", \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Debt_Equity\": 0.5, \"Error\": null, \"LTP_KRW\": 130, \"MCap_100M_KRW\": 2.5, \"Market\": \"KOSDAQ\", \"Name\": \"Co0\", \"Piotroski_Score\": 9, \"Piotroski_Strong\": \"YES\", \"ROCE_Avg%\": 15, \"Rev_CAGR%\": 10, \"Upside_to_Top%\": -22.71, \"YF_Ticker\": \"005000.KQ\"}",
+     "{\"200_Day_MA\": 100, \"CC_Score\": 1, \"Change%\": 30.0, \"Code\": 5006, \"CoffeeCan\": \"PASS\", \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Debt_Equity\": 0.5, \"Error\": null, \"LTP_KRW\": 130, \"MCap_100M_KRW\": 8.5, \"Market\": \"KOSDAQ\", \"Name\": \"Co6\", \"Piotroski_Score\": 9, \"Piotroski_Strong\": \"YES\", \"ROCE_Avg%\": 21, \"Rev_CAGR%\": 16, \"Upside_to_Top%\": -22.44, \"YF_Ticker\": \"005006.KQ\"}",
+     "{\"200_Day_MA\": 100, \"CC_Score\": 3, \"Change%\": 30.0, \"Code\": 5003, \"CoffeeCan\": \"FAIL\", \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Debt_Equity\": 0.5, \"Error\": null, \"LTP_KRW\": 130, \"MCap_100M_KRW\": 5.5, \"Market\": \"KOSPI\", \"Name\": \"Co3\", \"Piotroski_Score\": 9, \"Piotroski_Strong\": \"YES\", \"ROCE_Avg%\": 18, \"Rev_CAGR%\": 13, \"Upside_to_Top%\": -22.48, \"YF_Ticker\": \"005003.KS\"}",
+     "{\"200_Day_MA\": 94, \"CC_Score\": 2, \"Change%\": 1.16, \"Code\": 5002, \"CoffeeCan\": \"PASS\", \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Debt_Equity\": 0.5, \"Error\": null, \"LTP_KRW\": 87, \"MCap_100M_KRW\": 4.5, \"Market\": \"KOSDAQ\", \"Name\": \"Co2\", \"Piotroski_Score\": 5, \"Piotroski_Strong\": \"NO\", \"ROCE_Avg%\": 17, \"Rev_CAGR%\": 12, \"Upside_to_Top%\": -1.49, \"YF_Ticker\": \"005002.KQ\"}"
+    ]
+   },
+   "Triple_Hits": {
+    "columns": [
+     "Code",
+     "Name",
+     "Market",
+     "YF_Ticker",
+     "LTP_KRW",
+     "Change%",
+     "Darvas_Signal",
+     "Upside_to_Top%",
+     "200_Day_MA",
+     "Piotroski_Score",
+     "Piotroski_Strong",
+     "CoffeeCan",
+     "CC_Score",
+     "Rev_CAGR%",
+     "ROCE_Avg%",
+     "Debt_Equity",
+     "MCap_100M_KRW",
+     "Error"
+    ],
+    "rows": [
+     "{\"200_Day_MA\": 100, \"CC_Score\": 0, \"Change%\": 30, \"Code\": 5000, \"CoffeeCan\": \"PASS\", \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Debt_Equity\": 0.5, \"Error\": null, \"LTP_KRW\": 130, \"MCap_100M_KRW\": 2.5, \"Market\": \"KOSDAQ\", \"Name\": \"Co0\", \"Piotroski_Score\": 9, \"Piotroski_Strong\": \"YES\", \"ROCE_Avg%\": 15, \"Rev_CAGR%\": 10, \"Upside_to_Top%\": -22.71, \"YF_Ticker\": \"005000.KQ\"}",
+     "{\"200_Day_MA\": 100, \"CC_Score\": 1, \"Change%\": 30, \"Code\": 5006, \"CoffeeCan\": \"PASS\", \"Darvas_Signal\": \"BREAKOUT_BUY\", \"Debt_Equity\": 0.5, \"Error\": null, \"LTP_KRW\": 130, \"MCap_100M_KRW\": 8.5, \"Market\": \"KOSDAQ\", \"Name\": \"Co6\", \"Piotroski_Score\": 9, \"Piotroski_Strong\": \"YES\", \"ROCE_Avg%\": 21, \"Rev_CAGR%\": 16, \"Upside_to_Top%\": -22.44, \"YF_Ticker\": \"005006.KQ\"}"
+    ]
+   }
+  },
+  "stdout": [
+   "    4/4 done  (triple hits: 2)",
+   "    [005000] Co0                             F=9/9  CC=0  Market: KOSDAQ  \u20a9130",
+   "    [005006] Co6                             F=9/9  CC=1  Market: KOSDAQ  \u20a9130",
+   "  Breakdown SELL: 3",
+   "  Breakout BUY:   4",
+   "  Darvas Breakouts:      4",
+   "  FULL KOREA (KRX) MARKET SCAN",
+   "  Fundamentals scanned:  4",
+   "  In Box:         2",
+   "  KRX stocks scanned:    9",
+   "  SCAN COMPLETE \u2014 <ts>",
+   "  Started: <ts>",
+   "  Total: 9 tickers (4 KOSPI + 5 KOSDAQ)",
+   "  Triple-hit stocks:",
+   "  \u2605 TRIPLE HITS:         2",
+   "  \ud83d\udcca Excel saved \u2192 <path>",
+   "############################################################",
+   "############################################################",
+   "============================================================",
+   "============================================================",
+   "Stage 1 \u2014 Building KRX equity universe \u2026",
+   "Stage 2 \u2014 Fetching OHLC from KRX for 9 tickers \u2026",
+   "Stage 3 \u2014 Darvas Box screen \u2026",
+   "Stage 4 \u2014 Fundamental scans (4 candidates, 1 workers) \u2026",
+   "Stage 5 \u2014 Saving Excel workbook \u2026"
+  ]
+ }
+}

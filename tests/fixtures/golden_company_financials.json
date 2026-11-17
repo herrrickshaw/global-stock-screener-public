@@ -1,0 +1,187 @@
+{
+ "corrupt": {},
+ "empty_bytes": {},
+ "full/nopage": {
+  "asset_turnover": 0.94,
+  "asset_turnover_prev": 0.89,
+  "capex_history": [
+   600.0,
+   550.0,
+   500.0,
+   NaN,
+   NaN,
+   NaN
+  ],
+  "cash": 80.0,
+  "cfo": 140.0,
+  "debt_history": [
+   400.0,
+   380.0,
+   350.0,
+   NaN,
+   NaN,
+   NaN
+  ],
+  "debt_to_assets": 0.25,
+  "debt_to_assets_prev": 0.26,
+  "debt_to_equity": 0.4,
+  "dividend_history": [
+   20.0,
+   18.0,
+   0.0,
+   NaN,
+   NaN,
+   NaN
+  ],
+  "dividend_pay_years": 2,
+  "ebit": 210.0,
+  "eps_growth": 25.0,
+  "eps_ttm": 12.5,
+  "inventory": 150.0,
+  "net_income": 120.0,
+  "net_income_prev": 100.0,
+  "profit_growth": 20.0,
+  "quarterly_net_income": [
+   120.0,
+   100.0,
+   90.0,
+   80.0,
+   70.0,
+   60.0
+  ],
+  "receivables": 210.0,
+  "revenue": 1500.0,
+  "revenue_5y_ago": 800.0,
+  "roa": 7.5,
+  "roa_prev": 6.8,
+  "roe": 12.0,
+  "roe_history": [
+   12.0,
+   11.1,
+   11.2,
+   NaN,
+   NaN,
+   NaN
+  ],
+  "shares": 10.0,
+  "shares_prev": 10.0,
+  "source": "screener.in"
+ },
+ "full/page": {
+  "asset_turnover": 0.94,
+  "asset_turnover_prev": 0.89,
+  "book_value": 90.0,
+  "capex_history": [
+   600.0,
+   550.0,
+   500.0,
+   NaN,
+   NaN,
+   NaN
+  ],
+  "cash": 80.0,
+  "cfo": 140.0,
+  "current_price": 450.0,
+  "debt_history": [
+   400.0,
+   380.0,
+   350.0,
+   NaN,
+   NaN,
+   NaN
+  ],
+  "debt_to_assets": 0.25,
+  "debt_to_assets_prev": 0.26,
+  "debt_to_equity": 0.4,
+  "dividend_history": [
+   20.0,
+   18.0,
+   0.0,
+   NaN,
+   NaN,
+   NaN
+  ],
+  "dividend_pay_years": 2,
+  "dividend_yield": 1.1,
+  "earnings_yield": 1.7,
+  "ebit": 210.0,
+  "enterprise_value": 12320.0,
+  "eps_growth": 25.0,
+  "eps_ttm": 12.5,
+  "inventory": 150.0,
+  "market_cap_cr": 12000.0,
+  "net_income": 120.0,
+  "net_income_prev": 100.0,
+  "pe": 20.5,
+  "profit_growth": 20.0,
+  "quarterly_net_income": [
+   120.0,
+   100.0,
+   90.0,
+   80.0,
+   70.0,
+   60.0
+  ],
+  "receivables": 210.0,
+  "revenue": 1500.0,
+  "revenue_5y_ago": 800.0,
+  "roa": 7.5,
+  "roa_prev": 6.8,
+  "roc": 22.1,
+  "roce": 22.1,
+  "roe": 18.5,
+  "roe_history": [
+   12.0,
+   11.1,
+   11.2,
+   NaN,
+   NaN,
+   NaN
+  ],
+  "shares": 10.0,
+  "shares_prev": 10.0,
+  "source": "screener.in"
+ },
+ "no_labels/nopage": {
+  "source": "screener.in"
+ },
+ "no_labels/page": {
+  "book_value": 90.0,
+  "current_price": 450.0,
+  "dividend_yield": 1.1,
+  "enterprise_value": 12000.0,
+  "market_cap_cr": 12000.0,
+  "pe": 20.5,
+  "roc": 22.1,
+  "roce": 22.1,
+  "roe": 18.5,
+  "source": "screener.in"
+ },
+ "sparse/nopage": {
+  "net_income": 10.0,
+  "quarterly_net_income": [
+   10.0
+  ],
+  "revenue": 100.0,
+  "revenue_5y_ago": 100.0,
+  "source": "screener.in"
+ },
+ "sparse/page": {
+  "book_value": 90.0,
+  "current_price": 450.0,
+  "dividend_yield": 1.1,
+  "enterprise_value": 12000.0,
+  "market_cap_cr": 12000.0,
+  "net_income": 10.0,
+  "pe": 20.5,
+  "quarterly_net_income": [
+   10.0
+  ],
+  "revenue": 100.0,
+  "revenue_5y_ago": 100.0,
+  "roc": 22.1,
+  "roce": 22.1,
+  "roe": 18.5,
+  "source": "screener.in"
+ }
+}

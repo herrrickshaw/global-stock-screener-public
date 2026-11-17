@@ -257,6 +257,137 @@ class Blocked(RuntimeError):
     """screener.in stopped serving us. Raised so the caller can ABORT, not grind on."""
 
 
+def _add_ebit_and_industry(row: dict, industry, lender: bool) -> None:
+    """EBIT (never for lenders), interest/revenue share, industry and lender flag."""
+    # EBIT and capital employed, derived from reported annual line items so
+    # downstream ROCE consumers never re-derive them inconsistently.
+    pbt, interest = row.get("profit_before_tax"), row.get("interest")
+    rev = row.get("revenue")
+    # 🔴 EBIT IS NOT DEFINED FOR LENDERS, AND THIS FILE CANNOT RELIABLY DETECT THEM.
+    # `pbt + interest` adds interest back as a financing cost. For a bank/HFC/NBFC
+    # interest IS cost of goods sold — borrowing is the raw material. EBIT inflates
+    # ~4x, borrowings inflate capital_employed ~9x, AND THE ERRORS PARTIALLY CANCEL:
+    # AADHARHFC lands at ROCE 8.5-10.7% every year, INSIDE the 5-25% plausibility
+    # band, so no range check can fire. True ROE is 14.1-16.8% — a systematic ~5pp
+    # understatement reading as a mediocre business. 34/245 rows flip a live screen
+    # threshold. It survived the validation that was run because RELIANCE 8.9% /
+    # TCS 56.8% are both NON-financials.
+    #
+    # An interest/revenue >= 25% gate was tried and REFUTED by the data:
+    #     AADHARHFC  48.8%  lender      caught
+    #     ADANIPOWER 41.1%  POWER co    FALSE POSITIVE — would void a valid ROCE
+    #     360ONE     14.1%  NBFC        FALSE NEGATIVE — missed
+    #     5PAISA      9.6%  broker      FALSE NEGATIVE — missed
+    # interest/revenue measures LEVERAGE, not LENDING. A heuristic wrong in both
+    # directions is worse than none: it would silently void Adani Power while still
+    # passing the NBFC the validator flagged.
+    #
+    # So: FLAG, do not silently decide. `interest_share_of_revenue` is emitted for
+    # every row and consumers MUST exclude financials themselves using a real sector
+    # source (screener.in renders a different P&L for banks — "Financing Profit" /
+    # "Financing Margin" instead of Operating Profit — which is the honest detector,
+    # but this collector does not read those rows yet).
+    # Until then ROCE for lenders is WRONG and there is no guard. Documented rather
+    # than papered over.
+    if interest is not None and rev not in (None, 0):
+        row["interest_share_of_revenue"] = abs(interest) / abs(rev)
+    row["industry"] = industry
+    row["is_financial"] = lender
+    # DECLINE for financials. A null is honest; ROCE 9.6% for an HFC is not, and it
+    # is invisible to every guard the pipeline has.
+    if pbt is not None and interest is not None and not lender:
+        row["ebit"] = pbt + interest
+
+
+def _add_gross_margin(row: dict) -> None:
+    """Gross profit/margin for manufacturers only (see the validation notes below)."""
+    # Gross profit. screener.in publishes no Gross Profit / COGS row, so COGS is
+    # assembled from the itemised annual cost lines. The sign convention is NOT
+    # guessed — it is pinned by reconstructing reported Profit-before-tax:
+    #   Sales - RawMat + ChgInv - Power - OtherMfr - Employee - Selling - OtherExp
+    #         + OtherIncome - Depreciation - Interest  ==  PBT
+    # On RELIANCE FY2017 that reproduces the reported PBT of 40,777 EXACTLY, and
+    # only when Change in Inventory is ADDED — it is a credit to profit, hence a
+    # REDUCTION of cost. The same chain independently reproduces EBIT 43,500,
+    # matching pbt+interest above, so the two derivations corroborate each other.
+    #
+    # Employee Cost and Selling/admin are EXCLUDED: they are SG&A. Folding them in
+    # would compute an OPERATING margin and label it a gross margin — which is the
+    # kind of plausible-but-wrong field that is worse than a missing one.
+    # GATED ON BUSINESS MODEL — this COGS definition is MANUFACTURER-ONLY.
+    #
+    # I previously claimed the PBT identity proved gross margin "isn't a judgement
+    # call". That was wrong. The identity pins the ARITHMETIC (it proved Change in
+    # Inventory is a credit, reproducing reported PBT to the rupee) but says nothing
+    # about WHICH lines are cost-of-goods for a given business. TCS exposed it:
+    #     Raw Material Cost 94  vs  Sales 92,693  (0.1%)  — because TCS's real cost
+    #     of service is Employee Cost 48,116.
+    # Formula A would report ~98% gross margin for TCS against a true ~42%, i.e. a
+    # plausible-looking, badly wrong number for every IT/services firm in the universe.
+    #
+    # Validated against yfinance's TRUE Gross Profit (64 company-years, 17 tickers):
+    #     rm/sales >30% (manufacturers)  error  -0.1pp   <- essentially exact
+    #     rm/sales 5-30% (mixed)         error  +6.7pp
+    #     rm/sales <5%  (services)       NO DATA to validate against
+    #
+    # So the formula is applied ONLY where it was proven, and SKIPPED elsewhere.
+    # Skipping is not a cop-out: weigh() drops a None test from both numerator and
+    # denominator, so a services firm scores on 7 tests and stays comparable. A
+    # wrong-but-populated field is the failure mode this repo keeps hitting (the
+    # quarterly Operating Profit splice, the ratio-inverted ROCE at 95-137%, the
+    # current-ratio proxy at 62.1% vs a 57.6% coin flip).
+    #
+    # A services COGS (employee cost as cost of revenue) is defensible in principle
+    # but screener.in does not split Employee Cost into direct vs SG&A, and there is
+    # no validation sample here for it. Left unimplemented rather than guessed.
+    MFR_RM_SHARE_MIN = 0.30
+    rm, chg = row.get("raw_material_cost"), row.get("change_in_inventory")
+    pf, omf = row.get("power_and_fuel"), row.get("other_mfr_exp")
+    sales = row.get("revenue")
+    if rm is not None and sales:
+        row["rm_share"] = rm / sales
+        if row["rm_share"] >= MFR_RM_SHARE_MIN:
+            # `(x or 0)` LOOKS safe and is not: _num(np.nan) returns nan, because
+            # float(str(nan)) SUCCEEDS so the None fallback never fires — and then
+            # `nan or 0` yields nan, because NaN is TRUTHY. That silently voided 15%
+            # of gate-passing rows and hit FY2026 for six tickers: the most recent
+            # year, the most damaged.
+            cogs = rm - _zero(chg) + _zero(pf) + _zero(omf)
+            row["cogs"] = cogs
+            row["gross_profit"] = sales - cogs
+            row["gross_margin"] = row["gross_profit"] / sales
+        # else: not a manufacturer -> gross_margin stays absent, test 8 is skipped
+
+
+def _add_capital_employed_and_roce(row: dict) -> None:
+    """Capital employed (equity + reserves + borrowings) and ROCE where EBIT is defined."""
+    # Capital employed = shareholders' funds + debt. screener.in's balance
+    # sheet gives the pieces directly (Equity Share Capital + Reserves +
+    # Borrowings), so this is a sum of reported figures, not an inversion.
+    eq, res, bor = (row.get("equity_capital"), row.get("reserves"), row.get("borrowings"))
+    if eq is not None and res is not None and bor is not None:
+        ce = eq + res + bor
+        # A NEGATIVE-NET-WORTH shell rescued into positive CE by borrowings is worse
+        # than a negative denominator: the `ce > 0` guard fires on ZERO rows and the
+        # ratio looks computable. 505196 has net worth -292.07 and CE +118.62, printing
+        # +109.4% ROCE off a restructuring write-back. Require positive SHAREHOLDER
+        # FUNDS, not just positive CE.
+        row["capital_employed"] = ce if (eq + res) > 0 and ce > 0 else None
+    # roce only where EBIT is defined — i.e. never for lenders
+    if row.get("ebit") is not None and row.get("capital_employed"):
+        row["roce"] = row["ebit"] / row["capital_employed"]
+
+
+def _derive_annual_row(ticker, fy, fields: dict, industry, lender: bool) -> dict:
+    """One per-fiscal-year row: reported items plus derived EBIT / gross margin / ROCE."""
+    row = {"ticker": ticker, "fy_end": fy.strftime("%Y-%m-%d")}
+    row.update(fields)
+    _add_ebit_and_industry(row, industry, lender)
+    _add_gross_margin(row)
+    _add_capital_employed_and_roce(row)
+    return row
+
+
 def collect_ticker(sess_mod, ticker):
     """Fetch + parse one company. Returns list of per-fiscal-year row dicts.
 
@@ -284,120 +415,11 @@ def collect_ticker(sess_mod, ticker):
     annual = _extract_annual(df)
     industry = industry_of(sess_mod, ticker)
     lender = is_financial(industry)
-    rows = []
-    for fy, fields in sorted(annual.items()):
-        row = {"ticker": ticker, "fy_end": fy.strftime("%Y-%m-%d")}
-        row.update(fields)
-        # EBIT and capital employed, derived from reported annual line items so
-        # downstream ROCE consumers never re-derive them inconsistently.
-        pbt, interest = row.get("profit_before_tax"), row.get("interest")
-        rev = row.get("revenue")
-        # 🔴 EBIT IS NOT DEFINED FOR LENDERS, AND THIS FILE CANNOT RELIABLY DETECT THEM.
-        # `pbt + interest` adds interest back as a financing cost. For a bank/HFC/NBFC
-        # interest IS cost of goods sold — borrowing is the raw material. EBIT inflates
-        # ~4x, borrowings inflate capital_employed ~9x, AND THE ERRORS PARTIALLY CANCEL:
-        # AADHARHFC lands at ROCE 8.5-10.7% every year, INSIDE the 5-25% plausibility
-        # band, so no range check can fire. True ROE is 14.1-16.8% — a systematic ~5pp
-        # understatement reading as a mediocre business. 34/245 rows flip a live screen
-        # threshold. It survived the validation that was run because RELIANCE 8.9% /
-        # TCS 56.8% are both NON-financials.
-        #
-        # An interest/revenue >= 25% gate was tried and REFUTED by the data:
-        #     AADHARHFC  48.8%  lender      caught
-        #     ADANIPOWER 41.1%  POWER co    FALSE POSITIVE — would void a valid ROCE
-        #     360ONE     14.1%  NBFC        FALSE NEGATIVE — missed
-        #     5PAISA      9.6%  broker      FALSE NEGATIVE — missed
-        # interest/revenue measures LEVERAGE, not LENDING. A heuristic wrong in both
-        # directions is worse than none: it would silently void Adani Power while still
-        # passing the NBFC the validator flagged.
-        #
-        # So: FLAG, do not silently decide. `interest_share_of_revenue` is emitted for
-        # every row and consumers MUST exclude financials themselves using a real sector
-        # source (screener.in renders a different P&L for banks — "Financing Profit" /
-        # "Financing Margin" instead of Operating Profit — which is the honest detector,
-        # but this collector does not read those rows yet).
-        # Until then ROCE for lenders is WRONG and there is no guard. Documented rather
-        # than papered over.
-        if interest is not None and rev not in (None, 0):
-            row["interest_share_of_revenue"] = abs(interest) / abs(rev)
-        row["industry"] = industry
-        row["is_financial"] = lender
-        # DECLINE for financials. A null is honest; ROCE 9.6% for an HFC is not, and it
-        # is invisible to every guard the pipeline has.
-        if pbt is not None and interest is not None and not lender:
-            row["ebit"] = pbt + interest
-        # Gross profit. screener.in publishes no Gross Profit / COGS row, so COGS is
-        # assembled from the itemised annual cost lines. The sign convention is NOT
-        # guessed — it is pinned by reconstructing reported Profit-before-tax:
-        #   Sales - RawMat + ChgInv - Power - OtherMfr - Employee - Selling - OtherExp
-        #         + OtherIncome - Depreciation - Interest  ==  PBT
-        # On RELIANCE FY2017 that reproduces the reported PBT of 40,777 EXACTLY, and
-        # only when Change in Inventory is ADDED — it is a credit to profit, hence a
-        # REDUCTION of cost. The same chain independently reproduces EBIT 43,500,
-        # matching pbt+interest above, so the two derivations corroborate each other.
-        #
-        # Employee Cost and Selling/admin are EXCLUDED: they are SG&A. Folding them in
-        # would compute an OPERATING margin and label it a gross margin — which is the
-        # kind of plausible-but-wrong field that is worse than a missing one.
-        # GATED ON BUSINESS MODEL — this COGS definition is MANUFACTURER-ONLY.
-        #
-        # I previously claimed the PBT identity proved gross margin "isn't a judgement
-        # call". That was wrong. The identity pins the ARITHMETIC (it proved Change in
-        # Inventory is a credit, reproducing reported PBT to the rupee) but says nothing
-        # about WHICH lines are cost-of-goods for a given business. TCS exposed it:
-        #     Raw Material Cost 94  vs  Sales 92,693  (0.1%)  — because TCS's real cost
-        #     of service is Employee Cost 48,116.
-        # Formula A would report ~98% gross margin for TCS against a true ~42%, i.e. a
-        # plausible-looking, badly wrong number for every IT/services firm in the universe.
-        #
-        # Validated against yfinance's TRUE Gross Profit (64 company-years, 17 tickers):
-        #     rm/sales >30% (manufacturers)  error  -0.1pp   <- essentially exact
-        #     rm/sales 5-30% (mixed)         error  +6.7pp
-        #     rm/sales <5%  (services)       NO DATA to validate against
-        #
-        # So the formula is applied ONLY where it was proven, and SKIPPED elsewhere.
-        # Skipping is not a cop-out: weigh() drops a None test from both numerator and
-        # denominator, so a services firm scores on 7 tests and stays comparable. A
-        # wrong-but-populated field is the failure mode this repo keeps hitting (the
-        # quarterly Operating Profit splice, the ratio-inverted ROCE at 95-137%, the
-        # current-ratio proxy at 62.1% vs a 57.6% coin flip).
-        #
-        # A services COGS (employee cost as cost of revenue) is defensible in principle
-        # but screener.in does not split Employee Cost into direct vs SG&A, and there is
-        # no validation sample here for it. Left unimplemented rather than guessed.
-        MFR_RM_SHARE_MIN = 0.30
-        rm, chg = row.get("raw_material_cost"), row.get("change_in_inventory")
-        pf, omf = row.get("power_and_fuel"), row.get("other_mfr_exp")
-        sales = row.get("revenue")
-        if rm is not None and sales:
-            row["rm_share"] = rm / sales
-            if row["rm_share"] >= MFR_RM_SHARE_MIN:
-                # `(x or 0)` LOOKS safe and is not: _num(np.nan) returns nan, because
-                # float(str(nan)) SUCCEEDS so the None fallback never fires — and then
-                # `nan or 0` yields nan, because NaN is TRUTHY. That silently voided 15%
-                # of gate-passing rows and hit FY2026 for six tickers: the most recent
-                # year, the most damaged.
-                cogs = rm - _zero(chg) + _zero(pf) + _zero(omf)
-                row["cogs"] = cogs
-                row["gross_profit"] = sales - cogs
-                row["gross_margin"] = row["gross_profit"] / sales
-            # else: not a manufacturer -> gross_margin stays absent, test 8 is skipped
-        # Capital employed = shareholders' funds + debt. screener.in's balance
-        # sheet gives the pieces directly (Equity Share Capital + Reserves +
-        # Borrowings), so this is a sum of reported figures, not an inversion.
-        eq, res, bor = (row.get("equity_capital"), row.get("reserves"), row.get("borrowings"))
-        if eq is not None and res is not None and bor is not None:
-            ce = eq + res + bor
-            # A NEGATIVE-NET-WORTH shell rescued into positive CE by borrowings is worse
-            # than a negative denominator: the `ce > 0` guard fires on ZERO rows and the
-            # ratio looks computable. 505196 has net worth -292.07 and CE +118.62, printing
-            # +109.4% ROCE off a restructuring write-back. Require positive SHAREHOLDER
-            # FUNDS, not just positive CE.
-            row["capital_employed"] = ce if (eq + res) > 0 and ce > 0 else None
-        # roce only where EBIT is defined — i.e. never for lenders
-        if row.get("ebit") is not None and row.get("capital_employed"):
-            row["roce"] = row["ebit"] / row["capital_employed"]
-        rows.append(row)
+
+    rows = [
+        _derive_annual_row(ticker, fy, fields, industry, lender)
+        for fy, fields in sorted(annual.items())
+    ]
     return rows
 
 

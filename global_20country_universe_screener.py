@@ -5,11 +5,152 @@ Scales phased filtering to 50,000+ companies across North America, Europe, Asia-
 Generates 11-D expansion scores with regional analysis
 """
 
+import copy
 import time
 from datetime import datetime
 
 import numpy as np
 import pandas as pd
+
+COUNTRIES_CONFIG = {
+    # NORTH AMERICA (5 countries)
+    "USA": {
+        "region": "North America",
+        "companies": 5800,
+        "sectors": ["Technology", "Finance", "Healthcare", "Energy", "Industrials"],
+        "major_exchanges": ["NYSE", "NASDAQ"],
+        "description": "Largest market, most liquid",
+    },
+    "Canada": {
+        "region": "North America",
+        "companies": 1200,
+        "sectors": ["Energy", "Materials", "Finance", "Utilities"],
+        "major_exchanges": ["TSX", "TSX Venture"],
+        "description": "Resources and finance focused",
+    },
+    "Mexico": {
+        "region": "North America",
+        "companies": 600,
+        "sectors": ["Consumer", "Materials", "Industrials", "Finance"],
+        "major_exchanges": ["BMV"],
+        "description": "Emerging economy, growing industrial base",
+    },
+    # EUROPE (8 countries)
+    "Germany": {
+        "region": "Europe",
+        "companies": 2400,
+        "sectors": ["Industrials", "Automotive", "Finance", "Healthcare"],
+        "major_exchanges": ["Frankfurt", "DAX"],
+        "description": "Manufacturing powerhouse",
+    },
+    "UK": {
+        "region": "Europe",
+        "companies": 2200,
+        "sectors": ["Finance", "Energy", "Pharma", "Consumer"],
+        "major_exchanges": ["LSE", "AIM"],
+        "description": "Financial hub, diverse economy",
+    },
+    "France": {
+        "region": "Europe",
+        "companies": 1800,
+        "sectors": ["Luxury", "Finance", "Energy", "Industrials"],
+        "major_exchanges": ["Euronext Paris"],
+        "description": "Luxury goods & energy",
+    },
+    "Switzerland": {
+        "region": "Europe",
+        "companies": 1200,
+        "sectors": ["Finance", "Pharma", "Industrials", "Food"],
+        "major_exchanges": ["SIX Swiss Exchange"],
+        "description": "Finance & pharmaceutical hub",
+    },
+    "Netherlands": {
+        "region": "Europe",
+        "companies": 800,
+        "sectors": ["Finance", "Industrials", "Energy", "Consumer"],
+        "major_exchanges": ["Euronext Amsterdam"],
+        "description": "Financial and logistics center",
+    },
+    "Spain": {
+        "region": "Europe",
+        "companies": 900,
+        "sectors": ["Finance", "Utilities", "Real Estate", "Consumer"],
+        "major_exchanges": ["BME"],
+        "description": "Utilities and finance leaders",
+    },
+    "Italy": {
+        "region": "Europe",
+        "companies": 700,
+        "sectors": ["Luxury", "Finance", "Industrials", "Consumer"],
+        "major_exchanges": ["Borsa Italiana"],
+        "description": "Fashion and finance",
+    },
+    "Sweden": {
+        "region": "Europe",
+        "companies": 600,
+        "sectors": ["Finance", "Industrials", "Telecom", "Automotive"],
+        "major_exchanges": ["Nasdaq Stockholm"],
+        "description": "Technology and industrial leaders",
+    },
+    # ASIA-PACIFIC (7 countries)
+    "Japan": {
+        "region": "Asia-Pacific",
+        "companies": 3500,
+        "sectors": ["Automotive", "Electronics", "Finance", "Industrials"],
+        "major_exchanges": ["TSE", "Osaka"],
+        "description": "World's 3rd largest economy, manufacturing",
+    },
+    "China": {
+        "region": "Asia-Pacific",
+        "companies": 4200,
+        "sectors": ["Technology", "Finance", "Manufacturing", "Energy"],
+        "major_exchanges": ["Shanghai", "Shenzhen", "Hong Kong"],
+        "description": "Fastest growing, tech leader",
+    },
+    "South Korea": {
+        "region": "Asia-Pacific",
+        "companies": 2200,
+        "sectors": ["Electronics", "Automotive", "Finance", "Energy"],
+        "major_exchanges": ["KRX", "KOSDAQ"],
+        "description": "Tech and automotive powerhouse",
+    },
+    "India": {
+        "region": "Asia-Pacific",
+        "companies": 2800,
+        "sectors": ["Technology", "Finance", "Pharmaceuticals", "Industrials"],
+        "major_exchanges": ["NSE", "BSE"],
+        "description": "Emerging tech hub and pharma leader",
+    },
+    "Australia": {
+        "region": "Asia-Pacific",
+        "companies": 1200,
+        "sectors": ["Materials", "Finance", "Energy", "Utilities"],
+        "major_exchanges": ["ASX"],
+        "description": "Resources and finance",
+    },
+    "Singapore": {
+        "region": "Asia-Pacific",
+        "companies": 700,
+        "sectors": ["Finance", "Industrials", "Real Estate", "Energy"],
+        "major_exchanges": ["SGX"],
+        "description": "Financial center and trade hub",
+    },
+    "Hong Kong": {
+        "region": "Asia-Pacific",
+        "companies": 1200,
+        "sectors": ["Finance", "Real Estate", "Utilities", "Consumer"],
+        "major_exchanges": ["HKEX"],
+        "description": "Finance hub and gateway to China",
+    },
+    # EMERGING MARKETS (not listed above, part of 20)
+    "Brazil": {
+        "region": "Emerging Markets",
+        "companies": 1200,
+        "sectors": ["Finance", "Energy", "Materials", "Utilities"],
+        "major_exchanges": ["B3"],
+        "description": "Largest Latin American economy",
+    },
+}
 
 
 class Global20CountryScreener:
@@ -22,146 +163,8 @@ class Global20CountryScreener:
         self.total_candidates = 0
 
     def _define_countries(self) -> dict:
-        """Define 20 country universe with company estimates"""
-        return {
-            # NORTH AMERICA (5 countries)
-            "USA": {
-                "region": "North America",
-                "companies": 5800,
-                "sectors": ["Technology", "Finance", "Healthcare", "Energy", "Industrials"],
-                "major_exchanges": ["NYSE", "NASDAQ"],
-                "description": "Largest market, most liquid",
-            },
-            "Canada": {
-                "region": "North America",
-                "companies": 1200,
-                "sectors": ["Energy", "Materials", "Finance", "Utilities"],
-                "major_exchanges": ["TSX", "TSX Venture"],
-                "description": "Resources and finance focused",
-            },
-            "Mexico": {
-                "region": "North America",
-                "companies": 600,
-                "sectors": ["Consumer", "Materials", "Industrials", "Finance"],
-                "major_exchanges": ["BMV"],
-                "description": "Emerging economy, growing industrial base",
-            },
-            # EUROPE (8 countries)
-            "Germany": {
-                "region": "Europe",
-                "companies": 2400,
-                "sectors": ["Industrials", "Automotive", "Finance", "Healthcare"],
-                "major_exchanges": ["Frankfurt", "DAX"],
-                "description": "Manufacturing powerhouse",
-            },
-            "UK": {
-                "region": "Europe",
-                "companies": 2200,
-                "sectors": ["Finance", "Energy", "Pharma", "Consumer"],
-                "major_exchanges": ["LSE", "AIM"],
-                "description": "Financial hub, diverse economy",
-            },
-            "France": {
-                "region": "Europe",
-                "companies": 1800,
-                "sectors": ["Luxury", "Finance", "Energy", "Industrials"],
-                "major_exchanges": ["Euronext Paris"],
-                "description": "Luxury goods & energy",
-            },
-            "Switzerland": {
-                "region": "Europe",
-                "companies": 1200,
-                "sectors": ["Finance", "Pharma", "Industrials", "Food"],
-                "major_exchanges": ["SIX Swiss Exchange"],
-                "description": "Finance & pharmaceutical hub",
-            },
-            "Netherlands": {
-                "region": "Europe",
-                "companies": 800,
-                "sectors": ["Finance", "Industrials", "Energy", "Consumer"],
-                "major_exchanges": ["Euronext Amsterdam"],
-                "description": "Financial and logistics center",
-            },
-            "Spain": {
-                "region": "Europe",
-                "companies": 900,
-                "sectors": ["Finance", "Utilities", "Real Estate", "Consumer"],
-                "major_exchanges": ["BME"],
-                "description": "Utilities and finance leaders",
-            },
-            "Italy": {
-                "region": "Europe",
-                "companies": 700,
-                "sectors": ["Luxury", "Finance", "Industrials", "Consumer"],
-                "major_exchanges": ["Borsa Italiana"],
-                "description": "Fashion and finance",
-            },
-            "Sweden": {
-                "region": "Europe",
-                "companies": 600,
-                "sectors": ["Finance", "Industrials", "Telecom", "Automotive"],
-                "major_exchanges": ["Nasdaq Stockholm"],
-                "description": "Technology and industrial leaders",
-            },
-            # ASIA-PACIFIC (7 countries)
-            "Japan": {
-                "region": "Asia-Pacific",
-                "companies": 3500,
-                "sectors": ["Automotive", "Electronics", "Finance", "Industrials"],
-                "major_exchanges": ["TSE", "Osaka"],
-                "description": "World's 3rd largest economy, manufacturing",
-            },
-            "China": {
-                "region": "Asia-Pacific",
-                "companies": 4200,
-                "sectors": ["Technology", "Finance", "Manufacturing", "Energy"],
-                "major_exchanges": ["Shanghai", "Shenzhen", "Hong Kong"],
-                "description": "Fastest growing, tech leader",
-            },
-            "South Korea": {
-                "region": "Asia-Pacific",
-                "companies": 2200,
-                "sectors": ["Electronics", "Automotive", "Finance", "Energy"],
-                "major_exchanges": ["KRX", "KOSDAQ"],
-                "description": "Tech and automotive powerhouse",
-            },
-            "India": {
-                "region": "Asia-Pacific",
-                "companies": 2800,
-                "sectors": ["Technology", "Finance", "Pharmaceuticals", "Industrials"],
-                "major_exchanges": ["NSE", "BSE"],
-                "description": "Emerging tech hub and pharma leader",
-            },
-            "Australia": {
-                "region": "Asia-Pacific",
-                "companies": 1200,
-                "sectors": ["Materials", "Finance", "Energy", "Utilities"],
-                "major_exchanges": ["ASX"],
-                "description": "Resources and finance",
-            },
-            "Singapore": {
-                "region": "Asia-Pacific",
-                "companies": 700,
-                "sectors": ["Finance", "Industrials", "Real Estate", "Energy"],
-                "major_exchanges": ["SGX"],
-                "description": "Financial center and trade hub",
-            },
-            "Hong Kong": {
-                "region": "Asia-Pacific",
-                "companies": 1200,
-                "sectors": ["Finance", "Real Estate", "Utilities", "Consumer"],
-                "major_exchanges": ["HKEX"],
-                "description": "Finance hub and gateway to China",
-            },
-            # EMERGING MARKETS (not listed above, part of 20)
-            "Brazil": {
-                "region": "Emerging Markets",
-                "companies": 1200,
-                "sectors": ["Finance", "Energy", "Materials", "Utilities"],
-                "major_exchanges": ["B3"],
-                "description": "Largest Latin American economy",
-            },
-        }
+        """Define 20 country universe with company estimates (a fresh copy per call)"""
+        return copy.deepcopy(COUNTRIES_CONFIG)
 
     def generate_global_universe(self) -> list:
         """Generate 50,000+ company universe across 20 countries"""

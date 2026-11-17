@@ -284,44 +284,17 @@ class MLSignalEngine:
             return base
 
         try:
-            # ── Feature engineering ───────────────────────────────────────────
-            features = compute_features(df_ohlc)
-            if len(features) < MIN_ROWS - 50:
+            prepared = self._prepare(df_ohlc)
+            if prepared is None:
                 base["direction"] = "INSUFFICIENT_DATA"
                 return base
+            feat_df, tgt_ser, n_aligned = prepared
 
-            # Target: T+PREDICT_DAYS forward return (%)
-            close = df_ohlc["Close"].astype(float).reindex(features.index)
-            target = close.pct_change(PREDICT_DAYS).shift(-PREDICT_DAYS) * 100
-
-            # Align features and target
-            aligned = features.join(target.rename("target"), how="inner").dropna()
-            if len(aligned) < LOOKBACK + 50:
+            trained = self._fit_walk_forward(feat_df, tgt_ser, n_aligned)
+            if trained is None:
                 base["direction"] = "INSUFFICIENT_DATA"
                 return base
-
-            feat_df = aligned[FEATURE_NAMES]
-            tgt_ser = aligned["target"]
-
-            # ── Rolling train on most recent TRAIN_WINDOW rows ────────────────
-            # Only use last TRAIN_WINDOW rows for training (walk-forward)
-            train_end = len(aligned) - PREDICT_DAYS - 1
-            train_start = max(0, train_end - TRAIN_WINDOW)
-            train_feat = feat_df.iloc[train_start:train_end]
-            train_tgt = tgt_ser.iloc[train_start:train_end]
-
-            X_train, y_train = self._make_sequences(train_feat, train_tgt)
-            if len(X_train) < 30:
-                base["direction"] = "INSUFFICIENT_DATA"
-                return base
-
-            # ── Train model ───────────────────────────────────────────────────
-            model = self._make_model()
-            model.fit(X_train, y_train)
-
-            # In-sample RMSE (training error)
-            y_pred_train = model.predict(X_train)
-            train_rmse = float(np.sqrt(mean_squared_error(y_train, y_pred_train)))
+            model, X_train, y_pred_train, train_rmse = trained
 
             # ── Predict: use most recent LOOKBACK window ──────────────────────
             latest_window = feat_df.iloc[-LOOKBACK:].values
@@ -332,17 +305,9 @@ class MLSignalEngine:
             pred_std = float(y_pred_train.std()) if y_pred_train.std() > 0 else 1.0
             confidence = min(1.0, abs(predicted_ret) / (2 * pred_std + 1e-9))
 
-            # ── Direction classification ───────────────────────────────────────
-            if predicted_ret >= BULLISH_THRESHOLD:
-                direction = "BULLISH"
-            elif predicted_ret <= BEARISH_THRESHOLD:
-                direction = "BEARISH"
-            else:
-                direction = "NEUTRAL"
-
             return {
                 "symbol": symbol,
-                "direction": direction,
+                "direction": self._classify_direction(predicted_ret),
                 "predicted_ret%": round(predicted_ret, 3),
                 "confidence": round(confidence, 3),
                 "model": self.model_type,
@@ -354,6 +319,55 @@ class MLSignalEngine:
         except Exception as e:
             base["error"] = str(e)
             return base
+
+    @staticmethod
+    def _classify_direction(predicted_ret: float) -> str:
+        """BULLISH / BEARISH beyond the thresholds, else NEUTRAL."""
+        if predicted_ret >= BULLISH_THRESHOLD:
+            return "BULLISH"
+        if predicted_ret <= BEARISH_THRESHOLD:
+            return "BEARISH"
+        return "NEUTRAL"
+
+    @staticmethod
+    def _prepare(df_ohlc: pd.DataFrame):
+        """Features + T+PREDICT_DAYS forward-return target, aligned.
+
+        Returns (feat_df, tgt_ser, n_rows) or None when there is too little data.
+        """
+        features = compute_features(df_ohlc)
+        if len(features) < MIN_ROWS - 50:
+            return None
+
+        # Target: T+PREDICT_DAYS forward return (%)
+        close = df_ohlc["Close"].astype(float).reindex(features.index)
+        target = close.pct_change(PREDICT_DAYS).shift(-PREDICT_DAYS) * 100
+
+        aligned = features.join(target.rename("target"), how="inner").dropna()
+        if len(aligned) < LOOKBACK + 50:
+            return None
+        return aligned[FEATURE_NAMES], aligned["target"], len(aligned)
+
+    def _fit_walk_forward(self, feat_df: pd.DataFrame, tgt_ser: pd.Series, n_aligned: int):
+        """Train on the most recent TRAIN_WINDOW rows only (walk-forward).
+
+        Returns (model, X_train, in-sample predictions, in-sample RMSE) or None if the
+        training set is too small.
+        """
+        train_end = n_aligned - PREDICT_DAYS - 1
+        train_start = max(0, train_end - TRAIN_WINDOW)
+        train_feat = feat_df.iloc[train_start:train_end]
+        train_tgt = tgt_ser.iloc[train_start:train_end]
+
+        X_train, y_train = self._make_sequences(train_feat, train_tgt)
+        if len(X_train) < 30:
+            return None
+
+        model = self._make_model()
+        model.fit(X_train, y_train)
+        y_pred_train = model.predict(X_train)
+        train_rmse = float(np.sqrt(mean_squared_error(y_train, y_pred_train)))
+        return model, X_train, y_pred_train, train_rmse
 
     def predict_batch(self, ohlc_dict: dict, max_workers: int = None) -> pd.DataFrame:
         """
