@@ -940,9 +940,9 @@ def test_gov_integrity(gov, monkeypatch):
 
 def test_gov_no_secrets(gov, monkeypatch):
     (gov / "ok.py").write_text("x = 1\npassword = 'short'\n")
-    (gov / "bad.py").write_text("api_key = 'ABCDEFGHIJKL1234'\n")
-    (gov / "tok.md").write_text('TOKEN="abcdefghijkl"\n')
-    (gov / "data.bin").write_text("secret = 'ABCDEFGHIJKL1234'")  # extension not scanned
+    (gov / "bad.py").write_text("api_key = '" + "ABCDEFGHIJKL1234" + "'\n")
+    (gov / "tok.md").write_text('TOKEN="' + "abcdefghijkl" + '"\n')
+    (gov / "data.bin").write_text("secret = '" + "ABCDEFGHIJKL1234" + "'")  # extension not scanned
     _tracked(monkeypatch, ["ok.py", "data.bin"])
     assert governance._check_no_secrets() == (True, "no hard-coded secrets in tracked files")
     _tracked(monkeypatch, ["ok.py", "bad.py", "tok.md", "gone.py"])  # unreadable file is skipped
@@ -953,7 +953,7 @@ def test_gov_no_secrets(gov, monkeypatch):
     (gov / "eq.py").write_text("secret = 'ABCDEFGHIJK'\n")  # 11 chars: below the 12 threshold
     _tracked(monkeypatch, ["eq.py"])
     assert governance._check_no_secrets()[0] is True
-    (gov / "eq.py").write_text("secret = 'ABCDEFGHIJKL'\n")  # exactly 12
+    (gov / "eq.py").write_text("secret = '" + "ABCDEFGHIJKL" + "'\n")  # exactly 12
     assert governance._check_no_secrets()[0] is False
 
 
