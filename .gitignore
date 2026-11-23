@@ -85,3 +85,5 @@ cache_seed/fundamentals_history/*
 cache_seed/ltm/US.parquet
 cache_seed/ltm/CN.parquet
 cache_seed/ltm/JP.parquet
+.coverage
+coverage.xml
