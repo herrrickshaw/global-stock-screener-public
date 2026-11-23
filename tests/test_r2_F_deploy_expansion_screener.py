@@ -297,13 +297,21 @@ def test_deploy_and_main(sd, redirect, monkeypatch, capsys):
     assert "Pass rate: 100.0%" in o and "Qualified: 2 candidates" in o
 
 
-def test_main_block(redirect, monkeypatch, capsys):
+def test_main_block(redirect, monkeypatch, capsys, tmp_path):
     import numpy as np
 
     # shrink the 25k synthetic universe so the script-run stays fast
     monkeypatch.setattr(np.random, "seed", lambda s: None)
     real_choice = np.random.choice
     monkeypatch.setattr(np.random, "choice", lambda a, *k, **kw: a[0])
+    real_open = builtins.open
+
+    def safe_open(path, mode="r", *a, **k):  # the script hardcodes /Users/... output paths
+        if "w" in mode and str(path).startswith("/Users/"):
+            path = tmp_path / Path(str(path)).name
+        return real_open(path, mode, *a, **k)
+
+    monkeypatch.setattr(builtins, "open", safe_open)
     runpy.run_path(str(SRC), run_name="__main__")
     out = capsys.readouterr().out
     assert "DEPLOYMENT COMPLETE" in out and "PRODUCTION READY" in out

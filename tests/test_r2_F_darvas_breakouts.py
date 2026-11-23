@@ -240,6 +240,7 @@ def _xlsx(tmp_path, rows):
 
 
 def test_main_no_file(monkeypatch, capsys, tmp_path):
+    monkeypatch.setenv("HOME", str(tmp_path))  # default CSV path is ~/Downloads/...
     monkeypatch.setattr(sys, "argv", ["d", "--market", "IN", "--file", str(tmp_path / "nope")])
     with pytest.raises(SystemExit) as e:
         db.main()
